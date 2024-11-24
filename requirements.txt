@@ -1,7 +1,7 @@
 freetype_py
 lz4
 moderngl
-numpy==1.23
+numpy
 pymeshio
 PyQt5
 PyQt5_sip
