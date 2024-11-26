@@ -72,13 +72,13 @@ Capable of opening `.mesh` with and without bones, it has an OpenGL viewer that 
 ## Roadmap
 
 - [x] Search bar (coming in the next update)
-- [] UI Improvements (WIP)
-- [] glTF conversion
+- [ ] UI Improvements (WIP)
+- [ ] glTF conversion
 - [x] Whole NPK extraction
-- [] Editing NPK files
-- [] Implementing repacking
-- [] Standardized / Persistent configuration
-- [] Parsing RAWANIM files
+- [ ] Editing NPK files
+- [ ] Implementing repacking
+- [ ] Standardized / Persistent configuration
+- [ ] Parsing RAWANIM files
 - More things to come...
 
 ## Extra information
