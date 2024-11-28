@@ -29,8 +29,8 @@ class HexViewerApp(QMainWindow):
 
     def display_hex_view(self):
         try:
-            # Limit data to the first 64 KB for performance
-            max_size = 64 * 1024  # 64 KB
+            # Limit data to the first 256 KB for performance
+            max_size = 256 * 1024  # 256 KB
             content = self.npkdata[:max_size]
             truncated = len(self.npkdata) > max_size
 
@@ -46,14 +46,14 @@ class HexViewerApp(QMainWindow):
         # Add the header lines
         header = (
             "Offset   | 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f | ASCII\n"
-            "---------------------------------------------------------\n"
+            "------------------------------------------------------------------\n"
         )
         lines = []
 
         for i in range(0, len(content), 16):
             chunk = content[i:i + 16]
             hex_chunk = " ".join(f"{byte:02X}" for byte in chunk)
-            ascii_chunk = "".join(chr(byte) if 32 <= byte <= 126 else "░" for byte in chunk)
+            ascii_chunk = "".join(chr(byte) if 30 <= byte else "." for byte in chunk)
             lines.append(f"{i:08X} | {hex_chunk.ljust(47)} | {ascii_chunk}")
 
         return header + "\n".join(lines)

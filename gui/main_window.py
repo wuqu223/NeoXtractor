@@ -55,7 +55,7 @@ def create_main_viewer_tab(self):
         self.filter_input = QLineEdit()
         self.filter_input.setPlaceholderText("Search or filter items...")
         self.filter_input.textChanged.connect(self.filter_list_items)
-        self.filter_input.setFixedWidth(200)
+        self.filter_input.setMinimumWidth(200)
         self.filter_input.setToolTip("Type to filter the file list.")
         left_column.addWidget(self.filter_input)
 
@@ -91,22 +91,18 @@ def create_main_viewer_tab(self):
         horizontal_buttons_layout = QHBoxLayout(horizontal_buttons_widget)
         horizontal_buttons_layout.alignment=Qt.AlignLeft
         self.read_all_files = QPushButton("Read all files")
-        self.read_all_files.setFixedSize(100,30)
+        self.read_all_files.setFixedSize(90,30)
         self.read_all_files.pressed.connect(self.read_all_npk_data)
         self.read_all_files.setToolTip("Read all files from the loaded NPK.")
         horizontal_buttons_layout.addWidget(self.read_all_files)
         
-        self.extract_all_files = QPushButton("Extract all files")
-        self.extract_all_files.setFixedSize(100,30)
-        self.extract_all_files.pressed.connect(self.extract_all_npk_data)
+        self.extract_all_files = QPushButton("Extract selected files")
+        self.extract_all_files.setFixedSize(140,30)
+        self.extract_all_files.pressed.connect(self.extract_selected_npk_data)
         horizontal_buttons_layout.addWidget(self.extract_all_files)
         horizontal_buttons_layout.addSpacerItem(QSpacerItem(1,1,QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed))
         horizontal_buttons_widget.setLayout(horizontal_buttons_layout)
         right_column.addWidget(horizontal_buttons_widget)
-
-        horizontal_buttons_layout.addSpacerItem(
-            QSpacerItem(1, 1, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        )
         horizontal_buttons_widget.setLayout(horizontal_buttons_layout)
         right_column.addWidget(horizontal_buttons_widget)
 
@@ -126,11 +122,11 @@ def create_main_viewer_tab(self):
         left_right_splitter = IconSplitter(Qt.Horizontal)
         left_right_splitter.addWidget(left_column_widget)
         left_right_splitter.addWidget(right_column_widget)
-        left_right_splitter.setFixedWidth(50)
+        left_right_splitter.setMinimumWidth(50)
 
         # Set stretch factors for dynamic resizing
-        left_right_splitter.setStretchFactor(0, 1)  # Left column resizes dynamically
-        left_right_splitter.setStretchFactor(1, 2)  # Right column gets more space
+        #left_right_splitter.setStretchFactor(0, 1)  # Left column resizes dynamically
+        #left_right_splitter.setStretchFactor(1, 2)  # Right column gets more space
 
         # Allow user resizing
         left_right_splitter.setCollapsible(0, False)

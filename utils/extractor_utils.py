@@ -1,4 +1,5 @@
 import shutil, io, os, struct, tempfile, argparse, zipfile, time
+from PyQt5.QtWidgets import QMessageBox
 from decompression import zflag_decompress, special_decompress
 from decryption import file_decrypt
 from detection import get_ext, get_compression
@@ -94,6 +95,9 @@ def read_index(self, file_path):
     if data == b'NXPK':
         self.npk.pkg_type = 0
     elif data == b'EXPK':
+        checked = QMessageBox.question(self, "Check Decryption Key!", "Your decryption key is {}, program may fail if the key is wrong!\nAre you sure you want to continue?".format(self.decryption_key))
+        if checked == QMessageBox.No:
+            return -1
         self.npk.pkg_type = 1
     else:
         raise Exception('NOT NXPK/EXPK FILE')
@@ -131,7 +135,6 @@ def read_index(self, file_path):
     
     if self.npk.pkg_type:
         data = self.expkkeys.decrypt(data)
-    
     with io.BytesIO(data) as f:
         f.seek(0)
 
@@ -152,7 +155,7 @@ def read_entry(self, fileindex):
     npkentry.data = self.npk_file.read(npkentry.file_length)
     
     if self.npk.pkg_type:
-        npkentry.data = self.keys.decrypt(npkentry.data)
+        npkentry.data = self.expkkeys.decrypt(npkentry.data)
     file_decrypt(npkentry, self.decryption_key)
     zflag_decompress(npkentry)
     npkentry.special_decompress = get_compression(npkentry.data)

@@ -267,9 +267,8 @@ class MainWindow(QMainWindow):
             print("Path is: {}".format(file_path))
             
             self.npk_file = io.BytesIO(open(file_path, 'rb').read())
-            checked = QMessageBox.question(self, "Check Decryption Key!", "Your decryption key is {}, program may fail if the key is wrong!\nAre you sure you want to continue?".format(self.decryption_key))
-            if checked == QMessageBox.Yes:
-                read_index(self, file_path)
+            if read_index(self, file_path) != -1:
+                
                 currfile = 0
                 for file in self.npk.index_table:
                     if not file[6]:
@@ -313,7 +312,7 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.information(self, "Open NPK!", "You must open an NPK file before reading it!")
         
-    def extract_all_npk_data(self):
+    def extract_selected_npk_data(self):
         if hasattr(self, "npk"):
             for index in self.npkentries:
                 currnpk = self.npkentries[index]
@@ -334,9 +333,10 @@ class MainWindow(QMainWindow):
                         f.write(currnpk.data)
                 except Exception as e:
                     QMessageBox.critical(self, "Error", f"Failed to save file: {str(e)}")
+            QMessageBox.information(self, "Finished!", f"Saved {len(self.npkentries)} files to \"{self.output_folder}\" folder")
 
         else:
-            QMessageBox.information(self, "Open NPK!", "You must open an NPK file before extracting it!")
+            QMessageBox.information(self, "Open NPK first", "You must open an NPK file before extracting it!")
     
     def clear_npk_data(self):
         self.file_list_widget.clear()
