@@ -154,11 +154,6 @@ class MainWindow(QMainWindow):
         
     def show_mesh(self):
         mesh = mesh_from_path(self.npkentries[self.selectednpkentry].data)
-        # #print(mesh)
-        # #self.viewer.render()
-        # self.window_mesh.viewer.initializeGL()
-        # self.window_mesh.viewer.init()
-        # self.window_mesh.viewer.ctx_init()
         if mesh:
             self.window_mesh.viewer.load_mesh(mesh, self.get_savefile_location())
             self.window_mesh.viewer.focus_on_selected_object()
@@ -297,10 +292,10 @@ class MainWindow(QMainWindow):
     def read_all_npk_data(self):
         # Check viewer initialization
         if hasattr(self, "npk"):
-            for index in range(0, len(self.npk.index_table)):
-                self.progress_bar.setValue((index + 1) * 100 // len(self.npk.index_table)) # Update progress bar
-                item = self.file_list_widget.item(index)
-                npkentry = read_entry(self, index)
+            for x in range(self.file_list_widget.count()):
+                item = self.file_list_widget.item(x)
+                self.progress_bar.setValue((x + 1) * 100 // self.npk.files) # Update progress bar
+                npkentry = read_entry(self, item.data(3))
                 if npkentry.file_original_length == 0:
                     if npkentry.file_structure:
                         print(f"Index {npkentry.file_structure} is empty")
@@ -310,7 +305,7 @@ class MainWindow(QMainWindow):
                     if not bool(item.data(4)) and not npkentry.file_structure:
                         item.setText(item.text() + f".{npkentry.ext}")
                     item.setData(4, True)
-                    self.npkentries[index] = npkentry
+                    self.npkentries[item.data(3)] = npkentry
                     item.setIcon(self.style().standardIcon(QStyle.SP_DialogYesButton))
 
             self.selectednpkentry = 0
