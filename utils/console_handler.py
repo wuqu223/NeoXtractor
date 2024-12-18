@@ -49,7 +49,7 @@ class ConsoleWidget(QWidget):
 
         # Create a QTextEdit for console output
         self.console_output = QTextEdit()
-        #self.console_output.setFixedHeight(250)
+        self.console_output.setMinimumWidth(150)
         self.console_output.setReadOnly(True)
 
         # Connect the console handler to this console's append method

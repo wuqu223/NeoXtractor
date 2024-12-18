@@ -1,25 +1,32 @@
-import os, io
-import struct, math, argparse
-import numpy as np
+import argparse
+import io
 import json
-import transformations as tf
-import pymeshio.pmx as pmx
+import os
+import struct
+import numpy as np
 import pymeshio.common as common
-import pymeshio.pmx.writer
+import pymeshio.pmx as pmx
 import pymeshio.pmx.reader
+import pymeshio.pmx.writer
+import transformations as tf
 from bone_name import *
+
 
 def readuint8(f):
     return int(struct.unpack('B', f.read(1))[0])
 
+
 def readuint16(f):
     return int(struct.unpack('H', f.read(2))[0])
+
 
 def readuint32(f):
     return struct.unpack('I', f.read(4))[0]
 
+
 def readfloat(f):
     return struct.unpack('f', f.read(4))[0]
+
 
 def get_parser():
     parser = argparse.ArgumentParser(description='NeoX Model Converter')
@@ -58,12 +65,12 @@ def saveobj(model, filename, flip_uv=False):
             vertex_offset = 0
             face_offset = 0
 
-            # Handle submeshes and write UVs and faces separately
+            # Handle sub-meshes and write UVs and faces separately
             for i, (mesh_vertex_count, mesh_face_count, _, _) in enumerate(model['mesh']):
-                print(f"Processing Submesh {i}: Vertices {mesh_vertex_count}, Faces {mesh_face_count}")
-                f.write(f"g Submesh_{i}\n")
+                print(f"Processing Sub-mesh {i}: Vertices {mesh_vertex_count}, Faces {mesh_face_count}")
+                f.write(f"g Sub-mesh_{i}\n")
 
-                # Write UVs for this submesh
+                # Write UVs for this sub-mesh
                 for uv in model['uv'][vertex_offset:vertex_offset + mesh_vertex_count]:
                     if flip_uv:
                         uv = (uv[0], 1 - uv[1])  # Flip UV on the Y axis
@@ -73,10 +80,9 @@ def saveobj(model, filename, flip_uv=False):
                 for v1, v2, v3 in model['face'][face_offset:face_offset + mesh_face_count]:
                     f.write(f"f {v1 + 1}/{v1 + 1} {v2 + 1}/{v2 + 1} {v3 + 1}/{v3 + 1}\n")
 
-                # Update the offsets for the next submesh
+                # Update the offsets for the next sub-mesh
                 vertex_offset += mesh_vertex_count
                 face_offset += mesh_face_count
-
             print(f"Total faces: {len(model['face'])}")
 
             # Write bone information as comments
@@ -85,22 +91,22 @@ def saveobj(model, filename, flip_uv=False):
                 for i, bone_name in enumerate(model['bone_name']):
                     parent = model['bone_parent'][i]
                     f.write(f"# Bone: {bone_name}, Parent: {parent}\n")
-
         print(f"OBJ saved with {len(model['face'])} faces and {len(model['bone_name'])} bones.")
 
     except Exception as e:
         print(f"Failed to save OBJ: {e}")
 
+
 def savesmd(model, filename, flip_uv=False):
     """
-    Save model to Valve's SMD format as a reference (static) SMD.
+    Save model to Valve's SMD formats as a reference (static) SMD.
     
     Parameters:
     - model: Dictionary with model data containing bones, vertices, faces, etc.
     - filename: The output SMD filename.
     - flip_uv: Boolean to indicate whether to flip the UV coordinates on the Y-axis.
     """
-    
+
     filename = filename.replace('.mesh', '.smd')
     try:
         with open(filename, 'w') as smd_file:
@@ -126,7 +132,7 @@ def savesmd(model, filename, flip_uv=False):
             root_index = model['bone_parent'].index(-1)
             write_bone_hierarchy(root_index, -1)
             smd_file.write("end\n")
-            
+
             # Skeleton - Static, only the initial frame at time 0
             smd_file.write("skeleton\n")
             smd_file.write("time 0\n")
@@ -134,7 +140,7 @@ def savesmd(model, filename, flip_uv=False):
                 x, y, z = tf.translation_from_matrix(matrix.T)
                 smd_file.write(f"{i} {x:.6f} {y:.6f} {z:.6f}\n")
             smd_file.write("end\n")
-            
+
             # Mesh Data - Vertices, Normals, UVs, and Faces
             smd_file.write("triangles\n")
             for face, mesh_data in enumerate(model['face']):
@@ -145,25 +151,26 @@ def savesmd(model, filename, flip_uv=False):
                     uv = model['uv'][vertex_index]
                     joint_indices = model['vertex_joint'][vertex_index]
                     weights = model['vertex_joint_weight'][vertex_index]
-                    
+
                     # Flip UV if specified
                     if flip_uv:
                         uv = (uv[0], 1 - uv[1])
-                    
+
                     # Write the material name once per triangle
                     smd_file.write(f"{material_name}\n")
-                    
+
                     # Format: <bone ID> <x> <y> <z> <nx> <ny> <nz> <u> <v> <weight>
                     for joint_index, weight in zip(joint_indices, weights):
                         smd_file.write(f"{joint_index} {pos[0]:.6f} {pos[1]:.6f} {pos[2]:.6f} "
-                                    f"{norm[0]:.6f} {norm[1]:.6f} {norm[2]:.6f} "
-                                    f"{uv[0]:.6f} {uv[1]:.6f} {weight:.6f}\n")
-            
+                                       f"{norm[0]:.6f} {norm[1]:.6f} {norm[2]:.6f} "
+                                       f"{uv[0]:.6f} {uv[1]:.6f} {weight:.6f}\n")
+
             smd_file.write("end\n")
         print(f"SMD saved as static reference with {len(model['face'])} faces and {len(model['bone_name'])} bones.")
     except Exception as e:
         print(f"Failed to save SMD: {e}")
-    
+
+
 def savepmx(model, filename):
     pmx_model = pmx.Model()
     pmx_model.display_slots.append(pmx.DisplaySlot(u'表情', u'Exp', 1, None))
@@ -185,13 +192,13 @@ def savepmx(model, filename):
         matrix = model['bone_original_matrix'][index]
         x, y, z = tf.translation_from_matrix(matrix.T)
         bone_pool.append(pmx.Bone(
-                name=model['bone_name'][index],
-                english_name=model['bone_name'][index],
-                position=common.Vector3(-x, y, -z),
-                parent_index=parent_index,
-                layer=0,
-                flag=0
-            ))
+            name=model['bone_name'][index],
+            english_name=model['bone_name'][index],
+            position=common.Vector3(-x, y, -z),
+            parent_index=parent_index,
+            layer=0,
+            flag=0
+        ))
         bone_pool[-1].setFlag(pmx.BONEFLAG_CAN_ROTATE, True)
         bone_pool[-1].setFlag(pmx.BONEFLAG_IS_VISIBLE, True)
         bone_pool[-1].setFlag(pmx.BONEFLAG_CAN_MANIPULATE, True)
@@ -214,9 +221,9 @@ def savepmx(model, filename):
         nx, ny, nz = model['normal'][i]
         u, v = model['uv'][i]
         if 65535 in model['vertex_joint'][i]:
-            vertex_joint_index = list(map(lambda x: old2new[x] if x != 65535 else 0,model['vertex_joint'][i]))
+            vertex_joint_index = list(map(lambda x: old2new[x] if x != 65535 else 0, model['vertex_joint'][i]))
         else:
-            vertex_joint_index = list(map(lambda x: old2new[x] if x != 255 else 0,model['vertex_joint'][i]))
+            vertex_joint_index = list(map(lambda x: old2new[x] if x != 255 else 0, model['vertex_joint'][i]))
 
         vertex = pmx.Vertex(
             common.Vector3(-x, y, -z),
@@ -238,23 +245,23 @@ def savepmx(model, filename):
         _, mesh_face_count, _, _ = model['mesh'][i]
         pmx_model.materials.append(
             pmx.Material(u'Mat{}'.format(i)
-                    , u'material{}'.format(i)
-                    , common.RGB(1, 1, 1)
-                    , 1.0
-                    , 1
-                    , common.RGB(1, 1, 1)
-                    , common.RGB(0, 0, 0)
-                    , 0
-                    , common.RGBA(0, 0, 0, 1)
-                    , 0
-                    , -1
-                    , -1
-                    , pmx.MATERIALSPHERE_NONE
-                    , 1
-                    , 0
-                    , u"comment"
-                    , mesh_face_count * 3
-            )
+                         , u'material{}'.format(i)
+                         , common.RGB(1, 1, 1)
+                         , 1.0
+                         , 1
+                         , common.RGB(1, 1, 1)
+                         , common.RGB(0, 0, 0)
+                         , 0
+                         , common.RGBA(0, 0, 0, 1)
+                         , 0
+                         , -1
+                         , -1
+                         , pmx.MATERIALSPHERE_NONE
+                         , 1
+                         , 0
+                         , u"comment"
+                         , mesh_face_count * 3
+                         )
         )
 
     filename = filename.replace('.mesh', '')
@@ -263,7 +270,7 @@ def savepmx(model, filename):
         if bone.english_name in paj_middle_bone_name:
             bone.position.x = 0.0
 
-    if 'bip001_l_finger13'  in [bone.english_name for bone in pmx_model.bones]:
+    if 'bip001_l_finger13' in [bone.english_name for bone in pmx_model.bones]:
         paj_bone_name.update(paj_hand1_name)
     else:
         paj_bone_name.update(paj_hand0_name)
@@ -307,13 +314,13 @@ def savepmx(model, filename):
         parent_node_index = find_bone_index_by_name(pmx_model, 'ParentNode')
 
         center_bone = pmx.Bone(
-                    name='センター',
-                    english_name='Center',
-                    position=common.Vector3(0, 8.0, 0),
-                    parent_index=parent_node_index,
-                    layer=0,
-                    flag=0
-                )
+            name='センター',
+            english_name='Center',
+            position=common.Vector3(0, 8.0, 0),
+            parent_index=parent_node_index,
+            layer=0,
+            flag=0
+        )
         center_bone.setFlag(pmx.BONEFLAG_CAN_ROTATE, True)
         center_bone.setFlag(pmx.BONEFLAG_IS_VISIBLE, True)
         center_bone.setFlag(pmx.BONEFLAG_CAN_MANIPULATE, True)
@@ -322,13 +329,13 @@ def savepmx(model, filename):
         center_index = add_bone(pmx_model, center_bone, waist_index)
 
         groove_bone = pmx.Bone(
-                    name='グルーブ',
-                    english_name='Groove',
-                    position=common.Vector3(0, 8.2, 0),
-                    parent_index=center_index,
-                    layer=0,
-                    flag=0
-                )
+            name='グルーブ',
+            english_name='Groove',
+            position=common.Vector3(0, 8.2, 0),
+            parent_index=center_index,
+            layer=0,
+            flag=0
+        )
         groove_bone.setFlag(pmx.BONEFLAG_CAN_ROTATE, True)
         groove_bone.setFlag(pmx.BONEFLAG_IS_VISIBLE, True)
         groove_bone.setFlag(pmx.BONEFLAG_CAN_MANIPULATE, True)
@@ -351,13 +358,13 @@ def savepmx(model, filename):
             toe_vec.y = ankle_y - 1.0
             toe_vec.z = -1.65
             leg_ik_parent_bone = pmx.Bone(
-                    name='左足IK親' if LR == 'Left' else '右足IK親',
-                    english_name='{}LegIkParent'.format(LR),
-                    position=common.Vector3(ankle_x, 0, ankle_z),
-                    parent_index=parent_node_index,
-                    layer=0,
-                    flag=0
-                )
+                name='左足IK親' if LR == 'Left' else '右足IK親',
+                english_name='{}LegIkParent'.format(LR),
+                position=common.Vector3(ankle_x, 0, ankle_z),
+                parent_index=parent_node_index,
+                layer=0,
+                flag=0
+            )
             leg_ik_parent_bone.setFlag(pmx.BONEFLAG_CAN_ROTATE, True)
             leg_ik_parent_bone.setFlag(pmx.BONEFLAG_CAN_TRANSLATE, True)
             leg_ik_parent_bone.setFlag(pmx.BONEFLAG_IS_VISIBLE, True)
@@ -365,13 +372,13 @@ def savepmx(model, filename):
             leg_ik_parent_index = add_bone(pmx_model, leg_ik_parent_bone, len(pmx_model.bones))
 
             leg_ik_bone = pmx.Bone(
-                    name='左足ＩＫ' if LR == 'Left' else '右足ＩＫ',
-                    english_name='{}LegIk'.format(LR),
-                    position=common.Vector3(ankle_x, ankle_y, ankle_z),
-                    parent_index=leg_ik_parent_index,
-                    layer=0,
-                    flag=0
-                )
+                name='左足ＩＫ' if LR == 'Left' else '右足ＩＫ',
+                english_name='{}LegIk'.format(LR),
+                position=common.Vector3(ankle_x, ankle_y, ankle_z),
+                parent_index=leg_ik_parent_index,
+                layer=0,
+                flag=0
+            )
 
             leg_ik_bone.setFlag(pmx.BONEFLAG_CAN_ROTATE, True)
             leg_ik_bone.setFlag(pmx.BONEFLAG_CAN_TRANSLATE, True)
@@ -382,20 +389,20 @@ def savepmx(model, filename):
             knee_index = find_bone_index_by_name(pmx_model, '{}Knee'.format(LR))
             leg_index = find_bone_index_by_name(pmx_model, '{}Leg'.format(LR))
             leg_ik_link = [
-                pmx.IkLink(knee_index, 1, common.Vector3(-180.0/57.325, 0, 0), common.Vector3(-0.5/57.325, 0, 0)),
+                pmx.IkLink(knee_index, 1, common.Vector3(-180.0 / 57.325, 0, 0), common.Vector3(-0.5 / 57.325, 0, 0)),
                 pmx.IkLink(leg_index, 0)
             ]
             leg_ik_bone.ik = pmx.Ik(ankle_index, 40, 2, leg_ik_link)
             leg_ik_index = add_bone(pmx_model, leg_ik_bone, len(pmx_model.bones))
 
             toe_ik_bone = pmx.Bone(
-                    name='左つま先ＩＫ' if LR == 'Left' else '右つま先ＩＫ',
-                    english_name='{}LegIk'.format(LR),
-                    position=common.Vector3(toe_vec.x, toe_vec.y, toe_vec.z),
-                    parent_index=leg_ik_index,
-                    layer=0,
-                    flag=0
-                )
+                name='左つま先ＩＫ' if LR == 'Left' else '右つま先ＩＫ',
+                english_name='{}LegIk'.format(LR),
+                position=common.Vector3(toe_vec.x, toe_vec.y, toe_vec.z),
+                parent_index=leg_ik_index,
+                layer=0,
+                flag=0
+            )
             toe_ik_bone.setFlag(pmx.BONEFLAG_CAN_ROTATE, True)
             toe_ik_bone.setFlag(pmx.BONEFLAG_CAN_TRANSLATE, True)
             toe_ik_bone.setFlag(pmx.BONEFLAG_IS_IK, True)
@@ -432,13 +439,13 @@ def savepmx(model, filename):
         '''
         head_index = find_bone_index_by_name(pmx_model, 'Head')
         eyes_bone = pmx.Bone(
-                    name='両目',
-                    english_name='Eyes',
-                    position=common.Vector3(0, 25, 0),
-                    parent_index=head_index,
-                    layer=0,
-                    flag=0
-                )
+            name='両目',
+            english_name='Eyes',
+            position=common.Vector3(0, 25, 0),
+            parent_index=head_index,
+            layer=0,
+            flag=0
+        )
         eyes_bone.setFlag(pmx.BONEFLAG_CAN_ROTATE, True)
         eyes_bone.setFlag(pmx.BONEFLAG_IS_VISIBLE, True)
         eyes_bone.setFlag(pmx.BONEFLAG_CAN_MANIPULATE, True)
@@ -463,6 +470,7 @@ def savepmx(model, filename):
         pymeshio.pmx.writer.write_to_file(pmx_model, filename + '_modified.pmx')
     except Exception:
         pass
+
 
 def saveascii(model, filename, flip_uv=False):
     try:
@@ -513,6 +521,7 @@ def saveascii(model, filename, flip_uv=False):
     except Exception as e:
         print(f"Error writing ASCII file: {e}")
 
+
 def saveiqe(model, filename):
     model['bone_translate'] = []
     model['bone_rotation'] = []
@@ -525,8 +534,7 @@ def saveiqe(model, filename):
         matrix = np.dot(model['bone_original_matrix'][i], np.linalg.inv(matrix))
         model['bone_translate'].append(tf.translation_from_matrix(matrix.T))
         model['bone_rotation'].append(tf.quaternion_from_matrix(matrix.T))
-    filename = filename.replace('.mesh', '.iqe')
-    with open(filename, 'w') as f:
+    with open(filename + '.iqe ', 'w') as f:
         f.write('# Inter-Quake Export\n')
         f.write('\n')
         parent_child_dict = {}
@@ -571,12 +579,10 @@ def saveiqe(model, filename):
             f.write('material "mesh{}Mat"\n'.format(mesh_i))
             f.write('\n')
 
-
             for i in range(mesh_vertex_counter, mesh_vertex_counter_end):
                 x, y, z = model['position'][i]
                 f.write('vp {} {} {}\n'.format(-x, y, z))
             f.write('\n')
-
 
             for i in range(mesh_vertex_counter, mesh_vertex_counter_end):
                 x, y, z = model['normal'][i]
@@ -585,7 +591,7 @@ def saveiqe(model, filename):
 
             for i in range(mesh_vertex_counter, mesh_vertex_counter_end):
                 u, v = model['uv'][i]
-                f.write('vt {} {}\n'.format(u, 1-v))
+                f.write('vt {} {}\n'.format(u, 1 - v))
             f.write('\n')
 
             for i in range(mesh_vertex_counter, mesh_vertex_counter_end):
@@ -610,6 +616,7 @@ def saveiqe(model, filename):
 
             mesh_vertex_counter = mesh_vertex_counter_end
             mesh_face_counter = mesh_face_counter_end
+
 
 # Works for exporting just mesh
 def save_to_json(model, filename):
@@ -639,10 +646,10 @@ def save_to_json(model, filename):
 
         # Binary Buffer
         binary_buffer = (
-            struct.pack(f"{len(vertex_buffer)}f", *vertex_buffer) +
-            struct.pack(f"{len(normal_buffer)}f", *normal_buffer) +
-            struct.pack(f"{len(uv_buffer)}f", *uv_buffer) +
-            struct.pack(f"{len(index_buffer)}H", *index_buffer)
+                struct.pack(f"{len(vertex_buffer)}f", *vertex_buffer) +
+                struct.pack(f"{len(normal_buffer)}f", *normal_buffer) +
+                struct.pack(f"{len(uv_buffer)}f", *uv_buffer) +
+                struct.pack(f"{len(index_buffer)}H", *index_buffer)
         )
 
         # Buffer and BufferView
@@ -660,7 +667,8 @@ def save_to_json(model, filename):
             {"buffer": 0, "byteOffset": 0, "byteLength": vertex_bytes, "target": 34962},
             {"buffer": 0, "byteOffset": vertex_bytes, "byteLength": normal_bytes, "target": 34962},
             {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes, "byteLength": uv_bytes, "target": 34962},
-            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes + uv_bytes, "byteLength": index_bytes, "target": 34963},
+            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes + uv_bytes, "byteLength": index_bytes,
+             "target": 34963},
         ])
 
         # Calculate Bounds
@@ -671,9 +679,11 @@ def save_to_json(model, filename):
 
         # Accessors
         gltf_data["accessors"].extend([
-            {"bufferView": 0, "componentType": 5126, "count": len(model['position']), "type": "VEC3", "min": min_position, "max": max_position},
+            {"bufferView": 0, "componentType": 5126, "count": len(model['position']), "type": "VEC3",
+             "min": min_position, "max": max_position},
             {"bufferView": 1, "componentType": 5126, "count": len(model['normal']), "type": "VEC3"},
-            {"bufferView": 2, "componentType": 5126, "count": len(model['uv']), "type": "VEC2", "min": min_uv, "max": max_uv},
+            {"bufferView": 2, "componentType": 5126, "count": len(model['uv']), "type": "VEC2", "min": min_uv,
+             "max": max_uv},
             {"bufferView": 3, "componentType": 5123, "count": len(index_buffer), "type": "SCALAR"}
         ])
 
@@ -698,6 +708,7 @@ def save_to_json(model, filename):
         print(f"Failed to save GLTF2: {e}")
 
     print(f"GLTF JSON and binary saved as {filename} and {filename}.bin")
+
 
 # Testing for getting skeleton
 def save_to_gltf(model, filename):
@@ -745,13 +756,13 @@ def save_to_gltf(model, filename):
 
         # Binary Buffer
         binary_buffer = (
-            struct.pack(f"{len(vertex_buffer)}f", *vertex_buffer) +
-            struct.pack(f"{len(normal_buffer)}f", *normal_buffer) +
-            struct.pack(f"{len(uv_buffer)}f", *uv_buffer) +
-            struct.pack(f"{len(index_buffer)}H", *index_buffer) +
-            struct.pack(f"{len(joint_buffer)}B", *joint_buffer) +
-            struct.pack(f"{len(weight_buffer)}f", *weight_buffer) +
-            struct.pack(f"{len(flattened_ibms)}f", *flattened_ibms)
+                struct.pack(f"{len(vertex_buffer)}f", *vertex_buffer) +
+                struct.pack(f"{len(normal_buffer)}f", *normal_buffer) +
+                struct.pack(f"{len(uv_buffer)}f", *uv_buffer) +
+                struct.pack(f"{len(index_buffer)}H", *index_buffer) +
+                struct.pack(f"{len(joint_buffer)}B", *joint_buffer) +
+                struct.pack(f"{len(weight_buffer)}f", *weight_buffer) +
+                struct.pack(f"{len(flattened_ibms)}f", *flattened_ibms)
         )
 
         # Buffer and BufferView
@@ -770,12 +781,19 @@ def save_to_gltf(model, filename):
 
         gltf_data["bufferViews"].extend([
             {"buffer": 0, "byteOffset": 0, "byteLength": vertex_bytes, "target": 34962},
-            {"buffer": 0, "byteOffset": vertex_bytes, "byteLength": normal_bytes, "target": 34962} if normal_bytes else None,
-            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes, "byteLength": uv_bytes, "target": 34962} if uv_bytes else None,
-            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes + uv_bytes, "byteLength": index_bytes, "target": 34963},
-            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes + uv_bytes + index_bytes, "byteLength": joint_bytes, "target": 34962},
-            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes + uv_bytes + index_bytes + joint_bytes, "byteLength": weight_bytes, "target": 34962},
-            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes + uv_bytes + index_bytes + joint_bytes + weight_bytes, "byteLength": ibm_bytes}
+            {"buffer": 0, "byteOffset": vertex_bytes, "byteLength": normal_bytes,
+             "target": 34962} if normal_bytes else None,
+            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes, "byteLength": uv_bytes,
+             "target": 34962} if uv_bytes else None,
+            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes + uv_bytes, "byteLength": index_bytes,
+             "target": 34963},
+            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes + uv_bytes + index_bytes, "byteLength": joint_bytes,
+             "target": 34962},
+            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes + uv_bytes + index_bytes + joint_bytes,
+             "byteLength": weight_bytes, "target": 34962},
+            {"buffer": 0,
+             "byteOffset": vertex_bytes + normal_bytes + uv_bytes + index_bytes + joint_bytes + weight_bytes,
+             "byteLength": ibm_bytes}
         ])
 
         # Calculate Bounds
@@ -784,7 +802,8 @@ def save_to_gltf(model, filename):
 
         # Accessors
         gltf_data["accessors"].extend([
-            {"bufferView": 0, "componentType": 5126, "count": len(positions), "type": "VEC3", "min": min_position, "max": max_position},
+            {"bufferView": 0, "componentType": 5126, "count": len(positions), "type": "VEC3", "min": min_position,
+             "max": max_position},
             {"bufferView": 1, "componentType": 5126, "count": len(normals), "type": "VEC3"} if normals else None,
             {"bufferView": 2, "componentType": 5126, "count": len(uvs), "type": "VEC2"} if uvs else None,
             {"bufferView": 3, "componentType": 5123, "count": len(index_buffer), "type": "SCALAR"},
@@ -833,11 +852,12 @@ def save_to_gltf(model, filename):
     except Exception as e:
         print(f"Failed to save GLTF: {e}")
 
+
 def parse_mesh_original(path):
     model = {}
-    try:
-        with io.BytesIO(path) as f:
-            
+    with open(path, 'rb') as f:
+        try:
+        # with io.BytesIO(path) as f:
             _magic_number = f.read(8)
 
             model['bone_exist'] = readuint32(f)
@@ -882,7 +902,7 @@ def parse_mesh_original(path):
                     model['bone_name'].append('dummy_root')
                     model['bone_original_matrix'].append(np.identity(4))
 
-                _flag = readuint8(f) # 00
+                _flag = readuint8(f)  # 00
                 assert _flag == 0
 
             _offset = readuint32(f)
@@ -958,174 +978,381 @@ def parse_mesh_original(path):
                 for _ in range(vertex_count):
                     vertex_joint_weights = [readfloat(f) for _ in range(4)]
                     model['vertex_joint_weight'].append(vertex_joint_weights)
+        except Exception as e:
+            print(f"General parsing error: {e}")
+            return None
+        return model
 
-    except Exception as e:
-        print(f"General parsing error: {e}")
-        return None
-    
-    return model
+
+# def parse_mesh_helper(path):
+#     model = {}
+#     try:
+#         with io.BytesIO(path) as f:
+
+#             _magic_number = f.read(8)  # Read initial identifier
+
+#             model['bone_exist'] = readuint32(f)
+#             model['mesh'] = []
+
+#             # Bone Data Parsing
+#             if model['bone_exist']:
+#                 try:
+#                     bone_count = readuint16(f)
+#                     parent_nodes = []
+#                     for _ in range(bone_count):
+#                         parent_node = readuint8(f)
+#                         parent_nodes.append(-1 if parent_node == 255 else parent_node)
+#                     model['bone_parent'] = parent_nodes
+
+#                     bone_names = []
+#                     for _ in range(bone_count):
+#                         bone_name = f.read(32).decode('latin-1', errors='replace').replace('\0', '').replace(' ', '_')
+#                         bone_names.append(bone_name)
+#                     model['bone_name'] = bone_names
+
+#                     model['bone_original_matrix'] = []
+#                     for _ in range(bone_count):
+#                         matrix = [readfloat(f) for _ in range(16)]
+#                         model['bone_original_matrix'].append(np.array(matrix).reshape(4, 4))
+
+#                     # Add dummy root if needed
+#                     if parent_nodes.count(-1) > 1:
+#                         num = len(model['bone_parent'])
+#                         model['bone_parent'] = [num if x == -1 else x for x in model['bone_parent']]
+#                         model['bone_parent'].append(-1)
+#                         model['bone_name'].append('dummy_root')
+#                         model['bone_original_matrix'].append(np.identity(4))
+
+#                     _flag = readuint8(f)  # Check flag
+#                     assert _flag == 0
+#                 except Exception as e:
+#                     print(f"Bone parsing error: {e}")
+
+#             # Mesh Data Parsing
+#             _offset = readuint32(f)
+#             while True:
+#                 try:
+#                     flag = readuint16(f)
+#                     if flag == 1:
+#                         break
+#                     f.seek(-2, 1)
+#                     mesh_vertex_count = readuint32(f)
+#                     mesh_face_count = readuint32(f)
+#                     uv_layers = readuint8(f)
+#                     color_len = readuint8(f)
+
+#                     model['mesh'].append((mesh_vertex_count, mesh_face_count, uv_layers, color_len))
+#                 except Exception as e:
+#                     print(f"Mesh section parsing error: {e}")
+#                     break
+
+#             # Vertex Data
+#             vertex_count = readuint32(f)
+#             face_count = readuint32(f)
+
+#             try:
+#                 model['position'] = [(readfloat(f), readfloat(f), readfloat(f)) for _ in range(vertex_count)]
+#                 model['normal'] = [(readfloat(f), readfloat(f), readfloat(f)) for _ in range(vertex_count)]
+#             except Exception as e:
+#                 print(f"Error parsing vertex positions or normals: {e}")
+
+#             # Faces Data
+#             try:
+#                 model['face'] = [(readuint16(f), readuint16(f), readuint16(f)) for _ in range(face_count)]
+#             except Exception as e:
+#                 print(f"Error parsing face data: {e}")
+
+#             # UV Data
+#             model['uv'] = []
+#             for mesh_vertex_count, _, uv_layers, _ in model['mesh']:
+#                 if uv_layers > 0:
+#                     for _ in range(mesh_vertex_count):
+#                         u, v = readfloat(f), readfloat(f)
+#                         model['uv'].append((u, v))
+#                     f.seek(mesh_vertex_count * 8 * (uv_layers - 1), 1)  # Skip remaining UV layers if any
+#                 else:
+#                     model['uv'].extend([(0.0, 0.0)] * mesh_vertex_count)
+
+#             # Vertex Color Data (optional)
+#             for mesh_vertex_count, _, _, color_len in model['mesh']:
+#                 f.seek(mesh_vertex_count * 4 * color_len, 1)
+
+#             # Bone Weights if Bones Exist
+#             if model['bone_exist']:
+#                 try:
+#                     model['vertex_joint'] = [[readuint8(f) for _ in range(4)] for _ in range(vertex_count)]
+#                     model['vertex_joint_weight'] = [[readfloat(f) for _ in range(4)] for _ in range(vertex_count)]
+#                 except Exception as e:
+#                     print(f"Error parsing bone weights: {e}")
+
+#     except Exception as e:
+#         print(f"General parsing error: {e}")
+#         return None
+
+#     # Final validation check
+#     if 'normal' not in model:
+#         print("Warning: 'normal' data missing.")
+#     if 'position' not in model or 'face' not in model:
+#         print("Error: Incomplete mesh data.")
+#         return None
+
+#     return model
 
 def parse_mesh_helper(path):
     model = {}
-    try:
-        with io.BytesIO(path) as f:
-            
-            _magic_number = f.read(8)  # Read initial identifier
-            
-            model['bone_exist'] = readuint32(f)
-            model['mesh'] = []
+    with open(path, 'rb') as f:
+        # with io.BytesIO(path) as f:
+        _magic_number = f.read(8)
+        model['bone_exist'] = readuint32(f)
+        model['mesh'] = []
 
-            # Bone Data Parsing
-            if model['bone_exist']:
-                try:
-                    bone_count = readuint16(f)
-                    parent_nodes = []
-                    for _ in range(bone_count):
-                        parent_node = readuint8(f)
-                        parent_nodes.append(-1 if parent_node == 255 else parent_node)
-                    model['bone_parent'] = parent_nodes
+        if model['bone_exist']:
+            if model['bone_exist'] > 1:
+                count = readuint8(f)
+                f.read(2)
+                f.read(count * 4)
+            bone_count = readuint16(f)
+            parent_nodes = []
+            for _ in range(bone_count):
+                parent_node = readuint8(f)
+                if parent_node == 255:
+                    parent_node = -1
+                parent_nodes.append(parent_node)
+            model['bone_parent'] = parent_nodes
 
-                    bone_names = []
-                    for _ in range(bone_count):
-                        bone_name = f.read(32).decode('latin-1', errors='replace').replace('\0', '').replace(' ', '_')
-                        bone_names.append(bone_name)
-                    model['bone_name'] = bone_names
+            bone_names = []
+            for _ in range(bone_count):
+                bone_name = f.read(32)
+                bone_name = bone_name.decode().replace('\0', '').replace(' ', '_')
+                bone_names.append(bone_name)
+            model['bone_name'] = bone_names
 
-                    model['bone_original_matrix'] = []
-                    for _ in range(bone_count):
-                        matrix = [readfloat(f) for _ in range(16)]
-                        model['bone_original_matrix'].append(np.array(matrix).reshape(4, 4))
+            bone_extra_info = readuint8(f)
+            if bone_extra_info:
+                for _ in range(bone_count):
+                    f.read(28)
 
-                    # Add dummy root if needed
-                    if parent_nodes.count(-1) > 1:
-                        num = len(model['bone_parent'])
-                        model['bone_parent'] = [num if x == -1 else x for x in model['bone_parent']]
-                        model['bone_parent'].append(-1)
-                        model['bone_name'].append('dummy_root')
-                        model['bone_original_matrix'].append(np.identity(4))
+            model['bone_original_matrix'] = []
+            for i in range(bone_count):
+                matrix = [readfloat(f) for _ in range(16)]
+                matrix = np.array(matrix).reshape(4, 4)
+                model['bone_original_matrix'].append(matrix)
 
-                    _flag = readuint8(f)  # Check flag
-                    assert _flag == 0
-                except Exception as e:
-                    print(f"Bone parsing error: {e}")
+            if len(list(filter(lambda x: x == -1, parent_nodes))) > 1:
+                num = len(model['bone_parent'])
+                model['bone_parent'] = list(map(lambda x: num if x == -1 else x, model['bone_parent']))
+                model['bone_parent'].append(-1)
+                model['bone_name'].append('dummy_root')
+                model['bone_original_matrix'].append(np.identity(4))
 
-            # Mesh Data Parsing
-            _offset = readuint32(f)
-            while True:
-                try:
-                    flag = readuint16(f)
-                    if flag == 1:
-                        break
-                    f.seek(-2, 1)
-                    mesh_vertex_count = readuint32(f)
-                    mesh_face_count = readuint32(f)
-                    uv_layers = readuint8(f)
-                    color_len = readuint8(f)
+            _flag = readuint8(f)  # 00
+            assert _flag == 0
 
-                    model['mesh'].append((mesh_vertex_count, mesh_face_count, uv_layers, color_len))
-                except Exception as e:
-                    print(f"Mesh section parsing error: {e}")
-                    break
+        _offset = readuint32(f)
+        while True:
+            flag = readuint16(f)
+            if flag == 1:
+                break
+            f.seek(-2, 1)
+            mesh_vertex_count = readuint32(f)
+            mesh_face_count = readuint32(f)
+            uv_layers = readuint8(f)
+            color_len = readuint8(f)
 
-            # Vertex Data
-            vertex_count = readuint32(f)
-            face_count = readuint32(f)
+            model['mesh'].append((mesh_vertex_count, mesh_face_count, uv_layers, color_len))
 
-            try:
-                model['position'] = [(readfloat(f), readfloat(f), readfloat(f)) for _ in range(vertex_count)]
-                model['normal'] = [(readfloat(f), readfloat(f), readfloat(f)) for _ in range(vertex_count)]
-            except Exception as e:
-                print(f"Error parsing vertex positions or normals: {e}")
+        vertex_count = readuint32(f)
+        face_count = readuint32(f)
 
-            # Faces Data
-            try:
-                model['face'] = [(readuint16(f), readuint16(f), readuint16(f)) for _ in range(face_count)]
-            except Exception as e:
-                print(f"Error parsing face data: {e}")
+        model['position'] = []
+        # vertex position
+        for _ in range(vertex_count):
+            x = readfloat(f)
+            y = readfloat(f)
+            z = readfloat(f)
+            model['position'].append((x, y, z))
 
-            # UV Data
-            model['uv'] = []
-            for mesh_vertex_count, _, uv_layers, _ in model['mesh']:
-                if uv_layers > 0:
-                    for _ in range(mesh_vertex_count):
-                        u, v = readfloat(f), readfloat(f)
-                        model['uv'].append((u, v))
-                    f.seek(mesh_vertex_count * 8 * (uv_layers - 1), 1)  # Skip remaining UV layers if any
-                else:
-                    model['uv'].extend([(0.0, 0.0)] * mesh_vertex_count)
+        model['normal'] = []
+        # vertex normal
+        for _ in range(vertex_count):
+            x = readfloat(f)
+            y = readfloat(f)
+            z = readfloat(f)
+            model['normal'].append((x, y, z))
 
-            # Vertex Color Data (optional)
-            for mesh_vertex_count, _, _, color_len in model['mesh']:
-                f.seek(mesh_vertex_count * 4 * color_len, 1)
+        _flag = readuint16(f)
+        if _flag:
+            f.seek(vertex_count * 12, 1)
 
-            # Bone Weights if Bones Exist
-            if model['bone_exist']:
-                try:
-                    model['vertex_joint'] = [[readuint8(f) for _ in range(4)] for _ in range(vertex_count)]
-                    model['vertex_joint_weight'] = [[readfloat(f) for _ in range(4)] for _ in range(vertex_count)]
-                except Exception as e:
-                    print(f"Error parsing bone weights: {e}")
+        model['face'] = []
+        # face index table
+        for _ in range(face_count):
+            v1 = readuint16(f)
+            v2 = readuint16(f)
+            v3 = readuint16(f)
+            model['face'].append((v1, v2, v3))
 
-    except Exception as e:
-        print(f"General parsing error: {e}")
-        return None
+        model['uv'] = []
+        # vertex uv
+        for mesh_vertex_count, _, uv_layers, _ in model['mesh']:
+            if uv_layers > 0:
+                for _ in range(mesh_vertex_count):
+                    u = readfloat(f)
+                    v = readfloat(f)
+                    model['uv'].append((u, v))
+                f.read(mesh_vertex_count * 8 * (uv_layers - 1))
+            else:
+                for _ in range(mesh_vertex_count):
+                    u = 0.0
+                    v = 0.0
+                    model['uv'].append((u, v))
 
-    # Final validation check
-    if 'normal' not in model:
-        print("Warning: 'normal' data missing.")
-    if 'position' not in model or 'face' not in model:
-        print("Error: Incomplete mesh data.")
-        return None
+        # vertex color
+        for mesh_vertex_count, _, _, color_len in model['mesh']:
+            f.read(mesh_vertex_count * 4 * color_len)
 
+        if model['bone_exist']:
+            model['vertex_joint'] = []
+            for _ in range(vertex_count):
+                vertex_joints = [readuint8(f) for _ in range(4)]
+                model['vertex_joint'].append(vertex_joints)
+
+            model['vertex_joint_weight'] = []
+            for _ in range(vertex_count):
+                vertex_joint_weights = [readfloat(f) for _ in range(4)]
+                model['vertex_joint_weight'].append(vertex_joint_weights)
     return model
+
+
+def parser(model, f):
+    _magic_number = f.read(8)
+    model['bone_exist'] = readuint32(f)
+    model['mesh'] = []
+
+    if model['bone_exist']:
+        if model['bone_exist'] > 1:
+            count = readuint8(f)
+            f.read(2)
+            f.read(count * 4)
+        bone_count = readuint16(f)
+        parent_nodes = []
+        for _ in range(bone_count):
+            parent_node = readuint8(f)
+            if parent_node == 255:
+                parent_node = -1
+            parent_nodes.append(parent_node)
+        model['bone_parent'] = parent_nodes
+
+        bone_names = []
+        for _ in range(bone_count):
+            bone_name = f.read(32)
+            bone_name = bone_name.decode().replace('\0', '').replace(' ', '_')
+            bone_names.append(bone_name)
+        model['bone_name'] = bone_names
+
+        bone_extra_info = readuint8(f)
+        if bone_extra_info:
+            for _ in range(bone_count):
+                f.read(28)
+
+        model['bone_original_matrix'] = []
+        for i in range(bone_count):
+            matrix = [readfloat(f) for _ in range(16)]
+            matrix = np.array(matrix).reshape(4, 4)
+            model['bone_original_matrix'].append(matrix)
+
+        if len(list(filter(lambda x: x == -1, parent_nodes))) > 1:
+            num = len(model['bone_parent'])
+            model['bone_parent'] = list(map(lambda x: num if x == -1 else x, model['bone_parent']))
+            model['bone_parent'].append(-1)
+            model['bone_name'].append('dummy_root')
+            model['bone_original_matrix'].append(np.identity(4))
+
+        _flag = readuint8(f)  # 00
+        assert _flag == 0
+
+    _offset = readuint32(f)
+    while True:
+        flag = readuint16(f)
+        if flag == 1:
+            break
+        f.seek(-2, 1)
+        mesh_vertex_count = readuint32(f)
+        mesh_face_count = readuint32(f)
+        uv_layers = readuint8(f)
+        color_len = readuint8(f)
+
+        model['mesh'].append((mesh_vertex_count, mesh_face_count, uv_layers, color_len))
+
+    vertex_count = readuint32(f)
+    face_count = readuint32(f)
+
+    model['position'] = []
+    # vertex position
+    for _ in range(vertex_count):
+        x = readfloat(f)
+        y = readfloat(f)
+        z = readfloat(f)
+        model['position'].append((x, y, z))
+
+    model['normal'] = []
+    # vertex normal
+    for _ in range(vertex_count):
+        x = readfloat(f)
+        y = readfloat(f)
+        z = readfloat(f)
+        model['normal'].append((x, y, z))
+
+    _flag = readuint16(f)
+    if _flag:
+        f.seek(vertex_count * 12, 1)
+
+    model['face'] = []
+    # face index table
+    for _ in range(face_count):
+        v1 = readuint16(f)
+        v2 = readuint16(f)
+        v3 = readuint16(f)
+        model['face'].append((v1, v2, v3))
+
+    model['uv'] = []
+    # vertex uv
+    for mesh_vertex_count, _, uv_layers, _ in model['mesh']:
+        if uv_layers > 0:
+            for _ in range(mesh_vertex_count):
+                u = readfloat(f)
+                v = readfloat(f)
+                model['uv'].append((u, v))
+            f.read(mesh_vertex_count * 8 * (uv_layers - 1))
+        else:
+            for _ in range(mesh_vertex_count):
+                u = 0.0
+                v = 0.0
+                model['uv'].append((u, v))
+
+    # vertex color
+    for mesh_vertex_count, _, _, color_len in model['mesh']:
+        f.read(mesh_vertex_count * 4 * color_len)
+
+    if model['bone_exist']:
+        model['vertex_joint'] = []
+        for _ in range(vertex_count):
+            vertex_joints = [readuint8(f) for _ in range(4)]
+            model['vertex_joint'].append(vertex_joints)
+
+        model['vertex_joint_weight'] = []
+        for _ in range(vertex_count):
+            vertex_joint_weights = [readfloat(f) for _ in range(4)]
+            model['vertex_joint_weight'].append(vertex_joint_weights)
+
 
 def parse_mesh_adaptive(path):
     model = {}
     with io.BytesIO(path) as f:
         try:
-            _magic_number = f.read(8)  # Read initial identifier
-            
-            model['mesh'] = []
-            model['bone_exist'] = readuint32(f)
-
-            # Bone Parsing based on identified patterns
-            if model['bone_exist']:
-                bone_count = readuint16(f)
-                model['bone_parent'] = [readuint16(f) if f.readable() else -1 for _ in range(bone_count)]
-
-                # Reading bone names in 32-byte sections
-                model['bone_name'] = []
-                for _ in range(bone_count):
-                    bone_name = f.read(32).decode('utf-8', errors='replace').replace('\0', '').replace(' ', '_')
-                    model['bone_name'].append(bone_name)
-
-                # Bone matrices if present
-                model['bone_original_matrix'] = [np.array([readfloat(f) for _ in range(16)]).reshape(4, 4) for _ in range(bone_count)]
-
-            # Vertex Data Detection: Searching for clusters of floats
-            model['position'] = []
-            while True:
-                # Read a small block of data to analyze
-                pos = f.tell()
-                data_block = f.read(4 * 3)  # Attempt to read a potential vertex (3 floats)
-                if len(data_block) < 4 * 3:
-                    break  # End of file
-
-                # Check if this block resembles 3 valid floats (a vertex)
-                try:
-                    f.seek(pos)
-                    vertex = (readfloat(f), readfloat(f), readfloat(f))
-                    model['position'].append(vertex)
-                except struct.error:
-                    f.seek(pos + 4)  # Adjust by one byte if not valid floats
-
-                # Terminate parsing if the vertex section ends or data no longer matches pattern
-                end_pos = f.tell()
-                if end_pos >= 0xb187:  # Replace with detected pattern in actual file
-                    break
+            parser(model, f)
 
         except Exception as e:
-            print(f"Error occurred during pattern-based parsing: {e}")
-            model['error'] = str(e)
-
+            print(f"Adaptive parsing error: {e}")
+            return None
     return model

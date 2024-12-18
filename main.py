@@ -9,16 +9,18 @@ from utils.util import *
 from utils.extractor_utils import read_index, read_entry
 
 from gui.viewer_3d import ViewerWidget
-from gui.main_window import create_main_viewer_tab
+from gui.main_window import *
+# from gui.main_window import create_main_viewer_tab
 from gui.mesh_tab import create_mesh_viewer_tab
-#from gui.extraction_tab import create_extraction_tab
+# from gui.extraction_tab import create_extraction_tab
 from gui.texture_tab import create_texture_tab
 from gui.text_tab import create_text_tab
 from gui.raw_hex_viewer import HexViewerApp
 from gui.popups import AboutPopup
 
-#from bin.read_nxfn import NxfnResultViewer
+# from bin.read_nxfn import NxfnResultViewer
 from converter import * # saveobj, savesmd, saveascii, savepmx, saveiqe, parse_mesh_original, parse_mesh_helper, parse_mesh_adaptive
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -26,7 +28,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('NeoXtractor')
         self.setGeometry(150, 50, 1600, 950)
         self.npkentries = dict()
-        self.config_manager = ConfigManager() # Fetch Outputfolder from config manager
+        self.config_manager = ConfigManager() # Fetch Output folder from config manager
         self.decryption_key = self.config_manager.get("decryption_key", 150)
         self.output_folder = self.config_manager.get("output_folder", "out")
         self.project_folder = self.config_manager.get("project_folder", "")
@@ -40,11 +42,11 @@ class MainWindow(QMainWindow):
 
         # Initialize the rest of the UI
         self.initUI()
-        
+
     def closeEvent(self, a0):
         self.window_mesh.thread().quit()
         return super().closeEvent(a0)
-    
+
     def eventFilter(self, source, event):
         if event.type() == QEvent.ContextMenu and source is self.file_list_widget:
             list_context_menu = QMenu()
@@ -68,7 +70,7 @@ class MainWindow(QMainWindow):
             list_context_menu.addAction(mesh_action)
 
             list_context_menu.exec_(event.globalPos())
-        return True            
+        return True
 
     def initUI(self):
 
@@ -81,23 +83,29 @@ class MainWindow(QMainWindow):
         self.main_exploring = create_main_viewer_tab(self)
         self.window_mesh = create_mesh_viewer_tab(self)
         self.window_mesh.show()
-        
+
+        # Add widgets to the main layout
         main_layout.addWidget(self.main_exploring)
 
-        # Define context menu for TreeView:
+        # Connect double-click signal
+        self.file_list_widget.itemDoubleClicked.connect(self.on_item_double_clicked)
 
         # Create other menus and UI components
         self.create_file_menu()
         self.create_help_menu()
 
+        # Set up a status bar
+        self.mstatus_bar = self.statusBar()
+        self.mstatus_bar.showMessage("Ready")
+
     # Context Menu Options
-    def show_data(self):       
+    def show_data(self):
         file = self.npkentries[self.selectednpkentry]
-        
+
         showdialog = QWidget()
         showdialog.setWindowTitle("NPK Data")
         showdialog_layout = QVBoxLayout(showdialog)
-        
+
         right_side = QWidget()
         right_side_layout = QVBoxLayout(right_side)
 
@@ -112,7 +120,7 @@ class MainWindow(QMainWindow):
         if file.file_structure:
             right_side_layout.addWidget(QLabel("NXPK LOCATION: "))
         right_side_layout.addWidget(QLabel("DETECTED EXTENSION:"))
-        
+
         left_side = QWidget()
         left_side_layout = QVBoxLayout(left_side)
 
@@ -127,42 +135,91 @@ class MainWindow(QMainWindow):
         if file.file_structure:
             left_side_layout.addWidget(QLabel(file.file_structure.decode("utf-8")))
         left_side_layout.addWidget(QLabel(file.ext))
-        
+
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(right_side)
         splitter.addWidget(left_side)
         showdialog_layout.addWidget(splitter)
         showdialog_layout.addWidget(QLabel("Please report if DETECTED EXTENSION is not correct or shows .dat!"))
-        
+
         self.showdialog = showdialog
         self.showdialog.show()
-    
+
     def show_hex(self):
         self.window_hex = HexViewerApp(self.npkentries[self.selectednpkentry].data)
         self.window_hex.show()
         self.window_hex.raise_()
-        
+
     def show_text(self):
         self.window_text = create_text_tab(self)
         self.window_text.show()
         self.window_text.raise_()
-        
+
     def show_texture(self):
-        self.window_texture = create_texture_tab(self)
-        self.window_texture.show()
-        self.window_texture.raise_()
-        
+        selected_items = self.file_list_widget.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "No File Selected", "Please select a file to view in the Texture Viewer.")
+            return
+
+        # Extract the file name from the selected item
+        selected_file = selected_items[0].text()
+
+        # Define the set of allowed file extensions
+        allowed_extensions = {".png", ".jpg", ".dds", ".ktx", ".pvr", ".astc", ".tga", "bmp"}
+
+        if not any(selected_file.lower().endswith(ext) for ext in allowed_extensions):
+            QMessageBox.warning(self, "Invalid File", f"'{selected_file}' is not supported in the Texture Viewer. \nAllowed types: {', '.join(allowed_extensions)}.")
+            return
+
+        try:
+            # Create a new tab or window for the texture viewer
+            self.window_texture = create_texture_tab(self)  # Assuming `create_texture_tab` returns the texture viewer.
+            self.window_texture.show()
+            self.window_texture.raise_()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An error occurred while loading the texture: {str(e)}")
+
     def show_mesh(self):
-        mesh = mesh_from_path(self.npkentries[self.selectednpkentry].data)
-        if mesh:
-            self.window_mesh.viewer.load_mesh(mesh, self.get_savefile_location())
+        selected_items = self.file_list_widget.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "No File Selected", "Please select a file to view in the Mesh Viewer.")
+            return
+
+        # Extract the file name from the selected item
+        selected_file = selected_items[0].text()
+
+        allowed_extensions = {".mesh"}
+
+        if not any(selected_file.lower().endswith(ext) for ext in allowed_extensions):
+            QMessageBox.warning(self, "Invalid File", f"'{selected_file}' is not supported in the Mesh Viewer. \nAllowed type: {', '.join(allowed_extensions)}.")
+            return
+        
+        try:
+            # Get mesh data from the selected .npk entry
+            mesh_data = self.npkentries[self.selectednpkentry].data
+
+            # Parse the mesh data
+            mesh = mesh_from_path(mesh_data)
+
+            if not mesh:
+                raise ValueError("Failed to parse the mesh file.")
+
+            # Load mesh into the viewer
+            with io.BytesIO(mesh_data) as mesh_buffer:
+                savefile_location = self.get_savefile_location()
+                self.window_mesh.viewer.load_mesh(mesh, savefile_location)
+
+            # Focus on the loaded mesh and update the viewer
             self.window_mesh.viewer.focus_on_selected_object()
             self.window_mesh.viewer.update_aspect_ratio()
             self.update()
-        else:
-            QMessageBox.warning(self, "Error", "Failed to parse the mesh file.")
-        
-        self.window_mesh.raise_()
+
+            # Bring the viewer to the front
+            self.window_mesh.raise_()
+
+        except Exception as e:
+            # Show error message for any exceptions
+            QMessageBox.warning(self, "Error", f"An error occurred: {str(e)}")
 
     # Main Toolbar       
     # ----------------------------------------------------------------------------------------------------------
@@ -187,7 +244,7 @@ class MainWindow(QMainWindow):
         dkey_action.setShortcut("Ctrl+D")
         dkey_action.triggered.connect(self.show_decrypt_popup)  # Connect to the show popup function
         file_menu.addAction(dkey_action)
-        
+
     def create_help_menu(self):
         # About Menu Button
         about_menu = self.menuBar().addMenu("Help *")
@@ -197,12 +254,12 @@ class MainWindow(QMainWindow):
         about_action.setStatusTip("Open an about popup window")
         about_action.triggered.connect(self.show_about_popup)
         about_menu.addAction(about_action)
-    
+
     # Functionality
     # ----------------------------------------------------------------------------------------------------------
     def get_savefile_location(self):
         currnpk = self.npkentries[self.selectednpkentry]
-       
+
         path = self.output_folder + "/" + os.path.basename(self.npk.path) + "/"
         if not currnpk.file_structure:
             os.makedirs(path, exist_ok=True)
@@ -213,13 +270,15 @@ class MainWindow(QMainWindow):
             path = path + os.path.dirname(filestructure)
             os.makedirs(path, exist_ok=True)
             path = path + "/" + os.path.basename(filestructure)
-            
+
         return path
-    
+
     def extract_file(self):
         currnpk = self.npkentries[self.selectednpkentry]
+        # self.progress_bar.setValue((currnpk + 1) * 100 // len(self.npk.index_table)) # Update progress bar
+
         path = self.get_savefile_location()
-            
+
         with open(path, "wb") as f:
             f.write(currnpk.data)
 
@@ -242,7 +301,7 @@ class MainWindow(QMainWindow):
             self.config_manager.set("decryption_key", result)
             print(f"Decryption Key Entered: {self.decryption_key}")
         self.statusBar().showMessage(f"Decryption key set to {result}")
-        
+
     def show_about_popup(self):
         """Show the about popup window."""
         self.statusBar().showMessage("About...")
@@ -263,12 +322,13 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage('Selecting file...')
         file_path = (QFileDialog.getOpenFileName(self, "Open file", filter="NPK Files (*.npk)")[0])
         if file_path and file_path[-4:] == ".npk":
+            # self.status_bar.showMessage(f'Loading NPK: {file_path}')
             self.status_bar.showMessage(f'Loading NPK: {file_path}')
             print("Path is: {}".format(file_path))
-            
+
             self.npk_file = io.BytesIO(open(file_path, 'rb').read())
             if read_index(self, file_path) != -1:
-                
+
                 currfile = 0
                 for file in self.npk.index_table:
                     if not file[6]:
@@ -287,7 +347,7 @@ class MainWindow(QMainWindow):
         else:
             self.status_bar.showMessage("Select NPK to extract!")
         self.file_list_widget.setCurrentRow(0)
-        
+
     def read_all_npk_data(self):
         # Check viewer initialization
         if hasattr(self, "npk"):
@@ -309,15 +369,55 @@ class MainWindow(QMainWindow):
 
             self.selectednpkentry = 0
             self.file_list_widget.setCurrentRow(0)
+
         else:
             QMessageBox.information(self, "Open NPK!", "You must open an NPK file before reading it!")
-        
+
+    def read_selected_npk_data(self):
+        # Check if there are selected entries
+        selected_items = self.file_list_widget.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "No Selection", "Please select files to read.")
+            return
+
+        # Loop through the selected items
+        for item in selected_items:
+            index = int(item.data(3))
+
+            # Check if the file is already processed
+            if index in self.npkentries:
+                print(f"File at index {index} is already processed.")
+                continue
+
+            # Read the entry
+            npkentry = read_entry(self, index)
+
+            # Check if the file is empty
+            if npkentry.file_original_length == 0:
+                print(f"Index {index} is empty.")
+            else:
+                # Update item text and icon if necessary
+                if not bool(item.data(4)) and not npkentry.file_structure:
+                    item.setText(item.text() + f".{npkentry.ext}")
+                item.setData(4, True)
+                self.npkentries[index] = npkentry
+                # self.progress_bar.setValue((index + 1) * 100 // self.npk.files) # Update progress bar
+                item.setIcon(self.style().standardIcon(QStyle.SP_DialogYesButton))
+
+        # Optionally set the last processed entry as the selected one
+        if selected_items:
+            self.selectednpkentry = int(selected_items[-1].data(3))
+
+        # Refresh List
+        self.refresh_file_list()
+
+        QMessageBox.information(self, "Success", f"Processed {len(selected_items)} selected files.")
+
     def extract_selected_npk_data(self):
         if hasattr(self, "npk"):
             for index in self.npkentries:
                 currnpk = self.npkentries[index]
                 path = self.output_folder + "/" + os.path.basename(self.npk.path) + "/"
-                self.progress_bar.setValue((index + 1) * 100 // len(self.npk.index_table)) # Update progress bar
                 if not currnpk.file_structure:
                     os.makedirs(path, exist_ok=True)
                     path = path  + hex(currnpk.file_sign) + "." + currnpk.ext
@@ -327,17 +427,18 @@ class MainWindow(QMainWindow):
                     path = path + os.path.dirname(filestructure)
                     os.makedirs(path, exist_ok=True)
                     path = path + "/" + os.path.basename(filestructure)
-                    
+
                 try:
                     with open(path, "wb") as f:
                         f.write(currnpk.data)
+
                 except Exception as e:
                     QMessageBox.critical(self, "Error", f"Failed to save file: {str(e)}")
             QMessageBox.information(self, "Finished!", f"Saved {len(self.npkentries)} files to \"{self.output_folder}\" folder")
 
         else:
             QMessageBox.information(self, "Open NPK first", "You must open an NPK file before extracting it!")
-    
+
     def clear_npk_data(self):
         self.file_list_widget.clear()
         self.selectednpkentry = 0
@@ -346,20 +447,78 @@ class MainWindow(QMainWindow):
             self.npk.clear()
         self.npkentry = None
 
+
     def on_item_clicked(self, item):
-        # Check viewer initialization
+        # Retrieve the index of the clicked item
         index = int(item.data(3))
-        if not index in self.npkentries:
+
+        # Check if the item index is in the viewer's entries
+        if index not in self.npkentries:
+            # Read the entry corresponding to the index
             npkentry = read_entry(self, index)
+
             if npkentry.file_original_length == 0:
                 print(f"This index is empty")
             else:
+                # Update item text and data if necessary
                 if not bool(item.data(4)) and not npkentry.file_structure:
                     item.setText(item.text() + f".{npkentry.ext}")
                 item.setData(4, True)
                 self.npkentries[index] = npkentry
                 item.setIcon(self.style().standardIcon(QStyle.SP_DialogYesButton))
+        self.update()
         self.selectednpkentry = index
+
+        # Optional: Collect all selected items (if required)
+        selected_items = [self.npkentries[i] for i in self.npkentries if i == index]
+        # print(f"Selected Items: {index}")
+
+    def on_item_double_clicked(self, item):
+        """Open the mesh viewer when a .mesh file is double-clicked."""
+        # Extract file name and check extension
+        selected_file = item.text()
+
+        allowed_extensions = {".mesh"}
+        if not any(selected_file.lower().endswith(ext) for ext in allowed_extensions):
+            QMessageBox.warning(self, "Invalid File", f"'{selected_file}' is not supported in the Mesh Viewer. \nAllowed type: {', '.join(allowed_extensions)}.")
+            return
+
+        try:
+            # Simulate the user clicking the "Mesh Viewer" option
+            self.show_mesh()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
+
+
+    def on_selection_changed(self):
+        # Get all selected items
+        selected_items = self.file_list_widget.selectedItems()
+
+        # Process selected items
+        selected_indexes = [int(item.data(3)) for item in selected_items]  # Retrieve the indexes stored in role 3
+
+        # Optionally process selected entries
+        selected_entries = [self.npkentries.get(index) for index in selected_indexes if index in self.npkentries]
+
+        self.selectednpkentry = selected_indexes[-1] if selected_indexes else None
+
+    def refresh_file_list(self):
+        for i in range(self.file_list_widget.count()):
+            item = self.file_list_widget.item(i)
+            index = int(item.data(3))  # Retrieve the index stored in role 3
+
+            # Check if the item is already processed
+            if index in self.npkentries:
+                npkentry = self.npkentries[index]
+                # Update text and icon based on npkentry state
+                if not bool(item.data(4)) and not npkentry.file_structure:
+                    item.setText(item.text() + f".{npkentry.ext}")
+                    self.progress_bar.setValue((index + 1) * 100 // self.npk.files) # Update progress bar
+
+                item.setIcon(self.style().standardIcon(QStyle.SP_DialogYesButton))
+                item.setData(4, True)  # Mark as processed
+        else:
+            self.update()
 
     def append_console_output(self, text: str):
         """Appends text to the console output."""
@@ -376,6 +535,7 @@ class MainWindow(QMainWindow):
                 item.setHidden(False)
             else:
                 item.setHidden(True)
+
 
 def main():
     app = QApplication(sys.argv)

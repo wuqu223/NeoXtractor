@@ -24,7 +24,7 @@ class IconSplitterHandle(QSplitterHandle):
             self.icon_label.setText("|||")
 
         # Adjust size and position of the icon
-        self.icon_label.setFixedSize(20, 20)
+        self.icon_label.setFixedSize(80, 80)
         self.icon_label.move(0, 0)
 
     def resizeEvent(self, event):
@@ -39,99 +39,102 @@ class IconSplitter(QSplitter):
         return IconSplitterHandle(self.orientation(), self)
 
 def create_main_viewer_tab(self):
-        self.config_manager = ConfigManager()
-        self.output_folder = self.config_manager.get("output_folder", "")
+    self.config_manager = ConfigManager()
+    self.output_folder = self.config_manager.get("output_folder", "")
 
-        # ------------------------------------------------------------------------------------------------------------
-        # Main Tab
-        tab1 = QWidget()
-        main_layout = QHBoxLayout(tab1)
+    # ------------------------------------------------------------------------------------------------------------
+    # Main Tab
+    tab1 = QWidget()
+    main_layout = QHBoxLayout(tab1)
 
-        # Left side setup (Main)
-        left_column_widget = QWidget()
-        left_column = QVBoxLayout(left_column_widget)
+    # Left side setup (Main)
+    left_column_widget = QWidget()
+    left_column = QVBoxLayout(left_column_widget)
 
-        # Filter bar for QListWidget
-        self.filter_input = QLineEdit()
-        self.filter_input.setPlaceholderText("Search or filter items...")
-        self.filter_input.textChanged.connect(self.filter_list_items)
-        self.filter_input.setMinimumWidth(200)
-        self.filter_input.setToolTip("Type to filter the file list.")
-        left_column.addWidget(self.filter_input)
+    # Filter bar for QListWidget
+    self.filter_input = QLineEdit()
+    self.filter_input.setPlaceholderText("Search or filter items...")
+    self.filter_input.textChanged.connect(self.filter_list_items)
+    self.filter_input.setMinimumWidth(200)
+    self.filter_input.setToolTip("Type to filter the file list.")
+    left_column.addWidget(self.filter_input)
 
-        # File list setup
-        self.file_list_widget = QListWidget()
-        self.file_list_widget.itemPressed.connect(self.on_item_clicked)
-        self.file_list_widget.installEventFilter(self)
-        self.file_list_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.file_list_widget.setToolTip("List of files in the loaded NPK.")
-        left_column.addWidget(self.file_list_widget)
-        # ------------------------------------------------------------------------------------------------------------
+    # File list setup
+    self.file_list_widget = QListWidget()
+    self.file_list_widget.setSelectionMode(QAbstractItemView.ExtendedSelection)  # Enable multi-selection
+    # self.file_list_widget.itemSelectionChanged.connect(self.on_selection_changed) # Custom handler for selection changes
+    self.file_list_widget.itemDoubleClicked.connect(self.on_item_double_clicked)
+    self.file_list_widget.itemPressed.connect(self.on_item_clicked)
+    self.file_list_widget.installEventFilter(self)
+    # self.file_list_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    self.file_list_widget.setToolTip("List of files in the loaded NPK.")
+    left_column.addWidget(self.file_list_widget)
+    # ------------------------------------------------------------------------------------------------------------
 
-        # ------------------------------------------------------------------------------------------------------------
-        # Right side setup (Main)
-        right_column_widget = QWidget()
-        right_column = QVBoxLayout(right_column_widget)
+    # ------------------------------------------------------------------------------------------------------------
+    # Right side setup (Main)
+    right_column_widget = QWidget()
+    right_column = QVBoxLayout(right_column_widget)
 
-        # Output folder selection status bar
-        self.output_folder_label = QLabel(f"Welcome!")
-        self.output_folder_label.setFixedHeight(10)
-        right_column.addWidget(self.output_folder_label)
+    # Output folder selection status bar
+    self.output_folder_label = QLabel(f"Welcome!")
+    self.output_folder_label.setFixedHeight(20)
+    right_column.addWidget(self.output_folder_label)
 
-        self.main_view_console_label = QLabel("    Log: ")
-        self.main_view_console_label.setFixedHeight(20)
-        self.main_view_console_label.alignment=Qt.AlignCenter
-        right_column.addWidget(self.main_view_console_label)
+    self.main_view_console_label = QLabel("    Log: ")
+    self.main_view_console_label.setFixedHeight(20)
+    self.main_view_console_label.alignment=Qt.AlignCenter
+    right_column.addWidget(self.main_view_console_label)
 
-        # Console output in the Main tab
-        self.main_console = ConsoleWidget(self.console_handler)
-        right_column.addWidget(self.main_console)
-        
-        horizontal_buttons_widget = QWidget()
-        horizontal_buttons_layout = QHBoxLayout(horizontal_buttons_widget)
-        horizontal_buttons_layout.alignment=Qt.AlignLeft
-        self.read_all_files = QPushButton("Read all files")
-        self.read_all_files.setFixedSize(90,30)
-        self.read_all_files.pressed.connect(self.read_all_npk_data)
-        self.read_all_files.setToolTip("Read all files from the loaded NPK.")
-        horizontal_buttons_layout.addWidget(self.read_all_files)
-        
-        self.extract_all_files = QPushButton("Extract selected files")
-        self.extract_all_files.setFixedSize(140,30)
-        self.extract_all_files.pressed.connect(self.extract_selected_npk_data)
-        horizontal_buttons_layout.addWidget(self.extract_all_files)
-        horizontal_buttons_layout.addSpacerItem(QSpacerItem(1,1,QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed))
-        horizontal_buttons_widget.setLayout(horizontal_buttons_layout)
-        right_column.addWidget(horizontal_buttons_widget)
-        horizontal_buttons_widget.setLayout(horizontal_buttons_layout)
-        right_column.addWidget(horizontal_buttons_widget)
+    # Console output in the Main tab
+    self.main_console = ConsoleWidget(self.console_handler)
+    right_column.addWidget(self.main_console)
+    
+    horizontal_buttons_widget = QWidget()
+    horizontal_buttons_layout = QHBoxLayout(horizontal_buttons_widget)
+    horizontal_buttons_layout.alignment=Qt.AlignLeft
+    self.read_selected_files = QPushButton("Read Selected")
+    self.read_selected_files.setFixedHeight(30)
+    self.read_selected_files.pressed.connect(self.read_selected_npk_data)
+    self.read_selected_files.setToolTip("Read Selected files from the loaded NPK.")
+    horizontal_buttons_layout.addWidget(self.read_selected_files)
+    
+    self.read_all_files = QPushButton("Read all files")
+    self.read_all_files.setFixedHeight(30)
+    self.read_all_files.pressed.connect(self.read_all_npk_data)
+    self.read_all_files.setToolTip("Read all files from the loaded NPK.")
+    horizontal_buttons_layout.addWidget(self.read_all_files)
+    
+    self.extract_all_files = QPushButton("Extract loaded files")
+    self.extract_all_files.setFixedHeight(30)
+    self.extract_all_files.pressed.connect(self.extract_selected_npk_data)
+    horizontal_buttons_layout.addWidget(self.extract_all_files)
 
-        # Status bar
-        self.status_bar = QStatusBar()
-        self.status_bar.showMessage("Please choose a NPK file to process.")
-        self.status_bar.setFixedHeight(15)
-        right_column.addWidget(self.status_bar)
+    horizontal_buttons_layout.addSpacerItem(QSpacerItem(1,1,QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed))
+    right_column.addWidget(horizontal_buttons_widget)
 
-        # Add progress bar for read_all and extract_all npk data
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setToolTip("Progress for file operations.")
-        right_column.addWidget(self.progress_bar)
-        # ------------------------------------------------------------------------------------------------------------
+    # Status bar
+    self.status_bar = QStatusBar()
+    self.status_bar.showMessage("Please choose a NPK file to process.")
+    self.status_bar.setFixedHeight(15)
+    right_column.addWidget(self.status_bar)
 
-        # Splitter setup
-        left_right_splitter = IconSplitter(Qt.Horizontal)
-        left_right_splitter.addWidget(left_column_widget)
-        left_right_splitter.addWidget(right_column_widget)
-        left_right_splitter.setMinimumWidth(50)
+    # Add progress bar for read_all and extract_all npk data
+    self.progress_bar = QProgressBar()
+    self.progress_bar.setToolTip("Progress for file operations.")
+    right_column.addWidget(self.progress_bar)
+    # ------------------------------------------------------------------------------------------------------------
 
-        # Set stretch factors for dynamic resizing
-        #left_right_splitter.setStretchFactor(0, 1)  # Left column resizes dynamically
-        #left_right_splitter.setStretchFactor(1, 2)  # Right column gets more space
+    # Splitter setup
+    splitter = IconSplitter(Qt.Horizontal)
+    splitter.addWidget(left_column_widget)
+    splitter.addWidget(right_column_widget)
+    splitter.setStretchFactor(0, 2)  # File list widget gets 2/3 of space
+    splitter.setStretchFactor(1, 1)  # Right panel gets 1/3 of space
 
-        # Allow user resizing
-        left_right_splitter.setCollapsible(0, False)
-        left_right_splitter.setCollapsible(1, False)
+    main_layout.addWidget(splitter)
 
-        main_layout.addWidget(left_right_splitter)
+    # Force Splitter Sizes
+    splitter.setSizes([800, 400])  # Example: Left column twice as wide as right
 
-        return tab1
+    return tab1
