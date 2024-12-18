@@ -1,8 +1,6 @@
 
 *.pyc
 *__pycache__
-*.idea
-bin/tacentview
-bin/pvr
-
-
+/bin/tacentview
+/bin/pvr
+/out/
