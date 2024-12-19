@@ -12,7 +12,9 @@ class Camera:
         self.fovY = 45
         self.aspect_ratio = 1
         self.perspective = True
-        self.zoom_speed = 1.0  # Default zoom speed
+        self.zoom_speed = 0.2  # Default zoom speed
+        self.min_dist = 5
+        self.max_dist = 100
 
     def pos(self):
         return self._pos
@@ -48,8 +50,8 @@ class Camera:
     def dolly(self, amount):
         self.dist += amount * self.zoom_speed
         self.dist = max(self.min_dist, min(self.dist, self.max_dist))
-        print(f"Camera distance: {self.dist}")
-        self.update_projection_matrix()
+        # print(f"Camera distance: {self.dist}")
+        self.proj()
 
     def orbit(self, dx, dy):
         self.perspective = True

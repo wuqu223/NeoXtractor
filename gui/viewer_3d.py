@@ -230,10 +230,10 @@ class ViewerWidget(QModernGLWidget):
     def focus_on_selected_object(self):
         # Retrieve the center of the mesh from the scene
         selected_center = self.scene.get_selected_object_center()
-        print("Object Centred")  # Debugging output
+        # print("Object Centred")  # Debugging output
         # Set camera focus on the selected object center
         self.scene.camera.focus(selected_center)
-        self.scene.camera.dist = 8.0  # Adjust as needed to frame the object
+        self.scene.camera.dist = 15.0  # Adjust as needed to frame the object
         self.update_aspect_ratio()
         self.update()
 
@@ -245,7 +245,7 @@ class ViewerWidget(QModernGLWidget):
         # Delegate mesh handling to the scene
         self.scene.load_mesh(mesh)
         self.location = location
-        self.focus_on_selected_object()
+        # self.focus_on_selected_object()
         self.update_aspect_ratio()
         self.update()
 
@@ -254,6 +254,7 @@ class ViewerWidget(QModernGLWidget):
         self.scene.load_armature(armature)
         self.ctx.enable(mgl.CULL_FACE)
         self.ctx.disable(mgl.DEPTH_TEST)
+        self.update_aspect_ratio()
         self.update()
 
     def release_mesh(self):
@@ -351,5 +352,5 @@ class ViewerWidget(QModernGLWidget):
         Adjust the camera zoom speed based on the slider input.
         """
         self.camera.zoom_speed = speed / 1000.0  # Adjust divisor for sensitivity
-        print(f"Zoom speed set to: {self.camera.zoom_speed}")
+        # print(f"Zoom speed set to: {self.camera.zoom_speed}")
         self.update()

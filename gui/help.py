@@ -3,6 +3,7 @@ import freetype
 import numpy as np
 from pyrr import Matrix44
 
+
 class StaticTextRenderer:
     def __init__(self, ctx):
         self.ctx = ctx
@@ -83,36 +84,6 @@ class StaticTextRenderer:
             )
         return characters
 
-    # def render_text(self, text, x, y, scale, color=(1.0, 1.0, 1.0)):
-    #     self.program['textColor'].value = color  # Set color if used in fragment shader
-    #     self.program['text_texture'].value = 0
-
-    #     projection = Matrix44.orthogonal_projection(0, self.ctx.screen.width, 0, self.ctx.screen.height, -1, 1)
-    #     self.program['projection'].write(projection.astype('f4').tobytes())
-
-    #     for char in text:
-    #         ch = self.characters[char]
-    #         xpos = x + ch.bearing[0] * scale
-    #         ypos = y - (ch.size[1] - ch.bearing[1]) * scale
-    #         w = ch.size[0] * scale
-    #         h = ch.size[1] * scale
-
-    #         vertices = np.array([
-    #             xpos, ypos + h, 0.0, 0.0,
-    #             xpos, ypos, 0.0, 1.0,
-    #             xpos + w, ypos, 1.0, 1.0,
-    #             xpos, ypos + h, 0.0, 0.0,
-    #             xpos + w, ypos, 1.0, 1.0,
-    #             xpos + w, ypos + h, 1.0, 0.0
-    #         ], dtype='f4')
-
-    #         self.vertex_buffer.write(vertices.tobytes())
-    #         ch.texture_id.use(location=0)  # Ensure texture is bound correctly
-    #         self.quad_vao.render(moderngl.TRIANGLES)
-
-    #         # Advance cursor for next glyph
-    #         x += (ch.advance >> 6) * scale
-
     def render_static_text(self, text, x, y, scale, color=(1.0, 1.0, 1.0)):
         previous_wireframe_state = self.ctx.wireframe  # Save current wireframe state
         self.ctx.wireframe = False  # Disable wireframe for text rendering
@@ -148,6 +119,7 @@ class StaticTextRenderer:
             x += (ch.advance >> 6) * scale
 
         self.ctx.wireframe = previous_wireframe_state  # Restore original wireframe state
+
 
 class Character:
     def __init__(self, texture_id, size, bearing, advance):
