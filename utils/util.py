@@ -3,7 +3,7 @@ import numpy as np
 from PyQt5 import QtCore, QtOpenGL
 from PyQt5.QtWidgets import *
 import moderngl
-from converter import parse_mesh_helper, parse_mesh_original, parse_mesh_adaptive, parse_mesh_refined
+from converter import parse_mesh_helper, parse_mesh_original, parse_mesh_adaptive
 
 
 class QModernGLWidget(QtOpenGL.QGLWidget):
@@ -79,7 +79,6 @@ def mesh_from_path(path):
         ("original parser", parse_mesh_original),
         ("helper parser", parse_mesh_helper),
         ("adaptive parser", parse_mesh_adaptive)
-        # ("refined parser", parse_mesh_refined)
     ]
 
     mesh = None

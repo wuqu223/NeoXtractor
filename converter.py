@@ -858,7 +858,6 @@ def parse_mesh_original(path):
     model = {}
     with open(path, 'rb') as f:
         try:
-        # with io.BytesIO(path) as f:
             _magic_number = f.read(8)
 
             model['bone_exist'] = readuint32(f)
@@ -983,7 +982,6 @@ def parse_mesh_original(path):
             print(f"General parsing error: {e}")
             return None
         return model
-
 
 
 def parse_mesh_helper(path):

@@ -54,6 +54,8 @@ class MainWindow(QMainWindow):
             showdata_action.triggered.connect(self.show_data)
             export_action = QAction("Export File", self)
             export_action.triggered.connect(self.extract_file)
+            exp_texture_action = QAction("Export Only Texture", self)
+            exp_texture_action.triggered.connect(self.extract_loaded_Textures)
             hex_action = QAction("Hex Viewer", self)
             hex_action.triggered.connect(self.show_hex)
             text_action = QAction("Plaintext Viewer", self)
@@ -64,6 +66,7 @@ class MainWindow(QMainWindow):
             mesh_action.triggered.connect(self.show_mesh)
             list_context_menu.addAction(showdata_action)
             list_context_menu.addAction(export_action)
+            list_context_menu.addAction(exp_texture_action)
             list_context_menu.addAction(hex_action)
             list_context_menu.addAction(text_action)
             list_context_menu.addAction(texture_action)
@@ -439,8 +442,56 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.information(self, "Open NPK first", "You must open an NPK file before extracting it!")
 
+    def extract_loaded_Textures(self):
+        if hasattr(self, "npk"):
+            allowed_extensions = {".dds", ".png"}  # Define allowed texture extensions
+            saved_count = 0 
+
+            # Iterate through all items in the file list widget
+            for i in range(self.file_list_widget.count()):
+                item = self.file_list_widget.item(i)
+                
+                # Retrieve the corresponding npk entry using the item's data
+                index = item.data(3)
+                currnpk = self.npkentries.get(index)
+
+                if not currnpk:
+                    continue
+
+                if currnpk.ext.lower() not in allowed_extensions:
+                    continue
+
+                # Build the output path
+                base_path = os.path.join(self.output_folder, os.path.basename(self.npk.path))
+                if not currnpk.file_structure:
+                    os.makedirs(base_path, exist_ok=True)
+                    output_path = os.path.join(base_path, f"{hex(currnpk.file_sign)}.{currnpk.ext}")
+                else:
+                    filestructure = currnpk.file_structure.decode("utf-8").replace("\\", "/")
+                    output_dir = os.path.join(base_path, os.path.dirname(filestructure))
+                    os.makedirs(output_dir, exist_ok=True)
+                    output_path = os.path.join(output_dir, os.path.basename(filestructure))
+
+                # Save the file and handle errors
+                try:
+                    with open(output_path, "wb") as f:
+                        f.write(currnpk.data)
+                    saved_count += 1
+                except Exception as e:
+                    QMessageBox.critical(self, "Error", f"Failed to save file: {str(e)}")
+
+            # Show a final message indicating the number of saved files
+            if saved_count > 0:
+                QMessageBox.information(self, "Finished!", f"Saved {saved_count} texture files to \"{self.output_folder}\" folder")
+            else:
+                QMessageBox.warning(self, "No Files Saved", "No valid texture files were saved.")
+        else:
+            QMessageBox.information(self, "Open NPK first", "You must open an NPK file before extracting it!")
+
+
     def clear_npk_data(self):
         self.file_list_widget.clear()
+        self.filter_input.clear()
         self.selectednpkentry = 0
         self.npkentries.clear()
         if hasattr(self, "npk"):
@@ -472,6 +523,7 @@ class MainWindow(QMainWindow):
         # Optional: Collect all selected items (if required)
         selected_items = [self.npkentries[i] for i in self.npkentries if i == index]
         # print(f"Selected Items: {index}")
+
 
     def on_item_double_clicked(self, item):
         """Open the mesh viewer when a .mesh file is double-clicked."""
@@ -526,6 +578,7 @@ class MainWindow(QMainWindow):
             self.console_handler.text_output.emit(text)
         else:
             print("Console handler is not properly initialized.")
+
 
     def filter_list_items(self, text):
         """Filter items in the QListWidget based on input text."""

@@ -40,7 +40,7 @@ def create_texture_tab(self):
 
     self.save_all_textures = QPushButton("Save all loaded textures")
     self.save_all_textures.setFixedSize(150, 30)
-    self.save_all_textures.pressed.connect(self.read_all_npk_data)
+    self.save_all_textures.pressed.connect(self.extract_loaded_Textures)
     self.save_all_textures.setToolTip("Save all texture files from the loaded NPK.")
 
     self.button_layout.addWidget(channel_filter_label)
