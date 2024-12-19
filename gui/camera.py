@@ -12,8 +12,8 @@ class Camera:
         self.fovY = 45
         self.aspect_ratio = 1
         self.perspective = True
-        self.zoom_speed = 1.0  # Default zoom speed
-        self.min_dist = 10
+        self.zoom_speed = 0.2  # Default zoom speed
+        self.min_dist = 5
         self.max_dist = 100
 
     def pos(self):
