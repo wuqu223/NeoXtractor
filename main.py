@@ -161,7 +161,7 @@ class MainWindow(QMainWindow):
     def show_texture(self):
         selected_items = self.file_list_widget.selectedItems()
         if not selected_items:
-            QMessageBox.warning(self, "No File Selected", "Please select a file to view in the Texture Viewer.")
+            print(self, "No File Selected", "Please select a file to view in the Texture Viewer.")
             return
 
         # Extract the file name from the selected item
@@ -171,7 +171,7 @@ class MainWindow(QMainWindow):
         allowed_extensions = {".png", ".jpg", ".dds", ".ktx", ".pvr", ".astc", ".tga", "bmp"}
 
         if not any(selected_file.lower().endswith(ext) for ext in allowed_extensions):
-            QMessageBox.warning(self, "Invalid File", f"'{selected_file}' is not supported in the Texture Viewer. \nAllowed types: {', '.join(allowed_extensions)}.")
+            print(self, "Invalid File", f"'{selected_file}' is not supported in the Texture Viewer. \nAllowed types: {', '.join(allowed_extensions)}.")
             return
 
         try:
@@ -185,7 +185,7 @@ class MainWindow(QMainWindow):
     def show_mesh(self):
         selected_items = self.file_list_widget.selectedItems()
         if not selected_items:
-            QMessageBox.warning(self, "No File Selected", "Please select a file to view in the Mesh Viewer.")
+            print(self, "No File Selected", "Please select a file to view in the Mesh Viewer.")
             return
 
         # Extract the file name from the selected item
@@ -194,7 +194,7 @@ class MainWindow(QMainWindow):
         allowed_extensions = {".mesh"}
 
         if not any(selected_file.lower().endswith(ext) for ext in allowed_extensions):
-            QMessageBox.warning(self, "Invalid File", f"'{selected_file}' is not supported in the Mesh Viewer. \nAllowed type: {', '.join(allowed_extensions)}.")
+            print(self, "Invalid File", f"'{selected_file}' is not supported in the Mesh Viewer. \nAllowed type: {', '.join(allowed_extensions)}.")
             return
         
         try:
@@ -222,7 +222,7 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             # Show error message for any exceptions
-            QMessageBox.warning(self, "Error", f"An error occurred: {str(e)}")
+            print(self, "Error", f"An error occurred: {str(e)}")
 
     # Main Toolbar       
     # ----------------------------------------------------------------------------------------------------------
@@ -380,7 +380,7 @@ class MainWindow(QMainWindow):
         # Check if there are selected entries
         selected_items = self.file_list_widget.selectedItems()
         if not selected_items:
-            QMessageBox.warning(self, "No Selection", "Please select files to read.")
+            print(self, "No Selection", "Please select files to read.")
             return
 
         # Loop through the selected items
@@ -484,7 +484,7 @@ class MainWindow(QMainWindow):
             if saved_count > 0:
                 QMessageBox.information(self, "Finished!", f"Saved {saved_count} texture files to \"{self.output_folder}\" folder")
             else:
-                QMessageBox.warning(self, "No Files Saved", "No valid texture files were saved.")
+                print(self, "No Files Saved", "No valid texture files were saved.")
         else:
             QMessageBox.information(self, "Open NPK first", "You must open an NPK file before extracting it!")
 
@@ -526,20 +526,29 @@ class MainWindow(QMainWindow):
 
 
     def on_item_double_clicked(self, item):
-        """Open the mesh viewer when a .mesh file is double-clicked."""
+        """Open the mesh viewer when a .mesh or .dds file is double-clicked."""
         # Extract file name and check extension
         selected_file = item.text()
 
-        allowed_extensions = {".mesh"}
+        allowed_extensions = {".mesh", ".dds"}
         if not any(selected_file.lower().endswith(ext) for ext in allowed_extensions):
-            QMessageBox.warning(self, "Invalid File", f"'{selected_file}' is not supported in the Mesh Viewer. \nAllowed type: {', '.join(allowed_extensions)}.")
+            QMessageBox.warning(
+                self,
+                "Invalid File",
+                f"'{selected_file}' is not supported in the Mesh Viewer.\nAllowed types: {', '.join(allowed_extensions)}."
+            )
             return
 
         try:
-            # Simulate the user clicking the "Mesh Viewer" option
-            self.show_mesh()
+            # Determine the type of file and simulate user action
+            if selected_file.lower().endswith(".mesh"):
+                self.show_mesh()
+            elif selected_file.lower().endswith(".dds"):
+                self.show_texture()
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
+            # QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
+            print(self, "Critical Error", f"An error occurred: {str(e)}")
+
 
 
     def on_selection_changed(self):

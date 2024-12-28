@@ -310,8 +310,8 @@ def load_mesh(tab1, file_path):
             return
 
         # If neither type could be loaded, show an error
-        QMessageBox.warning(tab1, "Error", "Failed to parse the mesh file. Unsupported format.")
+        print(tab1, "Error", "Failed to parse the mesh file. Unsupported format.")
     except FileNotFoundError:
-        QMessageBox.warning(tab1, "File Not Found", "The selected file could not be found.")
+        print(tab1, "File Not Found", "The selected file could not be found.")
     except Exception as e:
         QMessageBox.critical(tab1, "Error", f"Failed to load mesh file: {e}\nFile Path: {file_path}")

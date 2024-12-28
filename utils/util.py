@@ -94,7 +94,8 @@ def mesh_from_path(path):
             print(f"Error with {parser_name}: {e}")
 
     if mesh is None or 'position' not in mesh:
-        QMessageBox.critical(None, "Error", "Failed to parse mesh file using all parsers.")
+        # QMessageBox.critical(None, "Error", "Failed to parse mesh file using all parsers.")
+        print(None, "critical Error", "Failed to parse mesh file using all parsers.")
         raise ValueError("All parsers failed")
 
     # Process mesh data
