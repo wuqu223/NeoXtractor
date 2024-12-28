@@ -40,6 +40,10 @@ class MainWindow(QMainWindow):
         self.main_console = ConsoleWidget(self.console_handler)
         self.console_handler.add_console(self.main_console.console_output)
 
+        self.allowed_texture_exts = [".png", ".jpg", ".dds", ".ktx", ".pvr", ".astc", ".tga", "bmp"]
+        self.allowed_mesh_exts = [".mesh"]
+        self.allowed_text_ext = [".mtl", ".json", ".xml", ".trackgroup", ".nfx", ".h", ".shader"] # Only for double-clicking, context menu will still work for other formats
+
         # Initialize the rest of the UI
         self.initUI()
 
@@ -168,10 +172,10 @@ class MainWindow(QMainWindow):
         selected_file = selected_items[0].text()
 
         # Define the set of allowed file extensions
-        allowed_extensions = {".png", ".jpg", ".dds", ".ktx", ".pvr", ".astc", ".tga", "bmp"}
+        # allowed_extensions = {".png", ".jpg", ".dds", ".ktx", ".pvr", ".astc", ".tga", "bmp"}
 
-        if not any(selected_file.lower().endswith(ext) for ext in allowed_extensions):
-            print(self, "Invalid File", f"'{selected_file}' is not supported in the Texture Viewer. \nAllowed types: {', '.join(allowed_extensions)}.")
+        if not any(selected_file.lower().endswith(ext) for ext in self.allowed_texture_exts):
+            print(self, "Invalid File", f"'{selected_file}' is not supported in the Texture Viewer. \nAllowed types: {', '.join(self.allowed_texture_exts)}.")
             return
 
         try:
@@ -191,10 +195,10 @@ class MainWindow(QMainWindow):
         # Extract the file name from the selected item
         selected_file = selected_items[0].text()
 
-        allowed_extensions = {".mesh"}
+        # allowed_extensions = {".mesh"}
 
-        if not any(selected_file.lower().endswith(ext) for ext in allowed_extensions):
-            print(self, "Invalid File", f"'{selected_file}' is not supported in the Mesh Viewer. \nAllowed type: {', '.join(allowed_extensions)}.")
+        if not any(selected_file.lower().endswith(ext) for ext in self.allowed_mesh_exts):
+            print(self, "Invalid File", f"'{selected_file}' is not supported in the Mesh Viewer. \nAllowed type: {', '.join(self.allowed_mesh_exts)}.")
             return
         
         try:
@@ -444,7 +448,7 @@ class MainWindow(QMainWindow):
 
     def extract_loaded_Textures(self):
         if hasattr(self, "npk"):
-            allowed_extensions = {".dds", ".png"}  # Define allowed texture extensions
+            # allowed_extensions = {".dds", ".png"}  # Define allowed texture extensions
             saved_count = 0 
 
             # Iterate through all items in the file list widget
@@ -458,7 +462,7 @@ class MainWindow(QMainWindow):
                 if not currnpk:
                     continue
 
-                if currnpk.ext.lower() not in allowed_extensions:
+                if currnpk.ext.lower() not in self.allowed_texture_exts:
                     continue
 
                 # Build the output path
@@ -526,30 +530,31 @@ class MainWindow(QMainWindow):
 
 
     def on_item_double_clicked(self, item):
-        """Open the mesh viewer when a .mesh or .dds file is double-clicked."""
+        """Open the mesh viewer when a mesh or texure file is double-clicked."""
         # Extract file name and check extension
         selected_file = item.text()
 
-        allowed_extensions = {".mesh", ".dds"}
-        if not any(selected_file.lower().endswith(ext) for ext in allowed_extensions):
+        # Combine allowed extensions
+        allowed_extensions = tuple(self.allowed_texture_exts + self.allowed_mesh_exts + self.allowed_text_ext)
+        if not selected_file.lower().endswith(allowed_extensions):
             QMessageBox.warning(
                 self,
                 "Invalid File",
-                f"'{selected_file}' is not supported in the Mesh Viewer.\nAllowed types: {', '.join(allowed_extensions)}."
+                f"'{selected_file}' is not supported in the Mesh/Texture Viewer.\nAllowed types: {', '.join(allowed_extensions)}."
             )
             return
 
         try:
             # Determine the type of file and simulate user action
-            if selected_file.lower().endswith(".mesh"):
+            if any(selected_file.lower().endswith(ext) for ext in self.allowed_mesh_exts):
                 self.show_mesh()
-            elif selected_file.lower().endswith(".dds"):
+            elif any(selected_file.lower().endswith(ext) for ext in self.allowed_texture_exts):
                 self.show_texture()
+            elif any(selected_file.lower().endswith(ext) for ext in self.allowed_text_ext):
+                self.show_text()
         except Exception as e:
             # QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
-            print(self, "Critical Error", f"An error occurred: {str(e)}")
-
-
+            print(self, "Error", f"An error occurred: {str(e)}")
 
     def on_selection_changed(self):
         # Get all selected items
