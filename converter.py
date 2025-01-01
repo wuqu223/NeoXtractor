@@ -35,6 +35,7 @@ def get_parser():
     opt = parser.parse_args()
     return opt
 
+
 def saveobj(model, filename, flip_uv=False):
     """
     Save model to OBJ format as a static mesh without skeleton.
@@ -857,7 +858,6 @@ def parse_mesh_original(path):
     model = {}
     with open(path, 'rb') as f:
         try:
-        # with io.BytesIO(path) as f:
             _magic_number = f.read(8)
 
             model['bone_exist'] = readuint32(f)
@@ -983,120 +983,6 @@ def parse_mesh_original(path):
             return None
         return model
 
-
-# def parse_mesh_helper(path):
-#     model = {}
-#     try:
-#         with io.BytesIO(path) as f:
-
-#             _magic_number = f.read(8)  # Read initial identifier
-
-#             model['bone_exist'] = readuint32(f)
-#             model['mesh'] = []
-
-#             # Bone Data Parsing
-#             if model['bone_exist']:
-#                 try:
-#                     bone_count = readuint16(f)
-#                     parent_nodes = []
-#                     for _ in range(bone_count):
-#                         parent_node = readuint8(f)
-#                         parent_nodes.append(-1 if parent_node == 255 else parent_node)
-#                     model['bone_parent'] = parent_nodes
-
-#                     bone_names = []
-#                     for _ in range(bone_count):
-#                         bone_name = f.read(32).decode('latin-1', errors='replace').replace('\0', '').replace(' ', '_')
-#                         bone_names.append(bone_name)
-#                     model['bone_name'] = bone_names
-
-#                     model['bone_original_matrix'] = []
-#                     for _ in range(bone_count):
-#                         matrix = [readfloat(f) for _ in range(16)]
-#                         model['bone_original_matrix'].append(np.array(matrix).reshape(4, 4))
-
-#                     # Add dummy root if needed
-#                     if parent_nodes.count(-1) > 1:
-#                         num = len(model['bone_parent'])
-#                         model['bone_parent'] = [num if x == -1 else x for x in model['bone_parent']]
-#                         model['bone_parent'].append(-1)
-#                         model['bone_name'].append('dummy_root')
-#                         model['bone_original_matrix'].append(np.identity(4))
-
-#                     _flag = readuint8(f)  # Check flag
-#                     assert _flag == 0
-#                 except Exception as e:
-#                     print(f"Bone parsing error: {e}")
-
-#             # Mesh Data Parsing
-#             _offset = readuint32(f)
-#             while True:
-#                 try:
-#                     flag = readuint16(f)
-#                     if flag == 1:
-#                         break
-#                     f.seek(-2, 1)
-#                     mesh_vertex_count = readuint32(f)
-#                     mesh_face_count = readuint32(f)
-#                     uv_layers = readuint8(f)
-#                     color_len = readuint8(f)
-
-#                     model['mesh'].append((mesh_vertex_count, mesh_face_count, uv_layers, color_len))
-#                 except Exception as e:
-#                     print(f"Mesh section parsing error: {e}")
-#                     break
-
-#             # Vertex Data
-#             vertex_count = readuint32(f)
-#             face_count = readuint32(f)
-
-#             try:
-#                 model['position'] = [(readfloat(f), readfloat(f), readfloat(f)) for _ in range(vertex_count)]
-#                 model['normal'] = [(readfloat(f), readfloat(f), readfloat(f)) for _ in range(vertex_count)]
-#             except Exception as e:
-#                 print(f"Error parsing vertex positions or normals: {e}")
-
-#             # Faces Data
-#             try:
-#                 model['face'] = [(readuint16(f), readuint16(f), readuint16(f)) for _ in range(face_count)]
-#             except Exception as e:
-#                 print(f"Error parsing face data: {e}")
-
-#             # UV Data
-#             model['uv'] = []
-#             for mesh_vertex_count, _, uv_layers, _ in model['mesh']:
-#                 if uv_layers > 0:
-#                     for _ in range(mesh_vertex_count):
-#                         u, v = readfloat(f), readfloat(f)
-#                         model['uv'].append((u, v))
-#                     f.seek(mesh_vertex_count * 8 * (uv_layers - 1), 1)  # Skip remaining UV layers if any
-#                 else:
-#                     model['uv'].extend([(0.0, 0.0)] * mesh_vertex_count)
-
-#             # Vertex Color Data (optional)
-#             for mesh_vertex_count, _, _, color_len in model['mesh']:
-#                 f.seek(mesh_vertex_count * 4 * color_len, 1)
-
-#             # Bone Weights if Bones Exist
-#             if model['bone_exist']:
-#                 try:
-#                     model['vertex_joint'] = [[readuint8(f) for _ in range(4)] for _ in range(vertex_count)]
-#                     model['vertex_joint_weight'] = [[readfloat(f) for _ in range(4)] for _ in range(vertex_count)]
-#                 except Exception as e:
-#                     print(f"Error parsing bone weights: {e}")
-
-#     except Exception as e:
-#         print(f"General parsing error: {e}")
-#         return None
-
-#     # Final validation check
-#     if 'normal' not in model:
-#         print("Warning: 'normal' data missing.")
-#     if 'position' not in model or 'face' not in model:
-#         print("Error: Incomplete mesh data.")
-#         return None
-
-#     return model
 
 def parse_mesh_helper(path):
     model = {}
@@ -1224,7 +1110,7 @@ def parse_mesh_helper(path):
     return model
 
 
-def parser(model, f):
+def parser_mesh_bytes(model, f):
     _magic_number = f.read(8)
     model['bone_exist'] = readuint32(f)
     model['mesh'] = []
@@ -1350,9 +1236,8 @@ def parse_mesh_adaptive(path):
     model = {}
     with io.BytesIO(path) as f:
         try:
-            parser(model, f)
-
+            parser_mesh_bytes(model, f)
         except Exception as e:
-            print(f"Adaptive parsing error: {e}")
             return None
+        
     return model

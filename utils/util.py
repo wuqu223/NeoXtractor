@@ -75,43 +75,41 @@ def res_from_path(path):
 
 
 def mesh_from_path(path):
-    try:
-        print(f"Parsing mesh using original parser")
-        mesh = parse_mesh_original(path)
-        if mesh is None or 'position' not in mesh:
-            raise ValueError("original parser failed")
-    except Exception as e:
-        print(f": {e}. Attempting to use helper instead.")
-        try:
-            mesh = parse_mesh_helper(path)  # Attempting second parser
-            if mesh is None or 'position' not in mesh:
-                raise ValueError("helper parser failed")
-        except Exception as e2:
-            print(f": {e2}. Attempting to use adaptive instead.")
-            try:
-                mesh = parse_mesh_adaptive(path)  # Attempting third parser
-                if mesh is None or 'position' not in mesh:
-                    raise ValueError("adaptive parser failed.")
-            except Exception as e3:
-                QMessageBox.critical(None, "Error", f"Failed to parse mesh file: {e}")
-                raise None
+    parsers = [
+        ("original parser", parse_mesh_original),
+        ("helper parser", parse_mesh_helper),
+        ("adaptive parser", parse_mesh_adaptive)
+    ]
 
-    # Proceed if we have a valid mesh
+    mesh = None
+
+    for parser_name, parser_function in parsers:
+        try:
+            print(f"Parsing mesh using {parser_name}")
+            mesh = parser_function(path)
+            if mesh and 'position' in mesh:
+                break  # Successfully parsed
+            raise ValueError(f"{parser_name} failed")
+        except Exception as e:
+            print(f"Error with {parser_name}: {e}")
+
+    if mesh is None or 'position' not in mesh:
+        # QMessageBox.critical(None, "Error", "Failed to parse mesh file using all parsers.")
+        print(None, "critical Error", "Failed to parse mesh file using all parsers.")
+        raise ValueError("All parsers failed")
+
+    # Process mesh data
     pos = np.array(mesh['position'])
     pos[:, 0] = -pos[:, 0]  # Flip X-axis
     norm = np.array(mesh['normal'])
     norm[:, 0] = -norm[:, 0]  # Flip X-axis for normals as well
 
     # Combine position and normals into a single array
-    dat = np.hstack((pos, norm))
-    mesh['gldat'] = dat
+    mesh['gldat'] = np.hstack((pos, norm))
 
     # Reorder indices for OpenGL
-    index = np.array(mesh['face'])
-    index = index[:, [1, 0, 2]]
-    mesh['glindex'] = index
+    mesh['glindex'] = np.array(mesh['face'])[:, [1, 0, 2]]
 
-    print(f"Successfully parsed and processed mesh")
     return mesh
 
 

@@ -112,7 +112,7 @@ class Scene:
         self.release_armature()
         self.mesh = mesh
 
-        print("Attempting to load mesh with basic shader.")
+        # print("Attempting to load mesh with basic shader.")
 
         # Set up vertex and index buffers
         self.vbo = self.ctx.buffer(mesh['gldat'].astype('f4').tobytes())
@@ -149,7 +149,7 @@ class Scene:
 
             self.normals_vbo = self.ctx.buffer(line_vertices.tobytes())
             self.normals_vao = self.ctx.simple_vertex_array(self.line_shader, self.normals_vbo, 'in_vert')
-            print("Normals VAO initialized successfully.")
+            # print("Normals VAO initialized successfully.")
         else:
             print("Mesh data is missing or improperly initialized; skipping normals VAO setup.")
 

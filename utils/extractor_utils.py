@@ -56,6 +56,9 @@ def read_index_item(self, f, x):
         file_sign = readuint32(f)
     elif self.npk.info_size == 32:
         file_sign = readuint64(f)
+    else:
+        file_sign = f.seek(4)     # Tempary fix 
+
     file_offset = readuint32(f)
     file_length = readuint32(f)
     file_original_length = readuint32(f)

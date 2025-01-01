@@ -40,6 +40,10 @@ class MainWindow(QMainWindow):
         self.main_console = ConsoleWidget(self.console_handler)
         self.console_handler.add_console(self.main_console.console_output)
 
+        self.allowed_texture_exts = [".png", ".jpg", ".dds", ".ktx", ".pvr", ".astc", ".tga", "bmp"]
+        self.allowed_mesh_exts = [".mesh"]
+        self.allowed_text_ext = [".mtl", ".json", ".xml", ".trackgroup", ".nfx", ".h", ".shader"] # Only for double-clicking, context menu will still work for other formats
+
         # Initialize the rest of the UI
         self.initUI()
 
@@ -54,6 +58,8 @@ class MainWindow(QMainWindow):
             showdata_action.triggered.connect(self.show_data)
             export_action = QAction("Export File", self)
             export_action.triggered.connect(self.extract_file)
+            exp_texture_action = QAction("Export Only Texture", self)
+            exp_texture_action.triggered.connect(self.extract_loaded_Textures)
             hex_action = QAction("Hex Viewer", self)
             hex_action.triggered.connect(self.show_hex)
             text_action = QAction("Plaintext Viewer", self)
@@ -64,6 +70,7 @@ class MainWindow(QMainWindow):
             mesh_action.triggered.connect(self.show_mesh)
             list_context_menu.addAction(showdata_action)
             list_context_menu.addAction(export_action)
+            list_context_menu.addAction(exp_texture_action)
             list_context_menu.addAction(hex_action)
             list_context_menu.addAction(text_action)
             list_context_menu.addAction(texture_action)
@@ -158,17 +165,17 @@ class MainWindow(QMainWindow):
     def show_texture(self):
         selected_items = self.file_list_widget.selectedItems()
         if not selected_items:
-            QMessageBox.warning(self, "No File Selected", "Please select a file to view in the Texture Viewer.")
+            print(self, "No File Selected", "Please select a file to view in the Texture Viewer.")
             return
 
         # Extract the file name from the selected item
         selected_file = selected_items[0].text()
 
         # Define the set of allowed file extensions
-        allowed_extensions = {".png", ".jpg", ".dds", ".ktx", ".pvr", ".astc", ".tga", "bmp"}
+        # allowed_extensions = {".png", ".jpg", ".dds", ".ktx", ".pvr", ".astc", ".tga", "bmp"}
 
-        if not any(selected_file.lower().endswith(ext) for ext in allowed_extensions):
-            QMessageBox.warning(self, "Invalid File", f"'{selected_file}' is not supported in the Texture Viewer. \nAllowed types: {', '.join(allowed_extensions)}.")
+        if not any(selected_file.lower().endswith(ext) for ext in self.allowed_texture_exts):
+            print(self, "Invalid File", f"'{selected_file}' is not supported in the Texture Viewer. \nAllowed types: {', '.join(self.allowed_texture_exts)}.")
             return
 
         try:
@@ -182,16 +189,16 @@ class MainWindow(QMainWindow):
     def show_mesh(self):
         selected_items = self.file_list_widget.selectedItems()
         if not selected_items:
-            QMessageBox.warning(self, "No File Selected", "Please select a file to view in the Mesh Viewer.")
+            print(self, "No File Selected", "Please select a file to view in the Mesh Viewer.")
             return
 
         # Extract the file name from the selected item
         selected_file = selected_items[0].text()
 
-        allowed_extensions = {".mesh"}
+        # allowed_extensions = {".mesh"}
 
-        if not any(selected_file.lower().endswith(ext) for ext in allowed_extensions):
-            QMessageBox.warning(self, "Invalid File", f"'{selected_file}' is not supported in the Mesh Viewer. \nAllowed type: {', '.join(allowed_extensions)}.")
+        if not any(selected_file.lower().endswith(ext) for ext in self.allowed_mesh_exts):
+            print(self, "Invalid File", f"'{selected_file}' is not supported in the Mesh Viewer. \nAllowed type: {', '.join(self.allowed_mesh_exts)}.")
             return
         
         try:
@@ -219,7 +226,7 @@ class MainWindow(QMainWindow):
 
         except Exception as e:
             # Show error message for any exceptions
-            QMessageBox.warning(self, "Error", f"An error occurred: {str(e)}")
+            print(self, "Error", f"An error occurred: {str(e)}")
 
     # Main Toolbar       
     # ----------------------------------------------------------------------------------------------------------
@@ -377,7 +384,7 @@ class MainWindow(QMainWindow):
         # Check if there are selected entries
         selected_items = self.file_list_widget.selectedItems()
         if not selected_items:
-            QMessageBox.warning(self, "No Selection", "Please select files to read.")
+            print(self, "No Selection", "Please select files to read.")
             return
 
         # Loop through the selected items
@@ -439,8 +446,56 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.information(self, "Open NPK first", "You must open an NPK file before extracting it!")
 
+    def extract_loaded_Textures(self):
+        if hasattr(self, "npk"):
+            # allowed_extensions = {".dds", ".png"}  # Define allowed texture extensions
+            saved_count = 0 
+
+            # Iterate through all items in the file list widget
+            for i in range(self.file_list_widget.count()):
+                item = self.file_list_widget.item(i)
+                
+                # Retrieve the corresponding npk entry using the item's data
+                index = item.data(3)
+                currnpk = self.npkentries.get(index)
+
+                if not currnpk:
+                    continue
+
+                if currnpk.ext.lower() not in self.allowed_texture_exts:
+                    continue
+
+                # Build the output path
+                base_path = os.path.join(self.output_folder, os.path.basename(self.npk.path))
+                if not currnpk.file_structure:
+                    os.makedirs(base_path, exist_ok=True)
+                    output_path = os.path.join(base_path, f"{hex(currnpk.file_sign)}.{currnpk.ext}")
+                else:
+                    filestructure = currnpk.file_structure.decode("utf-8").replace("\\", "/")
+                    output_dir = os.path.join(base_path, os.path.dirname(filestructure))
+                    os.makedirs(output_dir, exist_ok=True)
+                    output_path = os.path.join(output_dir, os.path.basename(filestructure))
+
+                # Save the file and handle errors
+                try:
+                    with open(output_path, "wb") as f:
+                        f.write(currnpk.data)
+                    saved_count += 1
+                except Exception as e:
+                    QMessageBox.critical(self, "Error", f"Failed to save file: {str(e)}")
+
+            # Show a final message indicating the number of saved files
+            if saved_count > 0:
+                QMessageBox.information(self, "Finished!", f"Saved {saved_count} texture files to \"{self.output_folder}\" folder")
+            else:
+                print(self, "No Files Saved", "No valid texture files were saved.")
+        else:
+            QMessageBox.information(self, "Open NPK first", "You must open an NPK file before extracting it!")
+
+
     def clear_npk_data(self):
         self.file_list_widget.clear()
+        self.filter_input.clear()
         self.selectednpkentry = 0
         self.npkentries.clear()
         if hasattr(self, "npk"):
@@ -473,22 +528,33 @@ class MainWindow(QMainWindow):
         selected_items = [self.npkentries[i] for i in self.npkentries if i == index]
         # print(f"Selected Items: {index}")
 
+
     def on_item_double_clicked(self, item):
-        """Open the mesh viewer when a .mesh file is double-clicked."""
+        """Open the mesh viewer when a mesh or texure file is double-clicked."""
         # Extract file name and check extension
         selected_file = item.text()
 
-        allowed_extensions = {".mesh"}
-        if not any(selected_file.lower().endswith(ext) for ext in allowed_extensions):
-            QMessageBox.warning(self, "Invalid File", f"'{selected_file}' is not supported in the Mesh Viewer. \nAllowed type: {', '.join(allowed_extensions)}.")
+        # Combine allowed extensions
+        allowed_extensions = tuple(self.allowed_texture_exts + self.allowed_mesh_exts + self.allowed_text_ext)
+        if not selected_file.lower().endswith(allowed_extensions):
+            QMessageBox.warning(
+                self,
+                "Invalid File",
+                f"'{selected_file}' is not supported in the Mesh/Texture Viewer.\nAllowed types: {', '.join(allowed_extensions)}."
+            )
             return
 
         try:
-            # Simulate the user clicking the "Mesh Viewer" option
-            self.show_mesh()
+            # Determine the type of file and simulate user action
+            if any(selected_file.lower().endswith(ext) for ext in self.allowed_mesh_exts):
+                self.show_mesh()
+            elif any(selected_file.lower().endswith(ext) for ext in self.allowed_texture_exts):
+                self.show_texture()
+            elif any(selected_file.lower().endswith(ext) for ext in self.allowed_text_ext):
+                self.show_text()
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
-
+            # QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
+            print(self, "Error", f"An error occurred: {str(e)}")
 
     def on_selection_changed(self):
         # Get all selected items
@@ -526,6 +592,7 @@ class MainWindow(QMainWindow):
             self.console_handler.text_output.emit(text)
         else:
             print("Console handler is not properly initialized.")
+
 
     def filter_list_items(self, text):
         """Filter items in the QListWidget based on input text."""
