@@ -51,6 +51,10 @@ class ConfigManager:
     def default_config(self):
         """Return default configuration."""
         return {
+            "work_folder": "",
             "output_folder": "",
-            "decryption_key": 0
+            "decryption_key": 0,
+            "npk_type": 0,
+            "aes_key": 0,
+            "index_size": 0,
         }

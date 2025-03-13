@@ -1,5 +1,6 @@
 {
-    "output_folder": "out",
+    "work_folder": "out",
+    "output_folder": "New folder",
     "project_folder": "",
     "decryption_key": 150
 }

@@ -3,6 +3,7 @@ from decompression import zflag_decompress, special_decompress
 from decryption import file_decrypt
 from detection import get_ext, get_compression
 from key import Keys
+from arc4 import ARC4
 from math import ceil
 from concurrent.futures import ProcessPoolExecutor
 
@@ -44,6 +45,8 @@ def determine_info_size(self):
     self.npk_file.seek(indexbuf)
     return (buf - self.npk.index_offset) // self.npk.files
 
+
+
 def split_chunks(lst, n):     
     k, m = divmod(len(lst), n)     
     for i in range(n):         
@@ -53,8 +56,22 @@ def split_chunks(lst, n):
 def read_index_item(self, f, x):
     if self.npk.info_size == 28:
         file_sign = readuint32(f)
+    elif self.npk.info_size == 30:
+        file_sign = readuint32(f)
     elif self.npk.info_size == 32:
         file_sign = readuint64(f)
+<<<<<<< Updated upstream
+=======
+    elif self.npk.info_size == 49:
+        file_sign = readuint32(f)
+    elif self.npk.info_size == 65:
+        file_sign = readuint32(f)
+    elif self.npk.info_size == 85:
+        file_sign = readuint32(f)
+    else:
+        file_sign = f.seek(4)     # Tempary fix
+    
+>>>>>>> Stashed changes
     file_offset = readuint32(f)
     file_length = readuint32(f)
     file_original_length = readuint32(f)
@@ -118,7 +135,7 @@ def read_index(self, file_path):
     if self.npk.hash_mode == 2:
         print("HASHING MODE 2 DETECTED, COMPATIBILITY IS NOT GURANTEED")
     elif self.npk.hash_mode == 3:
-        print("HASHING MODE 3 IS CURRENTLY NOT SUPPORTED!! EXPECT ERRORS!! PLEASE REPORT THEM IN GITHUB")
+        self.npk.arc_key = ARC4(b'61ea476e-8201-11e5-864b-fcaa147137b7')
     
     elif self.npk.encryption_mode == 256:
         self.npk_file.seek(self.npk.index_offset + (self.npk.files * self.npk.info_size) + 16)
@@ -131,7 +148,12 @@ def read_index(self, file_path):
     
     if self.npk.pkg_type:
         data = self.expkkeys.decrypt(data)
+<<<<<<< Updated upstream
     
+=======
+    if self.npk.hash_mode == 3:
+        data = self.npk.arc_key.decrypt(data)
+>>>>>>> Stashed changes
     with io.BytesIO(data) as f:
         f.seek(0)
 
@@ -157,7 +179,6 @@ def read_entry(self, fileindex):
     zflag_decompress(npkentry)
     npkentry.special_decompress = get_compression(npkentry.data)
     special_decompress(npkentry)
-    
     npkentry.ext = get_ext(npkentry.data)
     
     return npkentry

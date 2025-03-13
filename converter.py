@@ -8,6 +8,12 @@ import pymeshio.pmx.writer
 import pymeshio.pmx.reader
 from bone_name import *
 
+<<<<<<< Updated upstream
+=======
+from logger import logger
+
+
+>>>>>>> Stashed changes
 def readuint8(f):
     return int(struct.unpack('B', f.read(1))[0])
 
@@ -600,9 +606,388 @@ def saveiqe(model, filename):
             mesh_vertex_counter = mesh_vertex_counter_end
             mesh_face_counter = mesh_face_counter_end
 
+<<<<<<< Updated upstream
 def parse_mesh_original(path):
     model = {}
     with io.BytesIO(path) as f:
+=======
+
+# Works for exporting just mesh
+def save_to_json(model, filename):
+    if not filename.endswith('.gltf'):
+        filename = os.path.basename(filename).replace(".mesh", ".gltf")
+
+    try:
+        gltf_data = {
+            "asset": {
+                "version": "2.0",
+                "generator": "NeoX Model Converter"
+            },
+            "meshes": [],
+            "accessors": [],
+            "bufferViews": [],
+            "buffers": [],
+            "nodes": [],
+            "scenes": [{"nodes": [0]}],
+            "scene": 0
+        }
+
+        # Prepare binary buffers
+        vertex_buffer = [coord for vertex in model['position'] for coord in vertex]
+        normal_buffer = [coord for normal in model['normal'] for coord in normal]
+        uv_buffer = [coord for uv in model['uv'] for coord in uv]
+        index_buffer = [idx for face in model['face'] for idx in face]
+
+        # Binary Buffer
+        binary_buffer = (
+                struct.pack(f"{len(vertex_buffer)}f", *vertex_buffer) +
+                struct.pack(f"{len(normal_buffer)}f", *normal_buffer) +
+                struct.pack(f"{len(uv_buffer)}f", *uv_buffer) +
+                struct.pack(f"{len(index_buffer)}H", *index_buffer)
+        )
+
+        # Buffer and BufferView
+        vertex_bytes = len(vertex_buffer) * 4
+        normal_bytes = len(normal_buffer) * 4
+        uv_bytes = len(uv_buffer) * 4
+        index_bytes = len(index_buffer) * 2
+
+        gltf_data["buffers"].append({
+            "uri": os.path.basename(filename) + ".bin",
+            "byteLength": len(binary_buffer)
+        })
+
+        gltf_data["bufferViews"].extend([
+            {"buffer": 0, "byteOffset": 0, "byteLength": vertex_bytes, "target": 34962},
+            {"buffer": 0, "byteOffset": vertex_bytes, "byteLength": normal_bytes, "target": 34962},
+            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes, "byteLength": uv_bytes, "target": 34962},
+            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes + uv_bytes, "byteLength": index_bytes,
+             "target": 34963},
+        ])
+
+        # Calculate Bounds
+        min_position = [min(coord) for coord in zip(*model['position'])]
+        max_position = [max(coord) for coord in zip(*model['position'])]
+        min_uv = [min(coord) for coord in zip(*model['uv'])]
+        max_uv = [max(coord) for coord in zip(*model['uv'])]
+
+        # Accessors
+        gltf_data["accessors"].extend([
+            {"bufferView": 0, "componentType": 5126, "count": len(model['position']), "type": "VEC3",
+             "min": min_position, "max": max_position},
+            {"bufferView": 1, "componentType": 5126, "count": len(model['normal']), "type": "VEC3"},
+            {"bufferView": 2, "componentType": 5126, "count": len(model['uv']), "type": "VEC2", "min": min_uv,
+             "max": max_uv},
+            {"bufferView": 3, "componentType": 5123, "count": len(index_buffer), "type": "SCALAR"}
+        ])
+
+        # Meshes
+        gltf_data["meshes"].append({
+            "primitives": [{
+                "attributes": {"POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2},
+                "indices": 3
+            }]
+        })
+
+        # Nodes
+        gltf_data["nodes"].append({"mesh": 0})
+
+        # Save Binary and JSON
+        with open(filename + ".bin", "wb") as bin_file:
+            bin_file.write(binary_buffer)
+        with open(filename, "w") as json_file:
+            json.dump(gltf_data, json_file, indent=4)
+
+    except Exception as e:
+        print(f"Failed to save GLTF2: {e}")
+
+    print(f"GLTF JSON and binary saved as {filename} and {filename}.bin")
+
+
+# Testing for getting skeleton
+def save_to_gltf(model, filename):
+    if not filename.endswith('.gltf'):
+        filename = os.path.basename(filename).replace(".mesh", ".gltf")
+
+    try:
+        gltf_data = {
+            "asset": {
+                "version": "2.0",
+                "generator": "NeoX Model Converter"
+            },
+            "meshes": [],
+            "accessors": [],
+            "bufferViews": [],
+            "buffers": [],
+            "nodes": [],
+            "skins": [],
+            "scenes": [{"nodes": [0]}],
+            "scene": 0
+        }
+
+        # Validate and extract mesh data
+        positions = model.get('position', [])
+        normals = model.get('normal', [])
+        uvs = model.get('uv', [])
+        indices = model.get('face', [])
+        joint_indices = model.get('vertex_joint', [])
+        weights = model.get('vertex_weight', [])
+        bone_names = model.get('bone_name', [])
+        bone_hierarchy = model.get('bone_parent', [])
+        inverse_bind_matrices = model.get('bone_inverse_bind_matrices', [])
+
+        if not positions or not indices or not bone_names or not inverse_bind_matrices:
+            raise ValueError("Model must contain 'position', 'face', 'bone_name', and 'bone_inverse_bind_matrices'.")
+
+        # Prepare binary buffers
+        vertex_buffer = [coord for vertex in positions for coord in vertex]
+        normal_buffer = [coord for normal in normals for coord in normal] if normals else []
+        uv_buffer = [coord for uv in uvs for coord in uv] if uvs else []
+        index_buffer = [idx for face in indices for idx in face]
+        joint_buffer = [joint for joint_set in joint_indices for joint in joint_set]
+        weight_buffer = [weight for weight_set in weights for weight in weight_set]
+        flattened_ibms = [elem for matrix in inverse_bind_matrices for elem in matrix.flatten()]
+
+        # Binary Buffer
+        binary_buffer = (
+                struct.pack(f"{len(vertex_buffer)}f", *vertex_buffer) +
+                struct.pack(f"{len(normal_buffer)}f", *normal_buffer) +
+                struct.pack(f"{len(uv_buffer)}f", *uv_buffer) +
+                struct.pack(f"{len(index_buffer)}H", *index_buffer) +
+                struct.pack(f"{len(joint_buffer)}B", *joint_buffer) +
+                struct.pack(f"{len(weight_buffer)}f", *weight_buffer) +
+                struct.pack(f"{len(flattened_ibms)}f", *flattened_ibms)
+        )
+
+        # Buffer and BufferView
+        vertex_bytes = len(vertex_buffer) * 4
+        normal_bytes = len(normal_buffer) * 4
+        uv_bytes = len(uv_buffer) * 4
+        index_bytes = len(index_buffer) * 2
+        joint_bytes = len(joint_buffer)
+        weight_bytes = len(weight_buffer) * 4
+        ibm_bytes = len(flattened_ibms) * 4
+
+        gltf_data["buffers"].append({
+            "uri": filename.replace(".gltf", ".bin"),
+            "byteLength": len(binary_buffer)
+        })
+
+        gltf_data["bufferViews"].extend([
+            {"buffer": 0, "byteOffset": 0, "byteLength": vertex_bytes, "target": 34962},
+            {"buffer": 0, "byteOffset": vertex_bytes, "byteLength": normal_bytes,
+             "target": 34962} if normal_bytes else None,
+            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes, "byteLength": uv_bytes,
+             "target": 34962} if uv_bytes else None,
+            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes + uv_bytes, "byteLength": index_bytes,
+             "target": 34963},
+            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes + uv_bytes + index_bytes, "byteLength": joint_bytes,
+             "target": 34962},
+            {"buffer": 0, "byteOffset": vertex_bytes + normal_bytes + uv_bytes + index_bytes + joint_bytes,
+             "byteLength": weight_bytes, "target": 34962},
+            {"buffer": 0,
+             "byteOffset": vertex_bytes + normal_bytes + uv_bytes + index_bytes + joint_bytes + weight_bytes,
+             "byteLength": ibm_bytes}
+        ])
+
+        # Calculate Bounds
+        min_position = [min(coord) for coord in zip(*positions)]
+        max_position = [max(coord) for coord in zip(*positions)]
+
+        # Accessors
+        gltf_data["accessors"].extend([
+            {"bufferView": 0, "componentType": 5126, "count": len(positions), "type": "VEC3", "min": min_position,
+             "max": max_position},
+            {"bufferView": 1, "componentType": 5126, "count": len(normals), "type": "VEC3"} if normals else None,
+            {"bufferView": 2, "componentType": 5126, "count": len(uvs), "type": "VEC2"} if uvs else None,
+            {"bufferView": 3, "componentType": 5123, "count": len(index_buffer), "type": "SCALAR"},
+            {"bufferView": 4, "componentType": 5121, "count": len(joint_buffer) // 4, "type": "VEC4"},
+            {"bufferView": 5, "componentType": 5126, "count": len(weight_buffer) // 4, "type": "VEC4"},
+            {"bufferView": 6, "componentType": 5126, "count": len(inverse_bind_matrices), "type": "MAT4"}
+        ])
+
+        # Meshes
+        gltf_data["meshes"].append({
+            "primitives": [{
+                "attributes": {"POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2, "JOINTS_0": 4, "WEIGHTS_0": 5},
+                "indices": 3
+            }]
+        })
+
+        # Nodes
+        for i, bone_name in enumerate(bone_names):
+            gltf_data["nodes"].append({
+                "name": bone_name,
+                "translation": model['bone_translation'][i],
+                "rotation": model['bone_rotation'][i],
+                "scale": [1, 1, 1],
+                "children": [j for j, parent in enumerate(bone_hierarchy) if parent == i] if bone_hierarchy else []
+            })
+
+        # Skin
+        gltf_data["skins"].append({
+            "joints": list(range(len(bone_names))),
+            "inverseBindMatrices": 6
+        })
+
+        # Link skin to the mesh node
+        gltf_data["nodes"][0]["skin"] = 0
+
+        # Write binary and JSON files
+        bin_file_name = filename.replace(".gltf", ".bin")
+        with open(bin_file_name, "wb") as bin_file:
+            bin_file.write(binary_buffer)
+
+        with open(filename, "w") as json_file:
+            json.dump(gltf_data, json_file, indent=4)
+
+        print(f"GLTF with skeleton saved successfully as {filename} and {bin_file_name}")
+
+    except Exception as e:
+        print(f"Failed to save GLTF: {e}")
+
+
+def parse_mesh_original(model, f):
+    # model = {}
+    # with open(path, 'rb') as f:
+    # with io.BytesIO(path) as f:
+        # try:
+    _magic_number = f.read(8)
+
+    model['bone_exist'] = readuint32(f)
+    model['mesh'] = []
+
+    if model['bone_exist']:
+        if model['bone_exist'] > 1:
+            count = readuint8(f)
+            f.read(2)
+            f.read(count * 4)
+        bone_count = readuint16(f)
+        parent_nodes = []
+        for _ in range(bone_count):
+            parent_node = readuint16(f)
+            if parent_node == 65535:
+                parent_node = -1
+            parent_nodes.append(parent_node)
+        model['bone_parent'] = parent_nodes
+
+        bone_names = []
+        for _ in range(bone_count):
+            bone_name = f.read(32)
+            bone_name = bone_name.decode().replace('\0', '').replace(' ', '_')
+            bone_names.append(bone_name)
+        model['bone_name'] = bone_names
+
+        bone_extra_info = readuint8(f)
+        if bone_extra_info:
+            for _ in range(bone_count):
+                f.read(28)
+
+        model['bone_original_matrix'] = []
+        for i in range(bone_count):
+            matrix = [readfloat(f) for _ in range(16)]
+            matrix = np.array(matrix).reshape(4, 4)
+            model['bone_original_matrix'].append(matrix)
+
+        if len(list(filter(lambda x: x == -1, parent_nodes))) > 1:
+            num = len(model['bone_parent'])
+            model['bone_parent'] = list(map(lambda x: num if x == -1 else x, model['bone_parent']))
+            model['bone_parent'].append(-1)
+            model['bone_name'].append('dummy_root')
+            model['bone_original_matrix'].append(np.identity(4))
+
+        # _flag = readuint8(f)  # 00
+        # assert _flag == 0
+
+        _flag = readuint8(f)  # 00
+        if _flag != 0:
+            print(f"Debug: Read _flag value {_flag} at position {f.tell()}")
+            raise ValueError(f"Unexpected _flag value {_flag} at position {f.tell()}")
+
+    _offset = readuint32(f)
+    while True:
+        flag = readuint16(f)
+        if flag == 1:
+            break
+        f.seek(-2, 1)
+        mesh_vertex_count = readuint32(f)
+        mesh_face_count = readuint32(f)
+        _flag = readuint8(f)
+        color_len = readuint8(f)
+
+        model['mesh'].append((mesh_vertex_count, mesh_face_count, _flag, color_len))
+
+    vertex_count = readuint32(f)
+    face_count = readuint32(f)
+
+    model['position'] = []
+    # vertex position
+    for _ in range(vertex_count):
+        x = readfloat(f)
+        y = readfloat(f)
+        z = readfloat(f)
+        model['position'].append((x, y, z))
+
+    model['normal'] = []
+    # vertex normal
+    for _ in range(vertex_count):
+        x = readfloat(f)
+        y = readfloat(f)
+        z = readfloat(f)
+        model['normal'].append((x, y, z))
+
+    _flag = readuint16(f)
+    if _flag:
+        f.seek(vertex_count * 12, 1)
+
+    model['face'] = []
+    # face index table
+    for _ in range(face_count):
+        v1 = readuint16(f)
+        v2 = readuint16(f)
+        v3 = readuint16(f)
+        model['face'].append((v1, v2, v3))
+
+    model['uv'] = []
+    # vertex uv
+    for mesh_vertex_count, _, uv_layers, _ in model['mesh']:
+        if uv_layers > 0:
+            for _ in range(mesh_vertex_count):
+                u = readfloat(f)
+                v = readfloat(f)
+                model['uv'].append((u, v))
+            f.read(mesh_vertex_count * 8 * (uv_layers - 1))
+        else:
+            for _ in range(mesh_vertex_count):
+                u = 0.0
+                v = 0.0
+                model['uv'].append((u, v))
+
+    # vertex color
+    for mesh_vertex_count, _, _, color_len in model['mesh']:
+        f.read(mesh_vertex_count * 4 * color_len)
+
+    if model['bone_exist']:
+        model['vertex_joint'] = []
+        for _ in range(vertex_count):
+            vertex_joints = [readuint16(f) for _ in range(4)]
+            model['vertex_joint'].append(vertex_joints)
+
+        model['vertex_joint_weight'] = []
+        for _ in range(vertex_count):
+            vertex_joint_weights = [readfloat(f) for _ in range(4)]
+            model['vertex_joint_weight'].append(vertex_joint_weights)
+    # except Exception as e:
+    #     print(f"General parsing error: {e}")
+    #     return None
+    return model
+
+
+def parse_mesh_helper(path):
+    model = {}
+    with open(path, 'rb') as f:
+    # with io.BytesIO(path) as f:
+>>>>>>> Stashed changes
         _magic_number = f.read(8)
         model['bone_exist'] = readuint32(f)
         model['mesh'] = []
@@ -782,10 +1167,17 @@ def parse_mesh_helper(path):
                     uv_layers = readuint8(f)
                     color_len = readuint8(f)
 
+<<<<<<< Updated upstream
                     model['mesh'].append((mesh_vertex_count, mesh_face_count, uv_layers, color_len))
                 except Exception as e:
                     print(f"Mesh section parsing error: {e}")
                     break
+=======
+        _flag = readuint8(f)  # 00
+        if _flag != 0:
+            print(f"Debug: Read _flag value {_flag} at position {f.tell()}")
+            raise ValueError(f"Unexpected _flag value {_flag} at position {f.tell()}")
+>>>>>>> Stashed changes
 
             # Vertex Data
             vertex_count = readuint32(f)
@@ -838,9 +1230,29 @@ def parse_mesh_helper(path):
         return None
 
     return model
+<<<<<<< Updated upstream
+=======
+
+
+# def parse_mesh_adaptive(path):
+#     model = {}
+#     with io.BytesIO(path) as f:
+#         try:
+#             parser_mesh_bytes(model, f)
+#         except Exception as e:
+#             return None
+        
+#     return model
+
+>>>>>>> Stashed changes
 
 def parse_mesh_adaptive(path):
+    """
+    Tries to parse a mesh file using multiple methods and returns the model if successful.
+    Logs errors for debugging purposes.
+    """
     model = {}
+<<<<<<< Updated upstream
     with io.BytesIO(path) as f:
         try:
             # Recognize the magic number at the beginning
@@ -893,3 +1305,95 @@ def parse_mesh_adaptive(path):
     return model
 
 
+=======
+
+    try:
+        # Open the file in binary mode and read its content
+        # with open(path, 'rb') as file:
+        #     file_content = file.read()
+
+        # Create a file-like object for parsing
+        with io.BytesIO(path) as f:
+            # Attempt parsing using the original method
+            try:
+                logger.debug("Attempting parse_mesh_original...")
+                print("Attempting the adaptive parse_mesh_original...")
+                parse_mesh_original(model, f)
+                logger.info("Successfully parsed using parse_mesh_original.")
+                return model
+            except Exception as e:
+                logger.warning(f"parse_mesh_original failed: {e}")
+
+            # Reset the file-like object for the next attempt
+            f.seek(0)
+            try:
+                logger.debug("Attempting parse_mesh_helper...")
+                print("Attempting the adaptive parse_mesh_helper...")
+                parse_mesh_helper(path)
+                logger.info("Successfully parsed using parse_mesh_helper.")
+                return model
+            except Exception as e:
+                logger.warning(f"parse_mesh_helper failed: {e}")
+
+            # Reset the file-like object for the final attempt
+            f.seek(0)
+            try:
+                logger.debug("Attempting parser_mesh_bytes...")
+                print("Attempting the adaptive parse_mesh_bytes...")
+                parser_mesh_bytes(model, f)
+                logger.info("Successfully parsed using parser_mesh_bytes.")
+                return model
+            except Exception as e:
+                logger.warning(f"parser_mesh_bytes failed: {e}")
+
+    except Exception as e:
+        logger.error(f"Error reading or parsing the file: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+
+    try:
+        # Open the file in binary mode and read its content
+        with open(path, 'rb') as f:
+            file_content = f.read()
+
+        # Create a file-like object for parsing
+        with io.BytesIO(file_content) as f:
+            # Attempt parsing using the original method
+            try:
+                logger.debug("Attempting parse_mesh_original...")
+                print("Attempting the adaptive parse_mesh_original...")
+                parse_mesh_original(model, f)
+                logger.info("Successfully parsed using parse_mesh_original.")
+                return model
+            except Exception as e:
+                logger.warning(f"parse_mesh_original failed: {e}")
+
+            # Reset the file-like object for the next attempt
+            f.seek(0)
+            try:
+                logger.debug("Attempting parse_mesh_helper...")
+                parse_mesh_helper(path)
+                logger.info("Successfully parsed using parse_mesh_helper.")
+                return model
+            except Exception as e:
+                logger.warning(f"parse_mesh_helper failed: {e}")
+
+            # Reset the file-like object for the final attempt
+            f.seek(0)
+            try:
+                logger.debug("Attempting parser_mesh_bytes...")
+                parser_mesh_bytes(model, f)
+                logger.info("Successfully parsed using parser_mesh_bytes.")
+                return model
+            except Exception as e:
+                logger.warning(f"parser_mesh_bytes failed: {e}")
+
+    except Exception as e:
+        logger.error(f"Error reading or parsing the file: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+
+    # If all methods fail, return None
+    logger.error("All parsing methods failed.")
+    return None
+>>>>>>> Stashed changes

@@ -12,7 +12,34 @@ class Camera:
         self.fovY = 45
         self.aspect_ratio = 1
         self.perspective = True
+<<<<<<< Updated upstream
         self.zoom_speed = 0.2
+=======
+        self.zoom_speed = 2.5  # Default zoom speed
+        self.min_dist = 5
+        self.max_dist = 1500
+
+        # New movement variables
+        self.movement_speed = 0.1  # Adjust for faster/slower movement
+        self.velocity = Vector4([0, 0, 0, 0])  # Camera movement direction
+
+    def set_zoom_speed(self, speed):
+        """Adjust the camera zoom speed based on the slider value."""
+        self.zoom_speed = speed / 10.0  # Normalize (1-100) to (0.1-10)
+    
+    def move(self):
+        """Update camera position based on movement direction."""
+        # move_vec = self.rot().inverse * self.velocity  # Apply rotation to movement
+        self._pos += self.velocity #move_vec
+
+    def update_velocity(self, forward=0, right=0, sprinting=False):
+        speed = self.movement_speed * (2 if sprinting else 1)  # Double speed if sprinting
+        forward_vec = self.rot().inverse * Vector4([0, 0, -1, 0])  # Forward
+        right_vec = self.rot().inverse * Vector4([1, 0, 0, 0])  # Right
+        # Apply movement based on key states
+        self.velocity = (forward * forward_vec + right * right_vec) * speed
+
+>>>>>>> Stashed changes
 
     def pos(self):
         return self._pos

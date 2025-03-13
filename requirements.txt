@@ -8,3 +8,5 @@ PyQt5_sip
 pyrr
 transformations
 zstandard
+arc4
+

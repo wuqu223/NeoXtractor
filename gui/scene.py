@@ -256,6 +256,24 @@ class Scene:
         self.bone_lines = []
         self.armature_loaded = False
 
+    # def get_selected_object_center(self):
+    #     return self.mesh_center
+    
     def get_selected_object_center(self):
+<<<<<<< Updated upstream
         return self.mesh_center
+=======
+        """Calculate the center of the bounding box and the object size (bounding sphere radius)."""
+        if not self.mesh or 'gldat' not in self.mesh:
+            return Vector3([0, 0, 0]), 1.0  # Default center and size if no mesh
+
+        vertices = self.mesh['gldat'][:, :3]  # Extract vertex positions (X, Y, Z)
+        min_corner = np.min(vertices, axis=0)
+        max_corner = np.max(vertices, axis=0)
+
+        center = (min_corner + max_corner) / 2  # Compute the midpoint
+        bounding_sphere_radius = np.linalg.norm(max_corner - min_corner) / 2  # Radius of bounding sphere
+
+        return Vector3(center), bounding_sphere_radius
+>>>>>>> Stashed changes
 

@@ -4,8 +4,20 @@ from PyQt5 import QtCore, QtOpenGL
 import moderngl
 from converter import parse_mesh_helper, parse_mesh_original, parse_mesh_adaptive
 
+<<<<<<< Updated upstream
 class QModernGLWidget(QtOpenGL.QGLWidget):
     def __init__(self, parent=None):
+=======
+from logger import logger
+
+
+class QModernGLWidget(QtOpenGL.QGLWidget):
+    def __init__(self, parent=None):
+        self.paintGL = None
+        self.screen = None
+        self.ctx = None
+        # self.init_format()
+>>>>>>> Stashed changes
         fmt = QtOpenGL.QGLFormat()
         fmt.setVersion(3, 3)
         fmt.setProfile(QtOpenGL.QGLFormat.CoreProfile)
@@ -15,6 +27,7 @@ class QModernGLWidget(QtOpenGL.QGLWidget):
 
     def initializeGL(self):
         pass
+
 
     def paintGL(self):
         self.ctx = moderngl.create_context()
@@ -55,15 +68,18 @@ def compile_shader_program(ctx, vertex_path, fragment_path):
             fragment_shader=fragment_shader_source,
         )
         print("Shader program compiled and linked successfully.")
+        logger.info("Shader program compiled and linked successfully.")
         return program
     except Exception as e:
         print(f"Error compiling and linking shader program: {e}")
+        logger.critical(f"Error compiling and linking shader program: {e}")
         return None
 
 def res_from_path(path):
     return data_from_path('res/' + path)
 
 def mesh_from_path(path):
+<<<<<<< Updated upstream
     try:
             print(f"Parsing mesh using original parser")
             mesh = parse_mesh_original(path)
@@ -86,6 +102,35 @@ def mesh_from_path(path):
                 raise ValueError("Failed to parse the mesh file with available parsers: original, helper, and adaptive.")
 
     # Proceed if we have a valid mesh
+=======
+    parsers = [
+        # ("original parser", parse_mesh_original),
+        ("helper parser", parse_mesh_helper),
+        ("adaptive parser", parse_mesh_adaptive)
+    ]
+
+    mesh = None
+
+    for parser_name, parser_function in parsers:
+        try:
+            print(f"Parsing mesh using {parser_name}")
+            logger.debug(f"Parsing mesh using {parser_name}")
+            mesh = parser_function(path)
+            if mesh and 'position' in mesh:
+                break  # Successfully parsed
+            raise ValueError(f"{parser_name} failed")
+        except Exception as e:
+            print(f"Error with {parser_name}: {e}")
+            logger.debug(f"Error with {parser_name}: {e}")
+
+    if mesh is None or 'position' not in mesh:
+        # QMessageBox.critical(None, "Error", "Failed to parse mesh file using all parsers.")
+        print(None, "critical Error", "Failed to parse mesh file using all parsers.")
+        logger.critical("Failed to parse mesh file using all parsers.")
+        raise ValueError("All parsers failed")
+
+    # Process mesh data
+>>>>>>> Stashed changes
     pos = np.array(mesh['position'])
     pos[:, 0] = -pos[:, 0]  # Flip X-axis
     norm = np.array(mesh['normal'])
