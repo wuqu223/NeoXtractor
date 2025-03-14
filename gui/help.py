@@ -3,14 +3,15 @@ import freetype
 import numpy as np
 from pyrr import Matrix44
 
-class TextRenderer:
+
+class StaticTextRenderer:
     def __init__(self, ctx):
         self.ctx = ctx
 
         # Load font with FreeType
         try:
             self.face = freetype.Face("./fonts/Roboto-Regular.ttf")
-            self.face.set_char_size(16 * 64)  # font size
+            self.face.set_char_size(14 * 64)  # font size
         except freetype.ft_errors.FT_Exception as e:
             print(f"Font loading error: {e}")
             self.face = None
@@ -39,8 +40,8 @@ class TextRenderer:
         uniform sampler2D text_texture;
         uniform vec3 textColor;
         void main() {
-            float alpha = texture(text_texture, v_texcoord).r;
-            fragColor = vec4(textColor, alpha);  // Use textColor with alpha from red channel
+            float alpha = texture(text_texture, v_texcoord).r; // Read alpha from the texture
+            fragColor = vec4(textColor, alpha);  // Use the text color and alpha for rendering
         }
         """
 
@@ -59,10 +60,15 @@ class TextRenderer:
             [(self.vertex_buffer, "2f 2f", "in_position", "in_texcoord")]
         )
 
-    def _load_characters(self):
+    def _load_characters(self, char_range=range(32, 128)):
         characters = {}
-        for char_code in range(128):
-            self.face.load_char(chr(char_code))
+        for char_code in char_range:
+            try:
+                self.face.load_char(chr(char_code))
+            except freetype.ft_errors.FT_Exception as e:
+                print(f"Error loading character {char_code}: {e}")
+                continue
+
             bitmap = self.face.glyph.bitmap
             width, height = bitmap.width, bitmap.rows
 
@@ -78,10 +84,14 @@ class TextRenderer:
             )
         return characters
 
-    def render_text(self, text, x, y, scale, color=(1.0, 1.0, 1.0)):
-        self.program['textColor'].value = color  # Set color if used in fragment shader
+    def render_static_text(self, text, x, y, scale, color=(1.0, 1.0, 1.0)):
+        previous_wireframe_state = self.ctx.wireframe  # Save current wireframe state
+        self.ctx.wireframe = False  # Disable wireframe for text rendering
+
+        self.program['textColor'].value = color  # Set the text color
         self.program['text_texture'].value = 0
 
+        # Set up orthographic projection
         projection = Matrix44.orthogonal_projection(0, self.ctx.screen.width, 0, self.ctx.screen.height, -1, 1)
         self.program['projection'].write(projection.astype('f4').tobytes())
 
@@ -102,11 +112,14 @@ class TextRenderer:
             ], dtype='f4')
 
             self.vertex_buffer.write(vertices.tobytes())
-            ch.texture_id.use(location=0)  # Ensure texture is bound correctly
+            ch.texture_id.use(location=0)  # Bind texture for this character
             self.quad_vao.render(moderngl.TRIANGLES)
 
-            # Advance cursor for next glyph
+            # Advance cursor for the next character
             x += (ch.advance >> 6) * scale
+
+        self.ctx.wireframe = previous_wireframe_state  # Restore original wireframe state
+
 
 class Character:
     def __init__(self, texture_id, size, bearing, advance):

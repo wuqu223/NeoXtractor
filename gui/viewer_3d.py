@@ -3,28 +3,19 @@ import os
 import io
 import struct
 import moderngl as mgl
-<<<<<<< Updated upstream
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
-=======
 from PyQt5.QtOpenGL import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
->>>>>>> Stashed changes
 from pyrr import Matrix44
-from gui.help import TextRenderer
+from gui.help import StaticTextRenderer
 from utils.util import *
 from gui.scene import Scene
 from gui.camera import Camera
 from converter import *
 
-<<<<<<< Updated upstream
-=======
-from logger import logger
-
-
->>>>>>> Stashed changes
 class ViewerWidget(QModernGLWidget):
     def __init__(self, npk_entry, parent=None):
         super().__init__(parent)
@@ -37,12 +28,7 @@ class ViewerWidget(QModernGLWidget):
         self.camera_movement = {"W": False, "A": False, "S": False, "D": False}
         self.ctx = None
         self.ctx_initialized = False  # Track if context has been set up
-<<<<<<< Updated upstream
-        
-=======
-
         self.text_renderer = None
->>>>>>> Stashed changes
 
         # Initialize flags and properties
         self.last_x = None
@@ -56,18 +42,16 @@ class ViewerWidget(QModernGLWidget):
         self.ctrl_pressed = False
         self.current_scale = 1.0
         self.viewport = (0, 0, 1200, 1200)  # Default viewport size
+        self.camera = Camera()
+
+        self.update_aspect_ratio()
 
     def initializeGL(self):
-<<<<<<< Updated upstream
         print("Creating OpenGL context...")
         self.ctx = mgl.create_context() # Create the OpenGL context
-        
-=======
-        # print("Creating OpenGL context...")
         logger.info("Creating OpenGL context...")
         self.ctx = mgl.create_context()  # Create the OpenGL context
 
->>>>>>> Stashed changes
         if not self.ctx:
             print("Failed to initialize OpenGL context.")
             logger.critical("Failed to initialize OpenGL context.")
@@ -83,7 +67,7 @@ class ViewerWidget(QModernGLWidget):
 
     def init(self):
         """Ensure the OpenGL context and scene are initialized."""
-        
+
         if self.ctx is None:
             print("Error: OpenGL context is not initialized.")
             logger.critical("Error: OpenGL context is not initialized.")
@@ -95,62 +79,29 @@ class ViewerWidget(QModernGLWidget):
         logger.info("Viewport set.")
 
         # Initialize TextRenderer with the current context
-<<<<<<< Updated upstream
         self.text_renderer = TextRenderer(self.ctx)
+        self.text_renderer = StaticTextRenderer(self.ctx)
         print("TextRenderer initialized.")
-=======
         self.text_renderer = StaticTextRenderer(self.ctx)
         # print("TextRenderer initialized.")
         logger.info("TextRenderer initialized.")
 
         self.setFocusPolicy(Qt.StrongFocus)  # Ensures widget can receive key events
 
->>>>>>> Stashed changes
-
     def render(self):
         self.ctx.viewport = self.viewport  # Ensure viewport matches window size
         self.screen.use()
         self.scene.draw()
-<<<<<<< Updated upstream
-=======
         # self.render_navigation_overlay(self.location)
         self.render_navigation_overlay(self.filepath)
         self.update_aspect_ratio()
         self.update()
->>>>>>> Stashed changes
 
-        if not self.text_renderer:
-            print("TextRenderer not initialized, skipping text rendering.")
-            return
-
-        # Render overlay text using TextRenderer
-        text_scale = 0.4
-        x_pos = 10
-        color1 = (0.5, 1.0, 1.0)
-        color2 = (1.0, 1.0, 1.0)
-        self.text_renderer.render_text("'F' Key: ", x=x_pos, y=20, scale=text_scale, color=color1)
-        self.text_renderer.render_text("Mouse Right:", x=x_pos, y=50, scale=text_scale, color=color1)
-        self.text_renderer.render_text("Mouse Left:", x=x_pos, y=80, scale=text_scale, color=color1)
-        self.text_renderer.render_text("Mouse Middle:", x=x_pos, y=110, scale=text_scale, color=color1)
-        self.text_renderer.render_text("Key 1: ", x=x_pos, y=140, scale=text_scale, color=color1)
-        self.text_renderer.render_text("Key 3: ", x=x_pos, y=170, scale=text_scale, color=color1)
-        self.text_renderer.render_text("Key 7: ", x=x_pos, y=200, scale=text_scale, color=color1)
-        self.text_renderer.render_text("Focus Object", x=65, y=20, scale=text_scale, color=color2)
-        self.text_renderer.render_text("Orbit", x=110, y=50, scale=text_scale, color=color2)
-        self.text_renderer.render_text("Pan", x=105, y=80, scale=text_scale, color=color2)
-        self.text_renderer.render_text("Dolly", x=120, y=110, scale=text_scale, color=color2)
-        self.text_renderer.render_text("Front View", x=65, y=140, scale=text_scale, color=color2)
-        self.text_renderer.render_text("Right View", x=65, y=170, scale=text_scale, color=color2)
-        self.text_renderer.render_text("Top View", x=65, y=200, scale=text_scale, color=color2)
-    
     def ctx_init(self):
         self.ctx.enable(mgl.DEPTH_TEST)
         # self.ctx.enable(mgl.CULL_FACE)
         self.update_aspect_ratio()
         self.update()
-
-<<<<<<< Updated upstream
-=======
 
     def get_mesh_version(self, ):
         mesh_version = self.filepath
@@ -174,7 +125,6 @@ class ViewerWidget(QModernGLWidget):
 
         return mesh_version
 
-
     def render_navigation_overlay(self, selected_file):
 
         if not self.text_renderer:
@@ -186,6 +136,7 @@ class ViewerWidget(QModernGLWidget):
         # self.text_renderer.render_static_text(
         #     f"Version: {self.mesh_version}", x=20, y=420, scale=1.0, color=(1.0, 1.0, 1.0)
         # )
+            return
 
         # Calculate triangle count dynamically for displaying count
         try:
@@ -248,6 +199,14 @@ class ViewerWidget(QModernGLWidget):
         #     print(f"Error getting version: {e}")
         #     mesh_version = ""
         
+            if self.scene and self.scene.ibo:
+                file_name = os.path.basename(selected_file)
+                filename = f"{file_name}"
+            else:
+                filename = "Name"
+        except Exception as e:
+            print(f"Error getting filename: {e}")
+            filename = "N/A"
 
         instructions = [
             ("'F' Key", "Focus Object"),
@@ -273,7 +232,6 @@ class ViewerWidget(QModernGLWidget):
             self.text_renderer.render_static_text(f"{key1} :", x=20, y=620 + i * 20, scale=1.0, color=(0.5, 1.0, 1.0))
             self.text_renderer.render_static_text(f"{info}", x=90, y=620 + i * 20, scale=1.0, color=(1.0, 1.0, 1.0))
 
->>>>>>> Stashed changes
     def resizeEvent(self, event):
         """Handle resizing and update the viewport if context is ready."""
         width, height = event.size().width(), event.size().height()
@@ -319,7 +277,7 @@ class ViewerWidget(QModernGLWidget):
             self.scene.camera.pan(dx, dy)
             self.update()
         self.update()
-    
+
     def wheelEvent(self, event):
         offset = event.angleDelta().y() / 100
         self.scene.camera.dolly(offset)
@@ -330,6 +288,9 @@ class ViewerWidget(QModernGLWidget):
         width, height = self.viewport[2], self.viewport[3]
         if self.scene is not None and hasattr(self.scene, 'camera'):
             self.scene.camera.aspect_ratio = width / height
+
+        Camera.set_aspect_ratio(self, width, height)
+        self.update()
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -353,10 +314,7 @@ class ViewerWidget(QModernGLWidget):
             self.scene.camera.orthogonal(view, self.ctrl_pressed)
         elif key == Qt.Key_F:
             self.focus_on_selected_object()
-<<<<<<< Updated upstream
-=======
             self.scene.camera.orthogonal({Qt.Key_1: 1}, self.ctrl_pressed)
->>>>>>> Stashed changes
         self.update()
 
     def keyReleaseEvent(self, event):
@@ -376,16 +334,15 @@ class ViewerWidget(QModernGLWidget):
             self.camera_movement["Shift"] = False
         elif key == Qt.Key_Control:
             self.ctrl_pressed = False
-    
+        self.update()
+
     def focus_on_selected_object(self):
         # Retrieve the center of the mesh from the scene
-<<<<<<< Updated upstream
         selected_center = self.scene.get_selected_object_center()
-        print("Object Centred")  # Debugging output
+        # print("Object Centred")  # Debugging output
         # Set camera focus on the selected object center
         self.scene.camera.focus(selected_center)
         self.scene.camera.dist = 4.0  # Adjust as needed to frame the object
-=======
         selected_center, object_size = self.scene.get_selected_object_center()
 
         # Set camera target to the new center
@@ -397,11 +354,8 @@ class ViewerWidget(QModernGLWidget):
 
         # Adjust camera distance to ensure object fits in view
         self.scene.camera.dist = max(self.scene.camera.min_dist, min(ideal_distance, self.scene.camera.max_dist))
-        
         self.update_aspect_ratio()
->>>>>>> Stashed changes
         self.update()
-
 
     def load_mesh(self, mesh, location):
         if self.ctx is None or self.scene is None:
@@ -421,12 +375,10 @@ class ViewerWidget(QModernGLWidget):
 
         # Delegate mesh handling to the scene
         self.scene.load_mesh(mesh)
-<<<<<<< Updated upstream
         self.location = location
-        self.focus_on_selected_object()
+        # self.focus_on_selected_object()
         self.update_aspect_ratio()
         self.update()
-=======
         self.location = readable_name or location
         print(f"Mesh loaded from: {location}")
         logger.info(f"Mesh loaded from: {location}")
@@ -450,19 +402,12 @@ class ViewerWidget(QModernGLWidget):
             logger.warning(f"No mapping found for {file_hash}")
             return None
 
->>>>>>> Stashed changes
-
     def load_armature(self, armature):
         """Load armature and ensure it displays in the viewport."""
         self.scene.load_armature(armature)
-<<<<<<< Updated upstream
         self.ctx.enable(mgl.CULL_FACE)
         self.ctx.disable(mgl.DEPTH_TEST)
-=======
-        # self.ctx.enable(mgl.CULL_FACE)
-        # self.ctx.disable(mgl.DEPTH_TEST)
         self.update_aspect_ratio()
->>>>>>> Stashed changes
         self.update()
 
     def release_mesh(self):
@@ -494,35 +439,56 @@ class ViewerWidget(QModernGLWidget):
     def toggle_wireframe_mode(self, checked):
         self.ctx.wireframe = checked
         self.update()
-<<<<<<< Updated upstream
-        
+
     def save_mesh_obj(self, checkedbox):
-        if hasattr(self.scene, "mesh"):
-            saveobj(self.scene.mesh, self.location, flip_uv=checkedbox)
+        ext = "OBJ"
+        try:
+            if hasattr(self.scene, "mesh"):
+                saveobj(self.scene.mesh, self.location, flip_uv=checkedbox)
+                QMessageBox.information(self, f'Save as {ext.upper()}',
+                                        f'The mesh has been successfully saved as a {ext.upper()} file.')
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save mesh as {ext.upper()}: {e}")
 
     def save_mesh_smd(self, checkedbox):
-        if hasattr(self.scene, "mesh"):
-            savesmd(self.scene.mesh, self.location, flip_uv=checkedbox)
+        ext = "SMD"
+        try:
+            if hasattr(self.scene, "mesh"):
+                savesmd(self.scene.mesh, self.location, flip_uv=checkedbox)
+                QMessageBox.information(self, f'Save as {ext.upper()}',
+                                        f'The mesh has been successfully saved as a {ext.upper()} file.')
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save mesh as {ext.upper()}: {e}")
 
     def save_mesh_ascii(self, checkedbox):
-        if hasattr(self.scene, "mesh"):
-            saveascii(self.scene.mesh, self.location, flip_uv=checkedbox)
+        ext = "ASCII"
+        try:
+            if hasattr(self.scene, "mesh"):
+                saveascii(self.scene.mesh, self.location, flip_uv=checkedbox)
+                QMessageBox.information(self, f'Save as {ext.upper()}',
+                                        f'The mesh has been successfully saved as a {ext.upper()} file.')
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save mesh as {ext.upper()}: {e}")
 
     def save_mesh_pmx(self):
-        if hasattr(self.scene, "mesh"):
-            savepmx(self.scene.mesh, self.location)
+        ext = "PMX"
+        try:
+            if hasattr(self.scene, "mesh"):
+                savepmx(self.scene.mesh, self.location)
+                QMessageBox.information(self, f'Save as {ext.upper()}',
+                                        f'The mesh has been successfully saved as a {ext.upper()} file.')
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save mesh as {ext.upper()}: {e}")
 
     def save_mesh_iqe(self):
         if hasattr(self.scene, "mesh"):
             saveiqe(self.scene.mesh, self.location)
-=======
 
     def toggle_culling_mode(self, checked):
         # Update the scene based on the action's checked state
         self.scene.toggle_culling()
         self.scene.enable_culling = checked
         self.update()
-
 
     def save_mesh_obj(self, checkedbox):
         ext = "OBJ"
@@ -618,4 +584,3 @@ class ViewerWidget(QModernGLWidget):
             self.scene.camera.move()
 
         super().update()  # Ensure Qt updates the screen
->>>>>>> Stashed changes

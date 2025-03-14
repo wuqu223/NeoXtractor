@@ -4,12 +4,11 @@ from PyQt5.QtGui import *
 from gui.viewer_3d import ViewerWidget
 from utils.config_manager import ConfigManager
 from utils.console_handler import *
+from utils.util import *
+from converter import *
 
 from logger import logger
 
-
-<<<<<<< Updated upstream
-=======
 class FileSelector:
     @staticmethod
     def select_file():
@@ -25,40 +24,32 @@ def show_input_dialog(title, text):
     )
     return dialogue_response if dialogue_complete else ""
 
-
->>>>>>> Stashed changes
 def create_mesh_viewer_tab(self):
-        # -----------------------------------
-        # Main Tab/ Mesh Viewer
-        tab1 = QMainWindow()
-        tab1.setWindowTitle("ModernGL Mesh Viewer")
-        tab1.closeEvent = on_closing_mesh_view
-        _main = QWidget()
-        tab1_layout = QVBoxLayout()
-        
-        full_widget = QWidget()
-        full_layout = QVBoxLayout(full_widget)
-        right_widget = QWidget()
-        right_side = QVBoxLayout(right_widget)
-        left_widget = QWidget()
-        left_side = QVBoxLayout(left_widget)
+    # -----------------------------------
+    # Mesh Viewer
+    tab1 = QMainWindow()
+    tab1.setGeometry(350, 150, 1400, 800)
+    tab1.setWindowTitle("ModernGL Mesh Viewer")
+    tab1.closeEvent = on_closing_mesh_view
 
+    # Main Container
+    _main = QWidget()
+    main_layout = QHBoxLayout(_main)
 
+    # Left Side: File List Setup
+    tab1.mesh_list_widget = QListWidget()
+    tab1.mesh_list_widget.setAcceptDrops(True)
+    tab1.mesh_list_widget.setFixedSize(300, 800)
+    tab1.mesh_list_widget.setToolTip("List of .mesh files in the loaded folder.")
+    main_layout.addWidget(tab1.mesh_list_widget)
 
-<<<<<<< Updated upstream
-        tab1.viewer = ViewerWidget(tab1)  # Placeholder for Mesh viewer
-        tab1.viewer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        tab1.viewer.setMinimumSize(QSize(400,400))
-        right_side.addWidget(tab1.viewer)
-        
-
-=======
     # Define and attach signal handlers
     def on_mesh_item_clicked(item):
         """Handle single-click event for mesh items."""
         file_path = item.data(Qt.UserRole)
         on_mesh_item_double_clicked(item)
         logger.debug(f"Item clicked: {file_path}")
+
 
     def on_mesh_item_double_clicked(item):
         """Handle double-click event to load mesh into the viewer."""
@@ -70,39 +61,37 @@ def create_mesh_viewer_tab(self):
                 logger.debug(f"Mesh loaded: {file_path}")
             except Exception as e:
                 logger.critical(tab1, "Error", f"Failed to load mesh file: {str(e)}")
->>>>>>> Stashed changes
 
-        # Flip UV checkbox
-        tab1.flip_uv_checkbox = QCheckBox('Flip UVs Y axis on Save')
-        left_side.addWidget(tab1.flip_uv_checkbox)
 
-<<<<<<< Updated upstream
-        # Zoom slider
-        tab1.zoom_speed_label = QLabel("Cam Speed:")
-        tab1.zoom_speed_slider = QSlider(Qt.Horizontal)
-        tab1.zoom_speed_slider.setMinimum(1)
-        tab1.zoom_speed_slider.setMaximum(200)
-        tab1.zoom_speed_slider.setValue(100)
-        tab1.zoom_speed_slider.setFixedWidth(400)
-        tab1.zoom_speed_slider.valueChanged.connect(update_zoom_speed)
+    # Zoom slider
+    tab1.zoom_speed_label = QLabel("Cam Speed:")
+    tab1.zoom_speed_slider = QSlider(Qt.Horizontal)
+    tab1.zoom_speed_slider.setMinimum(1)
+    tab1.zoom_speed_slider.setMaximum(200)
+    tab1.zoom_speed_slider.setValue(100)
+    tab1.zoom_speed_slider.setFixedWidth(400)
+    tab1.zoom_speed_slider.valueChanged.connect(update_zoom_speed)
 
-        tab1.zoom_speed_label.setFixedHeight(15)
-        tab1.zoom_speed_slider.setRange(1, 100)  # Convert from 0.01 to 1.0
-        tab1.zoom_speed_slider.setValue(20)  # Set default zoom speed to 0.2
-        full_layout.addWidget(right_widget)
-        full_layout.addWidget(left_widget)
-        tab1_layout.addWidget(full_widget)
-        tab1_layout.addWidget(tab1.zoom_speed_label)
-        tab1_layout.addWidget(tab1.zoom_speed_slider)
-        _main.setLayout(tab1_layout)
-        tab1.setCentralWidget(_main)
-        #tab1.setGeometry(50,50,1000,800)
-        
-        create_view_menu(tab1)
-        create_save_menu(tab1)
-        
-        return tab1
-=======
+    tab1.zoom_speed_label.setFixedHeight(15)
+    tab1.zoom_speed_slider.setRange(1, 100)  # Convert from 0.01 to 1.0
+    tab1.zoom_speed_slider.setValue(20)  # Set default zoom speed to 0.2
+    full_layout.addWidget(right_widget)
+    full_layout.addWidget(left_widget)
+    tab1_layout.addWidget(full_widget)
+    tab1_layout.addWidget(tab1.zoom_speed_label)
+    tab1_layout.addWidget(tab1.zoom_speed_slider)
+    _main.setLayout(tab1_layout)
+    tab1.setCentralWidget(_main)
+    #tab1.setGeometry(50,50,1000,800)
+
+    create_view_menu(tab1)
+    create_save_menu(tab1)
+
+    return tab1
+
+    tab1.on_mesh_item_clicked = on_mesh_item_clicked
+    tab1.on_mesh_item_double_clicked = on_mesh_item_double_clicked
+
     # Connect the signals to the handlers
     tab1.mesh_list_widget.itemPressed.connect(tab1.on_mesh_item_clicked)
     tab1.mesh_list_widget.itemDoubleClicked.connect(tab1.on_mesh_item_double_clicked)
@@ -119,6 +108,8 @@ def create_mesh_viewer_tab(self):
     # Viewport Navigation Label
     navigation_label = QLabel(
         "Fly mode:  W: Forward  |  A: Left  |  S: Backward  |  D: Right  |  Shift+Key: Sprint  |  Ctrl+'1,3,7': Flip View  |  'F' Key: Focus Object"
+        "Key 7: Top View  |  Key 3: Right View  |  Key 1: Front View  |  Ctrl+Key: Flip View  |  "
+        "Middle: Dolly  |  Left: Pan  |  Right: Orbit  |  'F' Key: Focus on Object"
     )
     navigation_label.setFixedHeight(20)
     right_side.addWidget(navigation_label)
@@ -136,6 +127,12 @@ def create_mesh_viewer_tab(self):
 
     # Zoom Speed Slider
     zoom_speed_label = QLabel(f"Camera Zoom Speed Control: {default_zoom_speed:.2f}")
+    tab1.flip_uv_checkbox = QCheckBox('Flip UVs V-axis on Save')
+    tab1.flip_uv_checkbox.setChecked(False)
+    right_side.addWidget(tab1.flip_uv_checkbox)
+
+    # Zoom Speed Slider
+    zoom_speed_label = QLabel("Camera Zoom Speed Control:")
     zoom_speed_label.setFixedHeight(15)
     right_side.addWidget(zoom_speed_label)
 
@@ -155,7 +152,6 @@ def create_mesh_viewer_tab(self):
         zoom_speed_label.setText(f"Camera Zoom Speed Control: {zoom_speed:.2f}")
     zoom_speed_slider.valueChanged.connect(update_zoom_label)
 
-
     # Add Right Side to Main Layout
     main_layout.addLayout(right_side)
 
@@ -173,52 +169,43 @@ def create_mesh_viewer_tab(self):
 
     return tab1
 
->>>>>>> Stashed changes
-
 def on_closing_mesh_view(event):
     dialogbox = QDialog()
-    dialogbox.setWindowTitle("ModernGL Mesh Viewer")
+    dialogbox.setWindowTitle("Mesh Viewer")
 
     # Layout and Widgets
     layout = QVBoxLayout()
 
     # Message Label
-    label = QLabel("Are you sure you want to close the Mesh Viewer?\nIf you close it now, you wont be able to use it again until you reload the whole", )
+    label = QLabel(
+        "Are you sure you want to close the Mesh Viewer?\nIf you close it now, you wont be able to use it again until you restart the app.", )
     layout.addWidget(label, alignment=Qt.AlignCenter)  # Align the message to the center
 
-    buttonslayout_widget = QWidget()
-    buttonslayout = QHBoxLayout(buttonslayout_widget)
+    button_layout = QHBoxLayout()
+    close_button = QPushButton("Close Anyway")
+    close_button.clicked.connect(dialogbox.accept)
+    button_layout.addWidget(close_button)
 
-    # Close Button
-    ok_button = QPushButton("Close Anyway")
-    ok_button.setFixedSize(100, 30)
-    ok_button.clicked.connect(dialogbox.reject)  # Use accept to close and return from dialog
-    buttonslayout.addWidget(ok_button, alignment=Qt.AlignCenter)
     cancel_button = QPushButton("Leave Open")
-    cancel_button.setFixedSize(100, 30)
-    cancel_button.clicked.connect(dialogbox.accept)
-    buttonslayout.addWidget(cancel_button, alignment=Qt.AlignCenter)
-    layout.addWidget(buttonslayout_widget)
+    cancel_button.clicked.connect(dialogbox.reject)
+    button_layout.addWidget(cancel_button)
+
+    layout.addLayout(button_layout)
     dialogbox.setLayout(layout)
 
-    result = dialogbox.exec_()
-
-    if result:
+    if dialogbox.exec_() == QDialog.Accepted:
+        event.accept()
+    else:
         event.ignore()
 
-def set_zoom_speed(self, speed):
-    """Set the camera zoom speed."""
-    if self.viewer.scene and hasattr(self.viewer.scene, 'camera'):
-        self.viewer.scene.camera.zoom_speed = speed
 
-def update_zoom_speed(self):
-    if hasattr(self, 'viewer') and self.viewer.scene and hasattr(self.viewer.scene, 'camera'):
-        zoom_speed = self.zoom_speed_slider.value() / 100.0
-        self.viewer.scene.camera.zoom_speed = zoom_speed  # Set the zoom speed on the camera
-        #self.statusBar().showMessage(f'Zoom speed set to {zoom_speed:.2f}')
+def update_zoom_speed(tab1):
+    if hasattr(tab1.viewer.scene, "camera"):
+        zoom_speed = tab1.zoom_speed_slider.value() / 30.0
+        tab1.viewer.scene.camera.zoom_speed = zoom_speed
+        tab1.statusBar().showMessage(f"Zoom Speed: {zoom_speed:.1f}")
     else:
-        pass
-        #self.statusBar().showMessage('No camera available to adjust zoom speed.')
+        tab1.statusBar().showMessage("No camera available to adjust zoom speed.")
 
 
 def create_view_menu(tab1):
@@ -233,7 +220,7 @@ def create_view_menu(tab1):
     show_bones_action.triggered.connect(lambda checked: tab1.viewer.toggle_bone_visibility(checked))
     view_menu.addAction(show_bones_action)
 
-    # Create the checkable action for "Show Bones"
+    # Create the checkable action for "Show Wireframe"
     show_wireframe_action = QAction("Wireframe Mode", tab1)
     show_wireframe_action.setShortcut('Alt+W')
     show_wireframe_action.setCheckable(True)
@@ -241,16 +228,13 @@ def create_view_menu(tab1):
     show_wireframe_action.triggered.connect(lambda checked: tab1.viewer.toggle_wireframe_mode(checked))
     view_menu.addAction(show_wireframe_action)
 
-    # Create the checkable action for "Show Bones"
+    # Create the checkable action for "Show Normals"
     show_norm_action = QAction("Show Normals", tab1)
     show_norm_action.setShortcut('Alt+N')
     show_norm_action.setCheckable(True)
     show_norm_action.setChecked(False)
-    show_norm_action.triggered.connect(lambda checked: tab1.viewer.toggle_bone_visibility(checked))
+    show_norm_action.triggered.connect(lambda checked: tab1.viewer.toggle_normals_visibility(checked))
     view_menu.addAction(show_norm_action)
-<<<<<<< Updated upstream
-    
-=======
 
     # Create the checkable action for "Show Normals"
     show_norm_action = QAction("Enable Face Culling", tab1)
@@ -260,12 +244,8 @@ def create_view_menu(tab1):
     show_norm_action.triggered.connect(lambda checked: tab1.viewer.toggle_culling_mode(checked))
     view_menu.addAction(show_norm_action)
 
-
->>>>>>> Stashed changes
 def create_save_menu(tab1):
-    # View Menu Button
     save_menu = tab1.menuBar().addMenu("Save")
-<<<<<<< Updated upstream
     
     # Create the checkable action for "Show Bones"
     store_obj_action = QAction("Save as OBJ", tab1)
@@ -298,7 +278,6 @@ def create_save_menu(tab1):
     store_obj_action.triggered.connect(tab1.viewer.save_mesh_iqe)
     save_menu.addAction(store_obj_action)
     
-=======
 
     save_actions = [
         ("FBX - Coming Soon", "Ctrl+Shift+F",
@@ -364,6 +343,8 @@ def openFile(tab1):
 
     # Pass the file content to the mesh loader function
     load_mesh(tab1, file_content)
+    if file_name:
+        load_mesh(tab1, file_name)
 
 
 def openFolder(tab1):
@@ -427,4 +408,4 @@ def load_mesh(tab1, file_path):
     except Exception as e:
         print(tab1, "Error", f"Failed to load mesh file: {e} \n File Path: {file_path}")
         logger.critical("Error", f"Failed to load mesh file: {e} \n File Path: {file_path}")
->>>>>>> Stashed changes
+

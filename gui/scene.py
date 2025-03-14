@@ -11,6 +11,18 @@ class Scene:
         self.ctx = ctx
         self.viewer = viewer
         self.normals_vao = None
+        self.point_model = None
+        self.point_vao = None
+        self.point_vbo = None
+        self.grid_model = None
+        self.grid_vao = None
+        self.grid_vbo = None
+        # self.bone_vao = None
+        # self.bone_vbo = None
+        self.normals_vbo = None
+        self.model = None
+        self.mesh = None
+        self.armature_matrix = None
 
         # Enable depth testing and disable blending for opaque rendering
         self.ctx.enable(mgl.DEPTH_TEST)
@@ -23,7 +35,7 @@ class Scene:
         self.load_point()
 
         # Initialize matrices and scaling
-        self.mesh_center = Vector3([0, 0, 0])
+        self.mesh_center = Vector3([0, 4.5, 0])
         self.model_scale = 1.0
         self.base_model_matrix = Matrix44.identity()
         self.model_matrix = Matrix44.identity()
@@ -31,7 +43,7 @@ class Scene:
         self.show_normals = False
         self.show_wireframe = False
         self.bone_lines = []
-        
+
         # Initialize mesh data placeholders
         self.vbo = None
         self.ibo = None
@@ -96,9 +108,10 @@ class Scene:
 
     def load_mesh(self, mesh):
         self.release_mesh()
+        self.release_armature()
         self.mesh = mesh
 
-        print("Attempting to load mesh with basic shader.")
+        # print("Attempting to load mesh with basic shader.")
 
         # Set up vertex and index buffers
         self.vbo = self.ctx.buffer(mesh['gldat'].astype('f4').tobytes())
@@ -112,17 +125,17 @@ class Scene:
         # Load armature data if it exists
         if 'bone_name' in mesh and 'bone_parent' in mesh:
             self.load_armature(mesh)
-            print("Armature loaded successfully.")
+            # print("Armature loaded successfully.")
         else:
             print("No armature data found; skipping armature load.")
-        
+
         self.viewer.update_aspect_ratio()
         self.viewer.update()
         print("Model loaded successfully.")
-        
+
         # Initialize normals VAO for visualization
         self.setup_normals_vao()
-        print("Mesh loaded successfully with basic shader.")
+        # print("Mesh loaded successfully with basic shader.")
 
     def setup_normals_vao(self):
         if hasattr(self, 'mesh') and 'gldat' in self.mesh:
@@ -135,7 +148,7 @@ class Scene:
 
             self.normals_vbo = self.ctx.buffer(line_vertices.tobytes())
             self.normals_vao = self.ctx.simple_vertex_array(self.line_shader, self.normals_vbo, 'in_vert')
-            print("Normals VAO initialized successfully.")
+            # print("Normals VAO initialized successfully.")
         else:
             print("Mesh data is missing or improperly initialized; skipping normals VAO setup.")
 
@@ -143,22 +156,27 @@ class Scene:
         # Extract armature data from mesh
         bone_positions = []
         bone_lines = []
-        
+        flip_matrix = Matrix44.from_scale([-1.0, 1.0, 1.0])  # Flip matrix for X-axis
+
         # Calculate each bone's position and connections
         for i, parent in enumerate(mesh['bone_parent']):
+            # Apply the flip to the bone's matrix
             matrix = mesh['bone_original_matrix'][i]
-            pos = Vector3(tf.translation_from_matrix(matrix.T))
+            flipped_matrix = flip_matrix * matrix
+            pos = Vector3(tf.translation_from_matrix(flipped_matrix.T))
             bone_positions.append(pos)
-            
+
             # Only create a line if the bone has a parent
             if parent != -1:
-                parent_pos = Vector3(tf.translation_from_matrix(mesh['bone_original_matrix'][parent].T))
+                parent_matrix = mesh['bone_original_matrix'][parent]
+                flipped_parent_matrix = flip_matrix * parent_matrix
+                parent_pos = Vector3(tf.translation_from_matrix(flipped_parent_matrix.T))
                 bone_lines.extend([pos, parent_pos])
-        
+
         # Store and setup the bone VAO
         self.bone_vbo = self.ctx.buffer(np.array(bone_lines, dtype='f4').tobytes())
         self.bone_vao = self.ctx.simple_vertex_array(self.line_shader, self.bone_vbo, 'in_vert')
-        print("Armature loaded successfully.")
+        print("Armature loaded and flipped successfully.")
 
     def load_grid(self):
         self.grid_vbo = self.ctx.buffer(grid(5, 10).astype('f4').tobytes())
@@ -204,7 +222,7 @@ class Scene:
             # Set the mesh color
             self.const_color.value = (0.8, 0.8, 0.8)  # Light gray color
 
-            self.ctx.enable (mgl.DEPTH_TEST)
+            self.ctx.enable(mgl.DEPTH_TEST)
 
             # Render the mesh
             self.vao.render(mgl.TRIANGLES)
@@ -228,12 +246,12 @@ class Scene:
         if self.show_bones and hasattr(self, 'bone_vao') and self.bone_vao:
             mvp = self.camera.view_proj() * Matrix44.identity()
             self.line_shader['mvp'].write(mvp.astype('f4').tobytes())
-            
+
             # Set color for the armature lines
             if 'color' in self.line_shader:
                 self.line_shader['color'].value = (1.0, 0.8, 0.3)
 
-            self.ctx.disable (mgl.DEPTH_TEST)
+            self.ctx.disable(mgl.DEPTH_TEST)
 
             # Render armature lines
             self.bone_vao.render(mgl.LINES)
@@ -260,9 +278,8 @@ class Scene:
     #     return self.mesh_center
     
     def get_selected_object_center(self):
-<<<<<<< Updated upstream
         return self.mesh_center
-=======
+
         """Calculate the center of the bounding box and the object size (bounding sphere radius)."""
         if not self.mesh or 'gldat' not in self.mesh:
             return Vector3([0, 0, 0]), 1.0  # Default center and size if no mesh
@@ -275,5 +292,4 @@ class Scene:
         bounding_sphere_radius = np.linalg.norm(max_corner - min_corner) / 2  # Radius of bounding sphere
 
         return Vector3(center), bounding_sphere_radius
->>>>>>> Stashed changes
 

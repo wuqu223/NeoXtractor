@@ -2,22 +2,16 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import subprocess
-<<<<<<< Updated upstream
-=======
 import os
 from logger import logger
 
->>>>>>> Stashed changes
 
 class TextureViewer(QWidget):
     def __init__(self, npk_entry, parent=None):
         super().__init__(parent)
         self.npkfile = npk_entry
         self.initUI()
-<<<<<<< Updated upstream
         self.setGeometry(500, 50, 500, 500)
-=======
->>>>>>> Stashed changes
 
     def initUI(self):
         self.setWindowTitle("Texture Preview")
@@ -25,10 +19,7 @@ class TextureViewer(QWidget):
         # QLabel for displaying the texture
         self.label = QLabel(self)
         self.label.setAlignment(Qt.AlignCenter)
-<<<<<<< Updated upstream
         self.label.setFixedSize(800, 800)
-=======
->>>>>>> Stashed changes
 
         # Flip texture checkbox
         self.flip_tex = QCheckBox("Flip Vertically")
@@ -66,21 +57,52 @@ class TextureViewer(QWidget):
         layout.addWidget(self.status_label)
 
         self.setLayout(layout)
+        
+    def convert_to_png(self, flip=False):
+        """Converts a given file to .png format using Tacent View CLI."""
+        input_file = f"output.{self.npkfile.ext}"
+        output_file = "output"
 
-<<<<<<< Updated upstream
+        with open(input_file, "wb") as file:
+            file.write(self.npkfile.data)
+
+        if flip == True:
+            flip_image = "--op flip[v]"
+        elif flip == False:
+            flip_image = ""
+
     def convert_to_png(self):
         """Converts a given file to .png format, handling intermediate .dds conversion if necessary."""
         open(f"output.{self.npkfile.ext}", "wb").write(self.npkfile.data)
         if not self.npkfile.ext.endswith("png"):
             command_to_png = f"./bin/PVRTexToolCLI -i output.{self.npkfile.ext} -d output.png -o output.dds -f r8g8b8a8"
             subprocess.run(command_to_png, shell=True)
+        # Path to Tacent View executable
+        tacentview = r".\bin\tacentview.exe"
 
-    def displayImage(self, scale_factor=0.66):
-        self.convert_to_png()
+        # Define the conversion command for Tacent View CLI
+        command_to_png = f'"{tacentview}" -cw {flip_image} --input "{input_file}" --output "{output_file}" -o png'
+
+        # Run the command using subprocess
+        process = subprocess.run(command_to_png, shell=True, capture_output=True, text=True)
+
+        # Check if the process was successful
+        if process.returncode != 0:
+            error_message = process.stderr.strip()
+            print(f"Error converting texture: {error_message}")
+            QMessageBox.warning(self, "Error", f"Failed to convert texture: {error_message}")
+            self.status_label.setText("Failed to convert texture")
+            return False
+
+        self.status_label.setText("Texture converted successfully")
+        return True
+
+    def displayImage(self, flip_check=False, scale_factor=0.66):
+        flip = flip_check
+        self.convert_to_png(flip)
         
         pixmap = QPixmap("output.png")
         
-=======
     def updateDisplay(self, npk_entry):
         """Update the texture display based on current options."""
         self.npkfile = npk_entry
@@ -152,46 +174,4 @@ class TextureViewer(QWidget):
             return False
 
         pixmap = QPixmap("temp_texture.png")
->>>>>>> Stashed changes
-        if pixmap.isNull():
-            print("Error", "Failed to load image.")
-            logger.warning("Error", "Failed to load image.")
-            self.status_label.setText("Failed to load image")
-            return False
 
-        scaled_pixmap = pixmap.scaled(
-            int(pixmap.width() * scale_factor),
-            int(pixmap.height() * scale_factor),
-            Qt.KeepAspectRatio,
-            Qt.SmoothTransformation,
-        )
-        self.label.setPixmap(scaled_pixmap)
-<<<<<<< Updated upstream
-        
-        # Adjust the label size to fit the scaled pixmap
-        self.label.setFixedSize(scaled_pixmap.size())
-        self.status_label.setText("Texture loaded correctly")
-=======
-        self.label.setFixedSize(scaled_pixmap.size())
-        self.status_label.setText(f"Texture Size: {pixmap.width()}x{pixmap.height()}")
->>>>>>> Stashed changes
-
-        return True
-
-    def extract_file(self):
-        """Save the current texture to a file."""
-        save_path, _ = QFileDialog.getSaveFileName(self, "Save Texture", "texture.png", "Images (*.png)")
-        if not save_path:
-            return
-
-        try:
-            with open("temp_texture.png", "rb") as temp_file, open(save_path, "wb") as output_file:
-                output_file.write(temp_file.read())
-            QMessageBox.information(self, "Success", f"Texture saved to {save_path}")
-            logger.info("Success", f"Texture saved to {save_path}")
-        except Exception as e:
-            print("Error", f"Failed to save texture: {str(e)}")
-            logger.critical("Error", f"Failed to save texture: {str(e)}")
-        finally:
-            if os.path.exists("temp_texture.png"):
-                os.remove("temp_texture.png")
