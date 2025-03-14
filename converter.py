@@ -11,6 +11,8 @@ import pymeshio.pmx.writer
 import transformations as tf
 from bone_name import *
 
+from logger import logger
+
 
 def readuint8(f):
     return int(struct.unpack('B', f.read(1))[0])
@@ -854,140 +856,146 @@ def save_to_gltf(model, filename):
         print(f"Failed to save GLTF: {e}")
 
 
-def parse_mesh_original(path):
-    model = {}
-    with open(path, 'rb') as f:
-        try:
-            _magic_number = f.read(8)
+def parse_mesh_original(model, f):
+    # model = {}
+    # with open(path, 'rb') as f:
+    # with io.BytesIO(path) as f:
+        # try:
+    _magic_number = f.read(8)
 
-            model['bone_exist'] = readuint32(f)
-            model['mesh'] = []
+    model['bone_exist'] = readuint32(f)
+    model['mesh'] = []
 
-            if model['bone_exist']:
-                if model['bone_exist'] > 1:
-                    count = readuint8(f)
-                    f.read(2)
-                    f.read(count * 4)
-                bone_count = readuint16(f)
-                parent_nodes = []
-                for _ in range(bone_count):
-                    parent_node = readuint16(f)
-                    if parent_node == 65535:
-                        parent_node = -1
-                    parent_nodes.append(parent_node)
-                model['bone_parent'] = parent_nodes
+    if model['bone_exist']:
+        if model['bone_exist'] > 1:
+            count = readuint8(f)
+            f.read(2)
+            f.read(count * 4)
+        bone_count = readuint16(f)
+        parent_nodes = []
+        for _ in range(bone_count):
+            parent_node = readuint16(f)
+            if parent_node == 65535:
+                parent_node = -1
+            parent_nodes.append(parent_node)
+        model['bone_parent'] = parent_nodes
 
-                bone_names = []
-                for _ in range(bone_count):
-                    bone_name = f.read(32)
-                    bone_name = bone_name.decode().replace('\0', '').replace(' ', '_')
-                    bone_names.append(bone_name)
-                model['bone_name'] = bone_names
+        bone_names = []
+        for _ in range(bone_count):
+            bone_name = f.read(32)
+            bone_name = bone_name.decode().replace('\0', '').replace(' ', '_')
+            bone_names.append(bone_name)
+        model['bone_name'] = bone_names
 
-                bone_extra_info = readuint8(f)
-                if bone_extra_info:
-                    for _ in range(bone_count):
-                        f.read(28)
+        bone_extra_info = readuint8(f)
+        if bone_extra_info:
+            for _ in range(bone_count):
+                f.read(28)
 
-                model['bone_original_matrix'] = []
-                for i in range(bone_count):
-                    matrix = [readfloat(f) for _ in range(16)]
-                    matrix = np.array(matrix).reshape(4, 4)
-                    model['bone_original_matrix'].append(matrix)
+        model['bone_original_matrix'] = []
+        for i in range(bone_count):
+            matrix = [readfloat(f) for _ in range(16)]
+            matrix = np.array(matrix).reshape(4, 4)
+            model['bone_original_matrix'].append(matrix)
 
-                if len(list(filter(lambda x: x == -1, parent_nodes))) > 1:
-                    num = len(model['bone_parent'])
-                    model['bone_parent'] = list(map(lambda x: num if x == -1 else x, model['bone_parent']))
-                    model['bone_parent'].append(-1)
-                    model['bone_name'].append('dummy_root')
-                    model['bone_original_matrix'].append(np.identity(4))
+        if len(list(filter(lambda x: x == -1, parent_nodes))) > 1:
+            num = len(model['bone_parent'])
+            model['bone_parent'] = list(map(lambda x: num if x == -1 else x, model['bone_parent']))
+            model['bone_parent'].append(-1)
+            model['bone_name'].append('dummy_root')
+            model['bone_original_matrix'].append(np.identity(4))
 
-                _flag = readuint8(f)  # 00
-                assert _flag == 0
+        # _flag = readuint8(f)  # 00
+        # assert _flag == 0
 
-            _offset = readuint32(f)
-            while True:
-                flag = readuint16(f)
-                if flag == 1:
-                    break
-                f.seek(-2, 1)
-                mesh_vertex_count = readuint32(f)
-                mesh_face_count = readuint32(f)
-                _flag = readuint8(f)
-                color_len = readuint8(f)
+        _flag = readuint8(f)  # 00
+        if _flag != 0:
+            print(f"Debug: Read _flag value {_flag} at position {f.tell()}")
+            raise ValueError(f"Unexpected _flag value {_flag} at position {f.tell()}")
 
-                model['mesh'].append((mesh_vertex_count, mesh_face_count, _flag, color_len))
+    _offset = readuint32(f)
+    while True:
+        flag = readuint16(f)
+        if flag == 1:
+            break
+        f.seek(-2, 1)
+        mesh_vertex_count = readuint32(f)
+        mesh_face_count = readuint32(f)
+        _flag = readuint8(f)
+        color_len = readuint8(f)
 
-            vertex_count = readuint32(f)
-            face_count = readuint32(f)
+        model['mesh'].append((mesh_vertex_count, mesh_face_count, _flag, color_len))
 
-            model['position'] = []
-            # vertex position
-            for _ in range(vertex_count):
-                x = readfloat(f)
-                y = readfloat(f)
-                z = readfloat(f)
-                model['position'].append((x, y, z))
+    vertex_count = readuint32(f)
+    face_count = readuint32(f)
 
-            model['normal'] = []
-            # vertex normal
-            for _ in range(vertex_count):
-                x = readfloat(f)
-                y = readfloat(f)
-                z = readfloat(f)
-                model['normal'].append((x, y, z))
+    model['position'] = []
+    # vertex position
+    for _ in range(vertex_count):
+        x = readfloat(f)
+        y = readfloat(f)
+        z = readfloat(f)
+        model['position'].append((x, y, z))
 
-            _flag = readuint16(f)
-            if _flag:
-                f.seek(vertex_count * 12, 1)
+    model['normal'] = []
+    # vertex normal
+    for _ in range(vertex_count):
+        x = readfloat(f)
+        y = readfloat(f)
+        z = readfloat(f)
+        model['normal'].append((x, y, z))
 
-            model['face'] = []
-            # face index table
-            for _ in range(face_count):
-                v1 = readuint16(f)
-                v2 = readuint16(f)
-                v3 = readuint16(f)
-                model['face'].append((v1, v2, v3))
+    _flag = readuint16(f)
+    if _flag:
+        f.seek(vertex_count * 12, 1)
 
-            model['uv'] = []
-            # vertex uv
-            for mesh_vertex_count, _, uv_layers, _ in model['mesh']:
-                if uv_layers > 0:
-                    for _ in range(mesh_vertex_count):
-                        u = readfloat(f)
-                        v = readfloat(f)
-                        model['uv'].append((u, v))
-                    f.read(mesh_vertex_count * 8 * (uv_layers - 1))
-                else:
-                    for _ in range(mesh_vertex_count):
-                        u = 0.0
-                        v = 0.0
-                        model['uv'].append((u, v))
+    model['face'] = []
+    # face index table
+    for _ in range(face_count):
+        v1 = readuint16(f)
+        v2 = readuint16(f)
+        v3 = readuint16(f)
+        model['face'].append((v1, v2, v3))
 
-            # vertex color
-            for mesh_vertex_count, _, _, color_len in model['mesh']:
-                f.read(mesh_vertex_count * 4 * color_len)
+    model['uv'] = []
+    # vertex uv
+    for mesh_vertex_count, _, uv_layers, _ in model['mesh']:
+        if uv_layers > 0:
+            for _ in range(mesh_vertex_count):
+                u = readfloat(f)
+                v = readfloat(f)
+                model['uv'].append((u, v))
+            f.read(mesh_vertex_count * 8 * (uv_layers - 1))
+        else:
+            for _ in range(mesh_vertex_count):
+                u = 0.0
+                v = 0.0
+                model['uv'].append((u, v))
 
-            if model['bone_exist']:
-                model['vertex_joint'] = []
-                for _ in range(vertex_count):
-                    vertex_joints = [readuint16(f) for _ in range(4)]
-                    model['vertex_joint'].append(vertex_joints)
+    # vertex color
+    for mesh_vertex_count, _, _, color_len in model['mesh']:
+        f.read(mesh_vertex_count * 4 * color_len)
 
-                model['vertex_joint_weight'] = []
-                for _ in range(vertex_count):
-                    vertex_joint_weights = [readfloat(f) for _ in range(4)]
-                    model['vertex_joint_weight'].append(vertex_joint_weights)
-        except Exception as e:
-            print(f"General parsing error: {e}")
-            return None
-        return model
+    if model['bone_exist']:
+        model['vertex_joint'] = []
+        for _ in range(vertex_count):
+            vertex_joints = [readuint16(f) for _ in range(4)]
+            model['vertex_joint'].append(vertex_joints)
+
+        model['vertex_joint_weight'] = []
+        for _ in range(vertex_count):
+            vertex_joint_weights = [readfloat(f) for _ in range(4)]
+            model['vertex_joint_weight'].append(vertex_joint_weights)
+    # except Exception as e:
+    #     print(f"General parsing error: {e}")
+    #     return None
+    return model
 
 
 def parse_mesh_helper(path):
     model = {}
     with open(path, 'rb') as f:
-        # with io.BytesIO(path) as f:
+    # with io.BytesIO(path) as f:
         _magic_number = f.read(8)
         model['bone_exist'] = readuint32(f)
         model['mesh'] = []
@@ -1107,6 +1115,7 @@ def parse_mesh_helper(path):
             for _ in range(vertex_count):
                 vertex_joint_weights = [readfloat(f) for _ in range(4)]
                 model['vertex_joint_weight'].append(vertex_joint_weights)
+
     return model
 
 
@@ -1155,7 +1164,9 @@ def parser_mesh_bytes(model, f):
             model['bone_original_matrix'].append(np.identity(4))
 
         _flag = readuint8(f)  # 00
-        assert _flag == 0
+        if _flag != 0:
+            print(f"Debug: Read _flag value {_flag} at position {f.tell()}")
+            raise ValueError(f"Unexpected _flag value {_flag} at position {f.tell()}")
 
     _offset = readuint32(f)
     while True:
@@ -1231,13 +1242,113 @@ def parser_mesh_bytes(model, f):
             vertex_joint_weights = [readfloat(f) for _ in range(4)]
             model['vertex_joint_weight'].append(vertex_joint_weights)
 
+    return model
+
+
+# def parse_mesh_adaptive(path):
+#     model = {}
+#     with io.BytesIO(path) as f:
+#         try:
+#             parser_mesh_bytes(model, f)
+#         except Exception as e:
+#             return None
+        
+#     return model
+
 
 def parse_mesh_adaptive(path):
+    """
+    Tries to parse a mesh file using multiple methods and returns the model if successful.
+    Logs errors for debugging purposes.
+    """
     model = {}
-    with io.BytesIO(path) as f:
-        try:
-            parser_mesh_bytes(model, f)
-        except Exception as e:
-            return None
-        
-    return model
+
+    try:
+        # Open the file in binary mode and read its content
+        # with open(path, 'rb') as file:
+        #     file_content = file.read()
+
+        # Create a file-like object for parsing
+        with io.BytesIO(path) as f:
+            # Attempt parsing using the original method
+            try:
+                logger.debug("Attempting parse_mesh_original...")
+                print("Attempting the adaptive parse_mesh_original...")
+                parse_mesh_original(model, f)
+                logger.info("Successfully parsed using parse_mesh_original.")
+                return model
+            except Exception as e:
+                logger.warning(f"parse_mesh_original failed: {e}")
+
+            # Reset the file-like object for the next attempt
+            f.seek(0)
+            try:
+                logger.debug("Attempting parse_mesh_helper...")
+                print("Attempting the adaptive parse_mesh_helper...")
+                parse_mesh_helper(path)
+                logger.info("Successfully parsed using parse_mesh_helper.")
+                return model
+            except Exception as e:
+                logger.warning(f"parse_mesh_helper failed: {e}")
+
+            # Reset the file-like object for the final attempt
+            f.seek(0)
+            try:
+                logger.debug("Attempting parser_mesh_bytes...")
+                print("Attempting the adaptive parse_mesh_bytes...")
+                parser_mesh_bytes(model, f)
+                logger.info("Successfully parsed using parser_mesh_bytes.")
+                return model
+            except Exception as e:
+                logger.warning(f"parser_mesh_bytes failed: {e}")
+
+    except Exception as e:
+        logger.error(f"Error reading or parsing the file: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+
+    try:
+        # Open the file in binary mode and read its content
+        with open(path, 'rb') as f:
+            file_content = f.read()
+
+        # Create a file-like object for parsing
+        with io.BytesIO(file_content) as f:
+            # Attempt parsing using the original method
+            try:
+                logger.debug("Attempting parse_mesh_original...")
+                print("Attempting the adaptive parse_mesh_original...")
+                parse_mesh_original(model, f)
+                logger.info("Successfully parsed using parse_mesh_original.")
+                return model
+            except Exception as e:
+                logger.warning(f"parse_mesh_original failed: {e}")
+
+            # Reset the file-like object for the next attempt
+            f.seek(0)
+            try:
+                logger.debug("Attempting parse_mesh_helper...")
+                parse_mesh_helper(path)
+                logger.info("Successfully parsed using parse_mesh_helper.")
+                return model
+            except Exception as e:
+                logger.warning(f"parse_mesh_helper failed: {e}")
+
+            # Reset the file-like object for the final attempt
+            f.seek(0)
+            try:
+                logger.debug("Attempting parser_mesh_bytes...")
+                parser_mesh_bytes(model, f)
+                logger.info("Successfully parsed using parser_mesh_bytes.")
+                return model
+            except Exception as e:
+                logger.warning(f"parser_mesh_bytes failed: {e}")
+
+    except Exception as e:
+        logger.error(f"Error reading or parsing the file: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+
+    # If all methods fail, return None
+    logger.error("All parsing methods failed.")
+    return None

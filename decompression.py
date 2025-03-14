@@ -15,13 +15,15 @@ def decompression_algorithm(zflag=0):
     raise Exception("ERROR IN DECOMPRESSON ALGORITHM")
 
 def init_rotor():
-    asdf_dn = 'j2h56ogodh3se'
-    asdf_dt = '=dziaq.'
-    asdf_df = '|os=5v7!"-234'
-    asdf_tm = asdf_dn * 4 + (asdf_dt + asdf_dn + asdf_df) * 5 + '!' + '#' + asdf_dt * 7 + asdf_df * 2 + '*' + '&' + "'"
+    asdf_dn = 'YkcuvaVgf0i#h'
+             #'j2h56ogodh3se' 
+    asdf_dt = 'g5/tqoU'
+             #'=dziaq.'
+    asdf_df = '%Hu"pvd,x36Pb'
+             #'|os=5v7!"-234'                                    !     #                                 *     &
+    asdf_tm = asdf_dn * 4 + (asdf_dt + asdf_dn + asdf_df) * 5 + '&' + '$' + asdf_dt * 7 + asdf_df * 2 + '@' + '*' + "'"
     import rotor
     rot = rotor.newrotor(asdf_tm)
-    print("here")
     return rot
 
 def _reverse_string(s):
@@ -31,16 +33,37 @@ def _reverse_string(s):
     return bytes(l)
 
 def nxs_unpack(data):
+    useless = """
+    public_key_pem = '-----BEGIN RSA PUBLIC KEY-----\nMEgCQQCQaKEFJ3g1WM6WL0WHlosmgHZULxMyo2CbGHqHJQ/EWv3GJ1W2MfF9N9U2\n/hOs9k5ANj5DEQte7d3jPHuKvQ8xAgMBAAE=\n-----END RSA PUBLIC KEY-----'
+    public_key = None
+    import struct
+    import hashlib
+    import rsa
+    import base64
+    
+    public_key = rsa.PublicKey.load_pkcs1(public_key_pem)
+    
+    md5_signature = base64.decodebytes(data[20:])
+    valid_data = data[20:]
+    
+    myhash = hashlib.md5()
+    myhash.update(valid_data)
+    data_md5 = myhash.hexdigest()
+    rsa.verify(data_md5.encode(), md5_signature, public_key)"""
+    
+    input_key = ctypes.create_string_buffer(b"-----BEGIN RSA PUBLIC KEY-----\nMIGJAoGBAOZAaZe2qB7dpT9Y8WfZIdDv+ooS1HsFEDW2hFnnvcuFJ4vIuPgKhISm\npY4/jT3aipwPNVTjM6yHbzOLhrnGJh7Ec3CQG/FZu6VKoCqVEtCeh15hjcu6QYtn\nYWIEf8qgkylqsOQ3IIn76udV6m0AWC2jDlmLeRcR04w9NNw7+9t9AgMBAAE=\n-----END RSA PUBLIC KEY-----\n")
     wrapped_key = ctypes.create_string_buffer(4)
     data_in = ctypes.create_string_buffer(data[20:])
 
+    
+
     if os.name == "posix":
         liblinux = ctypes.CDLL("./dll/libpubdecrypt.so")
-        returning = liblinux.public_decrypt(data_in, wrapped_key)
+        returning = liblinux.public_decrypt(data_in, input_key, wrapped_key)
     elif os.name == "nt":
         libwindows = ctypes.CDLL("./dll/libpubdecrypt.dll")
-        returning = libwindows.public_decrypt(data_in, wrapped_key)
-
+        returning = libwindows.public_decrypt(data_in, input_key, wrapped_key)
+        
     ephemeral_key = int.from_bytes(wrapped_key.raw, "little")
 
     decrypted = []
@@ -62,7 +85,14 @@ def zflag_decompress(npkentry):
         case 2:
             npkentry.data = lz4.block.decompress(npkentry.data,uncompressed_size=npkentry.file_original_length)
         case 3:
-            npkentry.data = zstandard.ZstdDecompressor().decompress(npkentry.data)
+            import struct
+            x = struct.pack("Q", npkentry.file_sign)
+            if len(x) >= 8:
+                pass
+            else:            
+                npkentry.data = zstandard.ZstdDecompressor().decompress(npkentry.data)
+        case 5:
+            npkentry.data = lz4.block.decompress(npkentry.data,uncompressed_size=npkentry.file_original_length)
 
 def special_decompress(npkentry):
     match npkentry.special_decompress:

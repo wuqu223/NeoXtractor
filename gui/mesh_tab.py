@@ -7,6 +7,7 @@ from utils.console_handler import *
 from utils.util import *
 from converter import *
 
+from logger import logger
 
 class FileSelector:
     @staticmethod
@@ -46,7 +47,9 @@ def create_mesh_viewer_tab(self):
     def on_mesh_item_clicked(item):
         """Handle single-click event for mesh items."""
         file_path = item.data(Qt.UserRole)
-        print(f"Item clicked: {file_path}")
+        on_mesh_item_double_clicked(item)
+        logger.debug(f"Item clicked: {file_path}")
+
 
     def on_mesh_item_double_clicked(item):
         """Handle double-click event to load mesh into the viewer."""
@@ -55,8 +58,36 @@ def create_mesh_viewer_tab(self):
             try:
                 load_mesh(tab1, file_path)
                 print(f"Mesh loaded: {file_path}")
+                logger.debug(f"Mesh loaded: {file_path}")
             except Exception as e:
-                QMessageBox.critical(tab1, "Error", f"Failed to load mesh file: {str(e)}")
+                logger.critical(tab1, "Error", f"Failed to load mesh file: {str(e)}")
+
+
+    # Zoom slider
+    tab1.zoom_speed_label = QLabel("Cam Speed:")
+    tab1.zoom_speed_slider = QSlider(Qt.Horizontal)
+    tab1.zoom_speed_slider.setMinimum(1)
+    tab1.zoom_speed_slider.setMaximum(200)
+    tab1.zoom_speed_slider.setValue(100)
+    tab1.zoom_speed_slider.setFixedWidth(400)
+    tab1.zoom_speed_slider.valueChanged.connect(update_zoom_speed)
+
+    tab1.zoom_speed_label.setFixedHeight(15)
+    tab1.zoom_speed_slider.setRange(1, 100)  # Convert from 0.01 to 1.0
+    tab1.zoom_speed_slider.setValue(20)  # Set default zoom speed to 0.2
+    full_layout.addWidget(right_widget)
+    full_layout.addWidget(left_widget)
+    tab1_layout.addWidget(full_widget)
+    tab1_layout.addWidget(tab1.zoom_speed_label)
+    tab1_layout.addWidget(tab1.zoom_speed_slider)
+    _main.setLayout(tab1_layout)
+    tab1.setCentralWidget(_main)
+    #tab1.setGeometry(50,50,1000,800)
+
+    create_view_menu(tab1)
+    create_save_menu(tab1)
+
+    return tab1
 
     tab1.on_mesh_item_clicked = on_mesh_item_clicked
     tab1.on_mesh_item_double_clicked = on_mesh_item_double_clicked
@@ -76,6 +107,7 @@ def create_mesh_viewer_tab(self):
 
     # Viewport Navigation Label
     navigation_label = QLabel(
+        "Fly mode:  W: Forward  |  A: Left  |  S: Backward  |  D: Right  |  Shift+Key: Sprint  |  Ctrl+'1,3,7': Flip View  |  'F' Key: Focus Object"
         "Key 7: Top View  |  Key 3: Right View  |  Key 1: Front View  |  Ctrl+Key: Flip View  |  "
         "Middle: Dolly  |  Left: Pan  |  Right: Orbit  |  'F' Key: Focus on Object"
     )
@@ -83,6 +115,18 @@ def create_mesh_viewer_tab(self):
     right_side.addWidget(navigation_label)
 
     # Flip UV Checkbox
+    tab1.flip_uv_checkbox = QCheckBox('Flip UVs on Save (V-axis)')
+    tab1.flip_uv_checkbox.setChecked(False)
+    right_side.addWidget(tab1.flip_uv_checkbox)
+
+    # Default value if the scene isn't initialized yet
+    default_zoom_speed = 1.0  # Default value if scene is None
+
+    if tab1.viewer and tab1.viewer.scene and tab1.viewer.scene.camera:
+        default_zoom_speed = tab1.viewer.scene.camera.zoom_speed
+
+    # Zoom Speed Slider
+    zoom_speed_label = QLabel(f"Camera Zoom Speed Control: {default_zoom_speed:.2f}")
     tab1.flip_uv_checkbox = QCheckBox('Flip UVs V-axis on Save')
     tab1.flip_uv_checkbox.setChecked(False)
     right_side.addWidget(tab1.flip_uv_checkbox)
@@ -100,6 +144,14 @@ def create_mesh_viewer_tab(self):
     zoom_speed_slider.valueChanged.connect(lambda value: tab1.viewer.set_zoom_speed(value))
     right_side.addWidget(zoom_speed_slider)
 
+    def update_zoom_label(value):
+        """Update the zoom speed label dynamically."""
+        zoom_speed = value / 10.0  # Normalize zoom speed
+        if tab1.viewer and tab1.viewer.scene and tab1.viewer.scene.camera:
+            tab1.viewer.scene.camera.set_zoom_speed(zoom_speed)  # Ensure camera is initialized
+        zoom_speed_label.setText(f"Camera Zoom Speed Control: {zoom_speed:.2f}")
+    zoom_speed_slider.valueChanged.connect(update_zoom_label)
+
     # Add Right Side to Main Layout
     main_layout.addLayout(right_side)
 
@@ -116,42 +168,6 @@ def create_mesh_viewer_tab(self):
     setattr(tab1, "load_mesh", lambda file_path: load_mesh(tab1, file_path))
 
     return tab1
-
-# class MeshListWidget(QListWidget):
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         self.setAcceptDrops(True)
-
-#     def dragEnterEvent(self, event):
-#         if event.mimeData().hasUrls():
-#             event.accept()
-#         else:
-#             event.ignore()
-
-#     def dropEvent(self, event):
-#         for url in event.mimeData().urls():
-#             path = url.toLocalFile()
-#             if os.path.isdir(path):
-#                 self.add_mesh_files_from_folder(path)
-#             elif os.path.isfile(path) and path.lower().endswith('.mesh'):
-#                 self.add_mesh_to_list(path)
-
-#     def add_mesh_files_from_folder(self, folder_path):
-#         """Filter .mesh files in a folder and add them to the list."""
-#         mesh_files = [
-#             os.path.join(root, file)
-#             for root, _, files in os.walk(folder_path)
-#             for file in files if file.lower().endswith('.mesh')
-#         ]
-#         for mesh_file in mesh_files:
-#             self.add_mesh_to_list(mesh_file)
-
-#     def add_mesh_to_list(self, mesh_file):
-#         """Add a single .mesh file to the list."""
-#         item = QListWidgetItem(os.path.basename(mesh_file))
-#         item.setData(Qt.UserRole, mesh_file)
-#         self.addItem(item)
-
 
 def on_closing_mesh_view(event):
     dialogbox = QDialog()
@@ -220,9 +236,48 @@ def create_view_menu(tab1):
     show_norm_action.triggered.connect(lambda checked: tab1.viewer.toggle_normals_visibility(checked))
     view_menu.addAction(show_norm_action)
 
+    # Create the checkable action for "Show Normals"
+    show_norm_action = QAction("Enable Face Culling", tab1)
+    show_norm_action.setShortcut('Alt+C')
+    show_norm_action.setCheckable(True)
+    show_norm_action.setChecked(False)
+    show_norm_action.triggered.connect(lambda checked: tab1.viewer.toggle_culling_mode(checked))
+    view_menu.addAction(show_norm_action)
 
 def create_save_menu(tab1):
     save_menu = tab1.menuBar().addMenu("Save")
+    
+    # Create the checkable action for "Show Bones"
+    store_obj_action = QAction("Save as OBJ", tab1)
+    store_obj_action.setShortcut('Alt+O')
+    store_obj_action.setCheckable(False)
+    store_obj_action.triggered.connect(lambda checked = tab1.flip_uv_checkbox.isChecked(): tab1.viewer.save_mesh_obj(checked))
+    save_menu.addAction(store_obj_action)
+    
+    store_obj_action = QAction("Save as SMD", tab1)
+    store_obj_action.setShortcut('Alt+O')
+    store_obj_action.setCheckable(False)
+    store_obj_action.triggered.connect(lambda checked = tab1.flip_uv_checkbox.isChecked(): tab1.viewer.save_mesh_smd(checked))
+    save_menu.addAction(store_obj_action)
+    
+    store_obj_action = QAction("Save as ASCII", tab1)
+    store_obj_action.setShortcut('Alt+O')
+    store_obj_action.setCheckable(False)
+    store_obj_action.triggered.connect(lambda checked = tab1.flip_uv_checkbox.isChecked(): tab1.viewer.save_mesh_ascii(checked))
+    save_menu.addAction(store_obj_action)
+    
+    store_obj_action = QAction("Save as PMX", tab1)
+    store_obj_action.setShortcut('Alt+O')
+    store_obj_action.setCheckable(False)
+    store_obj_action.triggered.connect(tab1.viewer.save_mesh_pmx)
+    save_menu.addAction(store_obj_action)
+    
+    store_obj_action = QAction("Save as IQE", tab1)
+    store_obj_action.setShortcut('Alt+O')
+    store_obj_action.setCheckable(False)
+    store_obj_action.triggered.connect(tab1.viewer.save_mesh_iqe)
+    save_menu.addAction(store_obj_action)
+    
 
     save_actions = [
         ("FBX - Coming Soon", "Ctrl+Shift+F",
@@ -260,6 +315,34 @@ def create_open_menu(tab1):
 
 def openFile(tab1):
     file_name = FileSelector.select_file()
+    if not file_name:
+        return
+    
+    tab1.viewer.filename = os.path.realpath(os.path.basename(file_name)) # Filename for open mesh
+    tab1.viewer.mesh_version = os.path.realpath(file_name)
+
+    try:
+        # Try to read the file as a string
+        with open(file_name, 'r', encoding='utf-8') as f:
+            file_content = f.read()
+        print("File successfully read as string.")
+        logger.debug("File successfully read as string within the Mesh Window List View.")
+    except Exception as e:
+        print(f"Failed to read as string: {e}")
+        logger.debug(f"Failed to read as string: {e}")
+        try:
+            # If reading as a string fails, try reading as bytes
+            with open(file_name, 'rb') as f:
+                file_content = f.read()
+            print("File successfully read as bytes.")
+            logger.debug("File successfully read as bytes within the Mesh Window List View.")
+        except Exception as e:
+            print(f"Failed to read as bytes: {e}")
+            logger.debug(f"Failed to read as bytes: {e}")
+            return
+
+    # Pass the file content to the mesh loader function
+    load_mesh(tab1, file_content)
     if file_name:
         load_mesh(tab1, file_name)
 
@@ -289,6 +372,7 @@ def openFolder(tab1):
         tab1.mesh_list_widget.addItem(item)
 
     QMessageBox.information(tab1, "Success", f"Loaded {len(mesh_files)} .mesh files.")
+    logger.info(tab1, "Success", f"Loaded {len(mesh_files)} .mesh files.")
 
 
 def load_mesh(tab1, file_path):
@@ -297,21 +381,31 @@ def load_mesh(tab1, file_path):
         mesh = mesh_from_path(file_path)
         if mesh:
             tab1.viewer.load_mesh(mesh, file_path)
+            tab1.viewer.filename = os.path.basename(file_path) # Filename to mesh viewer
+            tab1.viewer.filepath = os.path.abspath(file_path) # Filepath to mesh viewer
+
             return
 
         # If fails, read the file as binary
-        with open(file_path, "rb") as file:
-            mesh_data = file.read()
+        # with io.BytesIO(file_path) as file:
+        #     mesh_data = file.read()
+
+        # with open(file_path, "rb") as file:
+        #     mesh_data = file.read()
 
         # Attempt to parse different type of mesh from binary data
-        mesh = mesh_from_path(mesh_data)
-        if mesh:
-            tab1.viewer.load_mesh(mesh, file_path)
-            return
+        # mesh = mesh_from_path(mesh_data)
+        # if mesh:
+        #     tab1.viewer.load_mesh(mesh, file_path)
+        #     return
 
         # If neither type could be loaded, show an error
         print(tab1, "Error", "Failed to parse the mesh file. Unsupported format.")
+        logger.warning("Failed to parse the mesh file. Unsupported format.")
     except FileNotFoundError:
         print(tab1, "File Not Found", "The selected file could not be found.")
+        logger.debug("File Not Found", "The selected file could not be found.")
     except Exception as e:
-        QMessageBox.critical(tab1, "Error", f"Failed to load mesh file: {e}\nFile Path: {file_path}")
+        print(tab1, "Error", f"Failed to load mesh file: {e} \n File Path: {file_path}")
+        logger.critical("Error", f"Failed to load mesh file: {e} \n File Path: {file_path}")
+

@@ -12,10 +12,22 @@ class PlainTextViewer(QWidget):
         
         # Set font for the text area
         font = QFont()
-        font.setFamily("../fonts/Roboto-Regular.ttf")  # Ensure font exists in your system or set the path correctly
         font.setPointSize(12)
         self.text_area.setFont(font)
-        self.text_area.setText(npkdata.decode("utf-8"))
+
+        font_path = "../fonts/Roboto-Regular.ttf"
+        if QFile.exists(font_path):
+            QFontDatabase.addApplicationFont(font_path)
+            font.setFamily("Roboto")
+        else:
+            font.setFamily("Arial")  # Fallback font
+
+        try:
+            decoded_text = npkdata.decode("utf-8")
+        except UnicodeDecodeError:
+            decoded_text = "Error: Unable to decode the data as UTF-8."
+
+        self.text_area.setText(decoded_text)
         
         # Layout for the text area
         layout = QHBoxLayout(self)
