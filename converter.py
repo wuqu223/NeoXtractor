@@ -929,6 +929,10 @@ def parse_mesh_original(model, f):
     vertex_count = readuint32(f)
     face_count = readuint32(f)
 
+    print(f"Mesh offset: {_offset}")
+    print(f"Vertex count: {vertex_count}")
+    print(f"face count: {face_count}")
+
     model['position'] = []
     # vertex position
     for _ in range(vertex_count):
@@ -994,14 +998,14 @@ def parse_mesh_original(model, f):
 
 def parse_mesh_helper(path):
     model = {}
-    with open(path, 'rb') as f:
-    # with io.BytesIO(path) as f:
+    # with open(path, 'rb') as f:
+    with io.BytesIO(path) as f:
         _magic_number = f.read(8)
         model['bone_exist'] = readuint32(f)
         model['mesh'] = []
 
         if model['bone_exist']:
-            if model['bone_exist'] > 1:
+            if model['bone_exist'] == 1 or model['bone_exist'] == 4:
                 count = readuint8(f)
                 f.read(2)
                 f.read(count * 4)
@@ -1245,17 +1249,6 @@ def parser_mesh_bytes(model, f):
     return model
 
 
-# def parse_mesh_adaptive(path):
-#     model = {}
-#     with io.BytesIO(path) as f:
-#         try:
-#             parser_mesh_bytes(model, f)
-#         except Exception as e:
-#             return None
-        
-#     return model
-
-
 def parse_mesh_adaptive(path):
     """
     Tries to parse a mesh file using multiple methods and returns the model if successful.
@@ -1270,37 +1263,49 @@ def parse_mesh_adaptive(path):
 
         # Create a file-like object for parsing
         with io.BytesIO(path) as f:
+            parse_mesh_dynamic
             # Attempt parsing using the original method
             try:
-                logger.debug("Attempting parse_mesh_original...")
-                print("Attempting the adaptive parse_mesh_original...")
+                logger.debug("Attempting adaptive original...")
+                print("Attempting the adaptive original (bytes)")
                 parse_mesh_original(model, f)
-                logger.info("Successfully parsed using parse_mesh_original.")
+                logger.info("Successfully parsed using the adaptive original parser (bytes).")
                 return model
             except Exception as e:
-                logger.warning(f"parse_mesh_original failed: {e}")
+                logger.warning(f"Adaptive Original parser (bytes) failed: {e}")
 
             # Reset the file-like object for the next attempt
             f.seek(0)
             try:
-                logger.debug("Attempting parse_mesh_helper...")
-                print("Attempting the adaptive parse_mesh_helper...")
+                logger.debug("Attempting adaptive helper (bytes)...")
+                print("Attempting the adaptive helper (bytes)...")
                 parse_mesh_helper(path)
-                logger.info("Successfully parsed using parse_mesh_helper.")
+                logger.info("Successfully parsed using the adaptive helper parser (bytes).")
                 return model
             except Exception as e:
-                logger.warning(f"parse_mesh_helper failed: {e}")
+                logger.warning(f"Adaptive helper parser (bytes) failed: {e}")
 
+            # Reset the file-like object for the next attempt
+            f.seek(0)
+            try:
+                logger.debug("Attempting to parser data with bytes-parser (bytes)...")
+                print("Attempting the adaptive bytes-parser (bytes)...")
+                parser_mesh_bytes(model, f)
+                logger.info("Successfully parsed using bytes-parser (bytes).")
+                return model
+            except Exception as e:
+                logger.warning(f"Adaptive bytes-parser (bytes) failed: {e}")
+            
             # Reset the file-like object for the final attempt
             f.seek(0)
             try:
-                logger.debug("Attempting parser_mesh_bytes...")
-                print("Attempting the adaptive parse_mesh_bytes...")
-                parser_mesh_bytes(model, f)
-                logger.info("Successfully parsed using parser_mesh_bytes.")
+                logger.debug("Attempting dynamic parser (bytes)...")
+                print("Attempting  dynamic parser (bytes)...")
+                parse_mesh_dynamic(model, f)
+                logger.info("Successfully parsed using dynamic parser (bytes).")
                 return model
             except Exception as e:
-                logger.warning(f"parser_mesh_bytes failed: {e}")
+                logger.warning(f"dynamic parser (bytes) failed: {e}")
 
     except Exception as e:
         logger.error(f"Error reading or parsing the file: {e}")
@@ -1310,39 +1315,50 @@ def parse_mesh_adaptive(path):
     try:
         # Open the file in binary mode and read its content
         with open(path, 'rb') as f:
-            file_content = f.read()
+            # file_content = f.read()
 
         # Create a file-like object for parsing
-        with io.BytesIO(file_content) as f:
+        # with io.BytesIO(file_content) as f:
             # Attempt parsing using the original method
             try:
-                logger.debug("Attempting parse_mesh_original...")
-                print("Attempting the adaptive parse_mesh_original...")
+                logger.debug("Attempting original parser (path)...")
+                print("Attempting the original parser (path)")
                 parse_mesh_original(model, f)
-                logger.info("Successfully parsed using parse_mesh_original.")
+                logger.info("Successfully parsed using original parser (path).")
                 return model
             except Exception as e:
-                logger.warning(f"parse_mesh_original failed: {e}")
+                logger.warning(f"original parser (path) failed: {e}")
 
             # Reset the file-like object for the next attempt
             f.seek(0)
             try:
-                logger.debug("Attempting parse_mesh_helper...")
+                logger.debug("Attempting helper parser (path)...")
                 parse_mesh_helper(path)
-                logger.info("Successfully parsed using parse_mesh_helper.")
+                logger.info("Successfully parsed using helper parser (path).")
                 return model
             except Exception as e:
-                logger.warning(f"parse_mesh_helper failed: {e}")
+                logger.warning(f"helper parser (path) failed: {e}")
+
+            # Reset the file-like object for the next attempt
+            f.seek(0)
+            try:
+                logger.debug("Attempting bytes parser (path)...")
+                parser_mesh_bytes(model, f)
+                logger.info("Successfully parsed using bytes parser (path).")
+                return model
+            except Exception as e:
+                logger.warning(f"bytes parser (path) failed: {e}")
 
             # Reset the file-like object for the final attempt
             f.seek(0)
             try:
-                logger.debug("Attempting parser_mesh_bytes...")
-                parser_mesh_bytes(model, f)
-                logger.info("Successfully parsed using parser_mesh_bytes.")
+                logger.debug("Attempting dynamic parser (path)...")
+                print("Attempting  dynamic parser (path)...")
+                parse_mesh_dynamic(model, f)
+                logger.info("Successfully parsed using dynamic parser (path).")
                 return model
             except Exception as e:
-                logger.warning(f"parser_mesh_bytes failed: {e}")
+                logger.warning(f"dynamic parser (path) failed: {e}")
 
     except Exception as e:
         logger.error(f"Error reading or parsing the file: {e}")
@@ -1352,3 +1368,89 @@ def parse_mesh_adaptive(path):
     # If all methods fail, return None
     logger.error("All parsing methods failed.")
     return None
+
+
+# Testing new parsers for v4 mesh
+#-------------------------------------
+def read_uint32(f):
+    return struct.unpack("<I", f.read(4))[0]
+
+def read_uint16(f):
+    return struct.unpack("<H", f.read(2))[0]
+
+def read_uint8(f):
+    return struct.unpack("<B", f.read(1))[0]
+
+def read_float(f):
+    return struct.unpack("<f", f.read(4))[0]
+
+def find_valid_mesh_offset(f):
+    """ Scans for a valid mesh offset based on expected patterns. """
+    file_size = f.seek(0, 2)  # Get file size
+    f.seek(0)  # Reset position
+    for offset in range(0, file_size - 8):  # Avoid EOF errors
+        f.seek(offset)
+        vertex_count = read_uint32(f)
+        face_count = read_uint32(f)
+        if 10 < vertex_count < 1000000 and 10 < face_count < 1000000:
+            return offset  # Found a valid offset
+    return None  # No valid offset found
+
+def parse_mesh_dynamic(model, f):
+    """ Parses a .mesh file, dynamically finding the correct mesh offset. """
+    _magic_number = f.read(8)
+    model['bone_exist'] = read_uint32(f)
+    model['mesh'] = []
+
+    if model['bone_exist']:
+        if model['bone_exist'] > 1:
+            count = read_uint8(f)
+            f.read(2)
+            f.read(count * 4)
+        bone_count = read_uint16(f)
+        model['bone_parent'] = [read_uint16(f) for _ in range(bone_count)]
+        model['bone_name'] = [f.read(32).decode(errors="ignore").strip("\0").replace(" ", "_") for _ in range(bone_count)]
+        bone_extra_info = read_uint8(f)
+        if bone_extra_info:
+            f.read(bone_count * 28)
+        model['bone_original_matrix'] = [np.array([read_float(f) for _ in range(16)]).reshape(4, 4) for _ in range(bone_count)]
+
+    # Find correct mesh offset
+    mesh_offset = find_valid_mesh_offset(f)
+    if mesh_offset is None:
+        raise ValueError("Could not locate valid mesh offset!")
+    f.seek(mesh_offset)
+
+    vertex_count = read_uint32(f)
+    face_count = read_uint32(f)
+    print(f"Detected Mesh Offset: {mesh_offset}")
+    print(f"Vertex Count: {vertex_count}")
+    print(f"Face Count: {face_count}")
+
+    model['position'] = [(read_float(f), read_float(f), read_float(f)) for _ in range(vertex_count)]
+    model['normal'] = [(read_float(f), read_float(f), read_float(f)) for _ in range(vertex_count)]
+
+    _flag = read_uint16(f)
+    if _flag:
+        f.seek(vertex_count * 12, 1)
+
+    model['face'] = [(read_uint16(f), read_uint16(f), read_uint16(f)) for _ in range(face_count)]
+
+    model['uv'] = []
+    for mesh_vertex_count, _, uv_layers, _ in model['mesh']:
+        if uv_layers > 0:
+            for _ in range(mesh_vertex_count):
+                model['uv'].append((read_float(f), read_float(f)))
+            f.read(mesh_vertex_count * 8 * (uv_layers - 1))
+        else:
+            model['uv'].extend([(0.0, 0.0)] * mesh_vertex_count)
+
+    for mesh_vertex_count, _, _, color_len in model['mesh']:
+        f.read(mesh_vertex_count * 4 * color_len)
+
+    if model['bone_exist']:
+        model['vertex_joint'] = [[read_uint16(f) for _ in range(4)] for _ in range(vertex_count)]
+        model['vertex_joint_weight'] = [[read_float(f) for _ in range(4)] for _ in range(vertex_count)]
+    
+    return model
+

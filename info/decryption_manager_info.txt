@@ -2,7 +2,7 @@ ATTENTION!
 Specifying the key is only necessary if FILEFLAG is 1
 
 REQUIRED KEYS:
-- Onmyoji / Onmyji RPG
+- Onmyoji / Onmyoji RPG
  - KEY: 150
 
 - Other keys that may work

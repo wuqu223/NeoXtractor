@@ -8,7 +8,7 @@ class AboutPopup(QDialog):
     def __init__(self, message, parent=None):
         super().__init__(parent)
         self.setWindowTitle("About")
-        self.setGeometry(800, 400, 300, 200)
+        self.setGeometry(800, 400, 500, 200)
 
         # Layout and Widgets
         layout = QVBoxLayout()
@@ -19,7 +19,7 @@ class AboutPopup(QDialog):
 
         # Close Button
         close_button = QPushButton("OK")
-        close_button.setFixedSize(100, 30)
+        close_button.setFixedSize(100, 40)
         close_button.clicked.connect(self.accept)  # Use accept to close and return from dialog
         layout.addWidget(close_button, alignment=Qt.AlignCenter)  # Align the button to the centre
 

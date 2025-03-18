@@ -1,6 +1,10 @@
 {
     "work_folder": "out",
-    "output_folder": "New folder",
+    "output_folder": "C:/Users/julli/Downloads/NeoXtractor Testing/Out",
     "project_folder": "",
-    "decryption_key": 150
+    "game_config": "_GENERIC_",
+    "npk_type": 0,
+    "decryption_key": 0,
+    "aes_key": 0,
+    "index_size": 0
 }

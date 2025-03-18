@@ -1,6 +1,8 @@
 import os
 import json
 from threading import Lock
+from logger import logger
+
 
 class ConfigManager:
     def __init__(self, config_file='config.json'):
@@ -10,41 +12,51 @@ class ConfigManager:
         self.load_config()
 
     def load_config(self):
-        """Load configuration from a JSON file."""
         with self.lock:
             if os.path.exists(self.config_file):
                 try:
                     with open(self.config_file, 'r') as file:
                         self.config_data = json.load(file)
+                    logger.info(f"Config loaded from {self.config_file}")
                 except (json.JSONDecodeError, IOError) as e:
-                    print(f"Error reading config file: {e}")
+                    logger.error(f"Error reading config file: {e}")
                     self.config_data = self.default_config()
-            else:
-                self.config_data = self.default_config()
 
     def save_config(self):
         """Save configuration to a JSON file."""
-        if(os.path.dirname(self.config_file)):
-            os.makedirs(os.path.dirname(self.config_file), exist_ok=True)  # Ensure directory exists
+        config_dir = os.path.dirname(self.config_file)
+        if config_dir:
+            os.makedirs(config_dir, exist_ok=True)  # Ensure directory exists
+
         with self.lock:
             try:
                 with open(self.config_file, 'w') as file:
                     json.dump(self.config_data, file, indent=4)
             except IOError as e:
                 print(f"Error writing to config file: {e}")
+                logger.error(f"Error writing to config file: {e}")
 
     def get(self, key, default=None):
-        """Get a configuration value."""
+        """Retrieve a value, supporting nested keys using dot notation."""
         with self.lock:
-            return self.config_data.get(key, default)
+            keys = key.split(".")
+            value = self.config_data
+            for k in keys:
+                if isinstance(value, dict):
+                    value = value.get(k, default)
+                else:
+                    return default
+            return value
 
     def set(self, key, value):
         """Set a configuration value and save it."""
-        print(key)
-        if key == "decryption_key":
+        int_keys = {"decryption_key", "npk_type", "aes_key", "index_size"}
+
+        if key in int_keys:
             if not isinstance(value, int):
-                raise ValueError("The decryption_key must be an integer.")
-            value = int(value) # Ensure it is stored as int
+                raise ValueError(f"The '{key}' must be an integer.")
+            value = int(value)  # Ensure stored as int
+        
         self.config_data[key] = value
         self.save_config()
 
