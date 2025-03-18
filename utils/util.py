@@ -72,64 +72,16 @@ def res_from_path(path):
     return data_from_path('res/' + path)
 
 def mesh_from_path(path):
+    mesh = None
+
     try:
-            print(f"Parsing mesh using original parser")
-            mesh = parse_mesh_original(path)
+            mesh = parse_mesh_adaptive(path)  # Atempting first parser
             if mesh is None or 'position' not in mesh:
-                raise ValueError("parse_mesh_original returned None or missing required data.")
-    except Exception as e:
-        print(f"original parser failed: {e}. Attempting to use helper instead.")
-        try:
-            mesh = parse_mesh_helper(path) # Atempting second parser
-            if mesh is None or 'position' not in mesh:
-                raise ValueError("helper returned None or missing required data.")
-        except Exception as e2:
-            print(f"helper parser also failed: {e2}. Attempting to use adaptive instead.")
-            try:
-                mesh = parse_mesh_adaptive(path)  # Atempting third parser
-                if mesh is None or 'position' not in mesh:
-                    raise ValueError("adaptive returned None or missing required data.")
-            except Exception as e3:
-                print(f"adaptive parser also failed: {e3}")
-                raise ValueError("Failed to parse the mesh file with available parsers: original, helper, and adaptive.")
-
-    # Proceed if we have a valid mesh
-    parsers = [
-        # ("original parser", parse_mesh_original),
-        ("helper parser", parse_mesh_helper),
-        ("adaptive parser", parse_mesh_adaptive)
-    ]
-
-    mesh = None
-
-    for parser_name, parser_function in parsers:
-        try:
-            print(f"Parsing mesh using {parser_name}")
-            logger.debug(f"Parsing mesh using {parser_name}")
-    parsers = [
-        ("original parser", parse_mesh_original),
-        ("helper parser", parse_mesh_helper),
-        ("adaptive parser", parse_mesh_adaptive)
-    ]
-
-    mesh = None
-
-    for parser_name, parser_function in parsers:
-        try:
-            print(f"Parsing mesh using {parser_name}")
-            mesh = parser_function(path)
-            if mesh and 'position' in mesh:
-                break  # Successfully parsed
-            raise ValueError(f"{parser_name} failed")
-        except Exception as e:
-            print(f"Error with {parser_name}: {e}")
-            logger.debug(f"Error with {parser_name}: {e}")
-
-    if mesh is None or 'position' not in mesh:
-        # QMessageBox.critical(None, "Error", "Failed to parse mesh file using all parsers.")
-        print(None, "critical Error", "Failed to parse mesh file using all parsers.")
-        logger.critical("Failed to parse mesh file using all parsers.")
-        raise ValueError("All parsers failed")
+                raise ValueError("adaptive returned None or missing required data.")
+    except Exception as e2:
+        print(f"adaptive parser also failed: {e2}")
+        logger.debug("util 'mesh_from_path' adaptive parser failed")
+        raise ValueError("Failed to parse the mesh file with available parsers: original, helper, and adaptive.")
 
     # Process mesh data
     pos = np.array(mesh['position'])

@@ -274,12 +274,7 @@ class Scene:
         self.bone_lines = []
         self.armature_loaded = False
 
-    # def get_selected_object_center(self):
-    #     return self.mesh_center
-    
     def get_selected_object_center(self):
-        return self.mesh_center
-
         """Calculate the center of the bounding box and the object size (bounding sphere radius)."""
         if not self.mesh or 'gldat' not in self.mesh:
             return Vector3([0, 0, 0]), 1.0  # Default center and size if no mesh

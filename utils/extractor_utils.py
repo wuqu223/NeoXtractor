@@ -46,9 +46,7 @@ def determine_info_size(self):
     self.npk_file.seek(indexbuf)
     return (buf - self.npk.index_offset) // self.npk.files
 
-
-
-def split_chunks(lst, n):     
+def split_chunks(lst, n):    
     k, m = divmod(len(lst), n)     
     for i in range(n):         
         yield lst[i*k+min(i, m):(i+1)*k+min(i+1, m)]
@@ -66,6 +64,10 @@ def read_index_item(self, f, x):
     elif self.npk.info_size == 65:
         file_sign = readuint32(f)
     elif self.npk.info_size == 85:
+        file_sign = readuint32(f)
+    elif self.npk.info_size == 78:
+        file_sign = readuint32(f)
+    elif self.npk.info_size == 163:
         file_sign = readuint32(f)
     else:
         file_sign = f.seek(4)     # Tempary fix
@@ -131,6 +133,7 @@ def read_index(self, file_path):
     self.npk.index_offset = readuint32(self.npk_file)
     print(f"INDEXOFFSET: {self.npk.index_offset}")
     self.npk.info_size = determine_info_size(self)
+    print(f"INFOSIZE: {self.npk.info_size}")
     
     #checks for the "hash mode"
     if self.npk.hash_mode == 2:

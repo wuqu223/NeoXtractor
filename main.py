@@ -2,6 +2,7 @@ import sys, os, io, time, json
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
+from gui.qt_theme import qt_theme
 
 from utils.config_manager import ConfigManager
 from utils.console_handler import *
@@ -9,31 +10,21 @@ from utils.util import *
 from utils.extractor_utils import read_index, read_entry, determine_info_size
 # from utils import FileListModel
 
-from functools import partial
-
-from gui.main_window import create_main_viewer_tab
+from gui.main_window import * # create_main_viewer_tab(self)
+from gui.mesh_tab import * # create_mesh_viewer_tab(self)
+from gui.extraction_tab import ExtractionViewer
 from gui.viewer_3d import ViewerWidget
-from gui.main_window import *
-# from gui.main_window import create_main_viewer_tab
-from gui.mesh_tab import create_mesh_viewer_tab
-# from gui.extraction_tab import create_extraction_tab
-from gui.texture_tab import create_texture_tab
-from gui.viewer_3d import ViewerWidget
-from gui.main_window import *
-from gui.qt_theme import qt_theme
-# from gui.main_window import create_main_viewer_tab
-from gui.mesh_tab import create_mesh_viewer_tab
-# from gui.extraction_tab import create_extraction_tab
-# from gui.texture_tab import create_texture_tab
 from gui.texture_viewer import TextureViewer
-from gui.text_tab import create_text_tab
+from gui.plain_text_viewer import *
 from gui.raw_hex_viewer import HexViewerApp
 from gui.popups import AboutPopup
 
 # from bin.read_nxfn import NxfnResultViewer
 from converter import * # saveobj, savesmd, saveascii, savepmx, saveiqe, parse_mesh_original, parse_mesh_helper, parse_mesh_adaptive
 from qframelesswindow import FramelessWindow
+from functools import partial
 from logger import logger
+
 
 def custom_logging_handler(mode, context, message):
     with open("logfile.txt", "a") as log_file:
@@ -58,15 +49,9 @@ class MainWindow(QMainWindow):
         self.npkentries = dict()
 
         self.config_manager = ConfigManager() # Fetch Outputfolder from config manager
-        self.decryption_key = self.config_manager.get("decryption_key", 150)
-        self.output_folder = self.config_manager.get("output_folder", "out")
-        self.project_folder = self.config_manager.get("project_folder", "")
-        
-        self.config_manager = ConfigManager()  # Fetch config manager
-        self.work_folder = self.config_manager.get("work_folder", "out")
+        self.decryption_key = self.config_manager.get("decryption_key", 0)
         self.output_folder = self.config_manager.get("output_folder", "")
-        self.decryption_key = 0 #self.config_manager.get("decryption_key", 150)
-
+        self.project_folder = self.config_manager.get("project_folder", "")
         self.aes_key = self.config_manager.get("aes_key", 0)
         self.index_size = self.config_manager.get("index_size", 0)
         self.npk_type = self.config_manager.get("npk_type", 0)
@@ -80,14 +65,11 @@ class MainWindow(QMainWindow):
         self.main_console = ConsoleWidget(self.console_handler)
         self.console_handler.add_console(self.main_console.console_output)
 
-        # Initialize the rest of the UI
-        self.initUI()
-
         # Allowed extensions for respective window implementation
         self.allowed_texture_exts = [".png", ".jpg", ".dds", ".ktx", ".pvr", ".astc", ".tga", "bmp"]
         self.allowed_mesh_exts = [".mesh"]
         self.allowed_text_exts = [".mtl", ".json", ".xml", ".trackgroup", ".nfx", ".h",
-                                 ".shader"]  # Only for double-clicking, context menu will still work for other formats
+                                 ".shader", ".animation"]  # Only for double-clicking, context menu will still work for other formats
 
         # Initialize the rest of the UI
         self.initUI()
@@ -103,26 +85,24 @@ class MainWindow(QMainWindow):
         return super().closeEvent(a0)
 
     def eventFilter(self, source, event):
+        # Handle Right-Click Context Menu
         if event.type() == QEvent.ContextMenu and source is self.list:
             index = self.list.indexAt(event.pos())
             if not index.isValid():
-                # print("No item under cursor.")
                 logger.warning("No item under cursor.")
                 return True
 
-            # Retrieve the associated data for the selected item
+            # Retrieve associated file index
             file_index = self.list.model().data(index, Qt.UserRole)
             if file_index is None or file_index not in self.npkentries:
-                print("No valid file index associated with the item.")
                 logger.debug("No valid file index associated with the item.")
                 return True
 
-            # Create the context menu
+            # Create Context Menu
             list_context_menu = QMenu(self)
             showdata_action = QAction("Show Data", self)
             showdata_action.triggered.connect(lambda: self.show_data(file_index))
             export_action = QAction("Export File", self)
-            export_action.triggered.connect(self.extract_file)
             export_action.triggered.connect(lambda: self.extract_file())
             hex_action = QAction("Hex Viewer", self)
             hex_action.triggered.connect(lambda: self.show_hex_data())
@@ -133,21 +113,39 @@ class MainWindow(QMainWindow):
             mesh_action = QAction("Mesh Viewer", self)
             mesh_action.triggered.connect(lambda: self.show_mesh())
 
-            # Add actions to the context menu
+            # Add actions to the menu
             list_context_menu.addAction(showdata_action)
             list_context_menu.addAction(export_action)
-            list_context_menu.addAction(exp_texture_action)
             list_context_menu.addAction(hex_action)
             list_context_menu.addAction(text_action)
             list_context_menu.addAction(texture_action)
             list_context_menu.addAction(mesh_action)
 
-            # Execute the context menu
             list_context_menu.exec_(event.globalPos())
-        return True            
-            return True
+            return True  # Block further processing
 
-        # Pass other events to the default handler
+        # Handle Down Arrow Key and Skip Hidden Items
+        if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Down and source is self.list:
+            selected_indexes = self.list.selectionModel().selectedIndexes()
+            if not selected_indexes:
+                return True  # No selection, stop processing
+
+            current_index = selected_indexes[0]
+            row_count = self.list.model().rowCount()
+
+            # Find the next **visible** row
+            next_row = current_index.row() + 1
+            while next_row < row_count and self.list.isRowHidden(next_row):
+                next_row += 1  # Skip hidden rows
+
+            next_index = self.list.model().index(next_row, 0)
+
+            if next_index.isValid():
+                self.list.setCurrentIndex(next_index)  # Move selection down
+                self.on_item_double_clicked(next_index)  # Simulate double-click
+
+            return True  # Block default behavior
+
         return super().eventFilter(source, event)
 
     def initUI(self):
@@ -162,78 +160,23 @@ class MainWindow(QMainWindow):
         self.window_mesh = create_mesh_viewer_tab(self)
         self.window_mesh.show()
 
+        self.list.installEventFilter(self)
+
         # Add widgets to the main layout
         main_layout.addWidget(self.main_exploring)
 
-        # Define context menu for TreeView:
         # Connect double-click signal
-        self.file_list_widget.itemDoubleClicked.connect(self.on_item_double_clicked)
+        self.list.clicked.connect(self.on_item_clicked)
+        self.list.doubleClicked.connect(self.on_item_double_clicked)
 
-        # Set up a status bar
+        # Set up master status bar
         self.mstatus_bar = self.statusBar()
         self.mstatus_bar.showMessage("Ready")
 
-    # Context Menu Options
-    def show_data(self):
-        file = self.npkentries[self.selectednpkentry]
-
-        showdialog = QWidget()
-        showdialog.setWindowTitle("NPK Data")
-        showdialog_layout = QVBoxLayout(showdialog)
-
-        right_side = QWidget()
-        right_side_layout = QVBoxLayout(right_side)
-
-        right_side_layout.addWidget(QLabel("SIGN:"))
-        right_side_layout.addWidget(QLabel("NPK OFFSET:"))
-        right_side_layout.addWidget(QLabel("DATA LENGTH:"))
-        right_side_layout.addWidget(QLabel("ORIGINAL DATA LENGTH:"))
-        right_side_layout.addWidget(QLabel("COMPRESSED CRC:"))
-        right_side_layout.addWidget(QLabel("ORIGINAL CRC:"))
-        right_side_layout.addWidget(QLabel("COMPRESSION FLAG:"))
-        right_side_layout.addWidget(QLabel("FILE FLAG:"))
-        if file.file_structure:
-            right_side_layout.addWidget(QLabel("NXPK LOCATION: "))
-        right_side_layout.addWidget(QLabel("DETECTED EXTENSION:"))
-
-        left_side = QWidget()
-        left_side_layout = QVBoxLayout(left_side)
-
-        left_side_layout.addWidget(QLabel(hex(file.file_sign)))
-        left_side_layout.addWidget(QLabel(hex(file.file_offset)))
-        left_side_layout.addWidget(QLabel(str(file.file_length)))
-        left_side_layout.addWidget(QLabel(str(file.file_original_length)))
-        left_side_layout.addWidget(QLabel(str(file.crc)))
-        left_side_layout.addWidget(QLabel(str(file.zcrc)))
-        left_side_layout.addWidget(QLabel(str(file.zflag)))
-        left_side_layout.addWidget(QLabel(str(file.fileflag)))
-        if file.file_structure:
-            left_side_layout.addWidget(QLabel(file.file_structure.decode("utf-8")))
-        left_side_layout.addWidget(QLabel(file.ext))
-
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.addWidget(right_side)
-        splitter.addWidget(left_side)
-        showdialog_layout.addWidget(splitter)
-        showdialog_layout.addWidget(QLabel("Please report if DETECTED EXTENSION is not correct or shows .dat!"))
-
-        self.showdialog = showdialog
-        self.showdialog.show()
-
-    def show_hex(self):
-        self.window_hex = HexViewerApp(self.npkentries[self.selectednpkentry].data)
-        self.window_hex.show()
-        self.window_hex.raise_()
-
-        # Set up a status bar
-        self.mstatus_bar = self.statusBar()
-        self.mstatus_bar.showMessage("Ready")
-
-        # self.proxy_model.setSourceModel(self.list_model)
-        self.list.setModel(self.list_model)
 
     # Context Menu Options
     def show_data(self, file_index):
+        """Displays metadata about the selected NPK entry."""
         try:
             selected_indexes = self.list.selectionModel().selectedIndexes()
             if not selected_indexes:
@@ -243,161 +186,92 @@ class MainWindow(QMainWindow):
 
             index = selected_indexes[0]
             selected_file_index = self.list.model().data(index, Qt.UserRole)
-            
+
             file = self.npkentries.get(selected_file_index)
             if not file:
                 print(f"Selected entry {selected_file_index} not found.")
                 logger.debug(f"Selected entry {selected_file_index} not found.")
                 return
 
-            showdialog = QWidget()
-            showdialog.setWindowTitle("NPK Data")
-            showdialog_layout = QVBoxLayout(showdialog)
+            dialog = QDialog(self)
+            dialog.setWindowTitle("NPK Data")
+            dialog.setFixedSize(600, 400)
 
-            right_side = QWidget()
-            right_side_layout = QVBoxLayout(right_side)
+            main_layout = QHBoxLayout()
 
+            # Left side labels
             labels = [
-                "SIGN:",
-                "NPK OFFSET:",
-                "DATA LENGTH:",
-                "ORIGINAL DATA LENGTH:",
-                "COMPRESSED CRC:",
-                "ORIGINAL CRC:",
-                "COMPRESSION FLAG:",
-                "FILE FLAG:",
+                "SIGN:", "NPK OFFSET:", "DATA LENGTH:", "ORIGINAL DATA LENGTH:",
+                "COMPRESSED CRC:", "ORIGINAL CRC:", "COMPRESSION FLAG:", "FILE FLAG:"
             ]
-            
+
             if file.file_structure:
                 labels.append("FILE STRUCTURE:")
             labels.append("EXTENSION:")
 
+            left_layout = QVBoxLayout()
             for label in labels:
-                right_side_layout.addWidget(QLabel(label))
+                left_layout.addWidget(QLabel(label))
 
-            left_side = QWidget()
-            left_side_layout = QVBoxLayout(left_side)
-
-            left_side_layout.addWidget(QLabel(hex(file.file_sign)))
-            left_side_layout.addWidget(QLabel(hex(file.file_offset)))
-            left_side_layout.addWidget(QLabel(str(file.file_length)))
-            left_side_layout.addWidget(QLabel(str(file.file_original_length)))
-            left_side_layout.addWidget(QLabel(str(file.zcrc)))
-            left_side_layout.addWidget(QLabel(str(file.crc)))
-            left_side_layout.addWidget(QLabel(str(file.zflag)))
-            left_side_layout.addWidget(QLabel(str(file.fileflag)))
+            # Right side values
+            right_layout = QVBoxLayout()
+            right_layout.addWidget(QLabel(hex(file.file_sign)))
+            right_layout.addWidget(QLabel(hex(file.file_offset)))
+            right_layout.addWidget(QLabel(str(file.file_length)))
+            right_layout.addWidget(QLabel(str(file.file_original_length)))
+            right_layout.addWidget(QLabel(str(file.zcrc)))
+            right_layout.addWidget(QLabel(str(file.crc)))
+            right_layout.addWidget(QLabel(str(file.zflag)))
+            right_layout.addWidget(QLabel(str(file.fileflag)))
 
             if file.file_structure:
-                left_side_layout.addWidget(QLabel(file.file_structure.decode("utf-8")))
-            left_side_layout.addWidget(QLabel(file.ext))
+                right_layout.addWidget(QLabel(file.file_structure.decode("utf-8")))
+            right_layout.addWidget(QLabel(file.ext))
 
+            # Create Splitter
             splitter = QSplitter(Qt.Horizontal)
-            splitter.addWidget(right_side)
-            splitter.addWidget(left_side)
+            left_widget = QWidget()
+            left_widget.setLayout(left_layout)
+            right_widget = QWidget()
+            right_widget.setLayout(right_layout)
 
-            showdialog = QWidget()
-            showdialog_layout = QVBoxLayout(showdialog)
-            showdialog.setWindowTitle("NPK Data")
-            showdialog_layout.addWidget(splitter)
+            splitter.addWidget(left_widget)
+            splitter.addWidget(right_widget)
 
-            notice_label = QLabel("Please report if there are any issues with the data displayed.")
-            showdialog_layout.addWidget(notice_label)
+            # Add to layout
+            main_layout.addWidget(splitter)
+            dialog.setLayout(main_layout)
 
-            showdialog.setLayout(showdialog_layout)
-            self.dialog = QDialog()
-            self.dialog.setWindowTitle("File Information")
-            self.dialog.setLayout(showdialog_layout)
-            self.dialog.exec_()
+            dialog.exec_()
 
         except Exception as e:
             print(f"Error displaying data: {e}")
             logger.critical(f"Error displaying data: {e}")
             QMessageBox.critical(self, "Error", f"Could not display file data:\n{e}")
 
-    # def show_hex(self):
-    #     self.window_hex = HexViewerApp(self.npkentries[self.selectednpkentry].data)
-    #     self.window_hex.show()
-    #     self.window_hex.raise_()
-
     def show_hex_data(self):
-        try:
-            selected_indexes = self.list.selectionModel().selectedIndexes()
-            if not selected_indexes:
-                print("No valid selection for hex data display.")
-                logger.warning("No valid selection for hex data display.")
-                return
-
-            selected_index = selected_indexes[0]
-            file_index = self.list.model().data(selected_index, Qt.UserRole)
-
-            if file_index not in self.npkentries:
-                print(f"Selected entry {file_index} not found for hex data.")
-                logger.debug(f"Selected entry {selected_index} not found in npkentries.")
-                return
-
-            file = self.npkentries[file_index]
-
-            hex_dialog = HexViewerApp(file.data)  # Adjust the class name if different
-            hex_dialog.setWindowTitle(f"Hex Data - {hex(file.file_sign)}")
-            hex_dialog.show()
-
-        except Exception as e:
-            print(f"Error displaying hex data: {e}")
-            logger.critical(f"Error displaying hex data: {e}")
-            QMessageBox.critical(self, "Error", f"Could not display hex data:\n{e}")
+        self.window_hex = HexViewerApp(self.npkentries[self.selectednpkentry].data)
+        self.window_hex.show()
+        self.window_hex.raise_()
 
     def show_text(self):
         self.window_text = create_text_tab(self)
-        # tab = create_text_tab(self)
-
-        if not self.window_text:
-            logger.warning("Text tab creation failed.")
-            return
-    
-        # tab.show()
         self.window_text.show()
-        # tab.raise_()
         self.window_text.raise_()
 
-    def show_texture(self):
-        selected_indexes = self.list.selectionModel().selectedIndexes()
-        if not selected_indexes:
-            print("No file selected for texture viewing.")
-            logger.warning("No file selected for texture viewing.")
-            return
-
-        source_index = selected_indexes[0]
-        file_index = self.list.model().data(source_index, Qt.UserRole)
-
-        if file_index is None or not (0 <= file_index < len(self.npkentries)):
-            print("Invalid file index for texture viewing.")
-            logger.warning("Invalid file index for texture viewing.")
-            return
-
-        npk_entry = self.npkentries.get(file_index)
-        if not npk_entry or not any(npk_entry.updated_name.lower().endswith(ext) for ext in self.allowed_texture_exts):
-            print(f"'{npk_entry.updated_name}' is not a valid texture file.")
-            logger.debug(f"'{npk_entry.updated_name}' is not a valid texture file.")
-            return
-
-        try:
-            # Create a new TextureViewer instance if it doesn't already exist
-            if not hasattr(self, "window_texture") or self.window_texture is None:
-                self.window_texture = TextureViewer(npk_entry)  # Pass the NPK entry to the viewer
-            else:
-                # Update the existing instance with the new NPK entry
-                self.window_texture.updateDisplay(npk_entry)
-
-            # Display the texture
-            self.window_texture.displayImage()  # Call the method to display the texture
-            self.window_texture.show()
-            self.window_texture.raise_()
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred while loading the texture: {str(e)}")
-            logger.critical(f"An error occurred while loading the texture: {str(e)}")
-
-
     def show_mesh(self):
+        """Displays the selected mesh in the Mesh Viewer."""
+
+        print(f"DEBUG: Selected Mesh - {self.window_mesh.viewer.filename}")
+
+        if not hasattr(self.window_mesh, "viewer") or self.window_mesh.viewer is None:
+            print("Mesh viewer is not initialized.")
+            return
+    
+        if not hasattr(self.window_mesh.viewer, "scene") or self.window_mesh.viewer.scene is None:
+            print("Viewer scene is not initialized. Calling initializeGL()...")
+            self.window_mesh.viewer.initializeGL()
+
         # Get all selected indexes from the QListView
         selected_indexes = self.list.selectionModel().selectedIndexes()
         if not selected_indexes:
@@ -420,21 +294,10 @@ class MainWindow(QMainWindow):
                 print(f"'{npk_entry.updated_name}' is not a valid mesh file.")
                 logger.debug(f"'{npk_entry.updated_name}' is not a valid mesh file.")
                 continue
-            # Focus on the loaded mesh and update the viewer
-            self.window_mesh.viewer.focus_on_selected_object()
-            self.window_mesh.viewer.update_aspect_ratio()
-            self.update()
-
-            # Bring the viewer to the front
-            self.window_mesh.raise_()
-
-        except Exception as e:
-            # Show error message for any exceptions
-            print(self, "Error", f"An error occurred: {str(e)}")
+            
             try:
                 # Parse the mesh data
                 mesh = mesh_from_path(npk_entry.data)
-
                 if not mesh:
                     raise ValueError("Failed to parse the mesh file.")
 
@@ -449,6 +312,51 @@ class MainWindow(QMainWindow):
 
             except Exception as e:
                 logger.critical(f"An error occurred while loading the mesh '{npk_entry.updated_name}': {str(e)}")
+
+            # Focus on the loaded mesh and update the viewer
+            self.window_mesh.viewer.focus_on_selected_object()
+            self.window_mesh.viewer.update_aspect_ratio()
+            self.update()
+
+            # Bring the viewer to the front
+            # self.window_mesh.raise_()
+
+    def show_texture(self):
+        """Displays the selected texture file in the TextureViewer window."""
+        selected_indexes = self.list.selectionModel().selectedIndexes()
+        if not selected_indexes:
+            print("No file selected for texture viewing.")
+            logger.warning("No file selected for texture viewing.")
+            return
+
+        source_index = selected_indexes[0]
+        file_index = self.list.model().data(source_index, Qt.UserRole)
+
+        if file_index is None or not (0 <= file_index < len(self.npkentries)):
+            print("Invalid file index for texture viewing.")
+            logger.warning("Invalid file index for texture viewing.")
+            return
+
+        npk_entry = self.npkentries.get(file_index)
+        if not npk_entry or not any(npk_entry.updated_name.lower().endswith(ext) for ext in self.allowed_texture_exts):
+            print(f"'{npk_entry.updated_name}' is not a valid texture file.")
+            logger.debug(f"'{npk_entry.updated_name}' is not a valid texture file.")
+            return
+
+        try:
+            # If the texture viewer doesn't exist, create it
+            if not hasattr(self, "window_texture") or self.window_texture is None:
+                self.window_texture = TextureViewer(npk_entry, parent=self)
+                self.window_texture.setAttribute(Qt.WA_DeleteOnClose)  # Cleanup on close
+            else:
+                # Update the existing viewer with the new texture
+                self.window_texture.updateDisplay(npk_entry)
+
+            self.window_texture.show()
+            self.window_texture.raise_()
+        except Exception as e:
+            logger.critical(f"An error occurred while loading the texture: {str(e)}")
+
 
     # Main Toolbar
     # ----------------------------------------------------------------------------------------------------------
@@ -478,29 +386,17 @@ class MainWindow(QMainWindow):
         # About Menu Button
         about_menu = self.menuBar().addMenu("Help *")
 
+        d_crypt_action = QAction(self.style().standardIcon(QStyle.SP_VistaShield), "D-Key", self)
+        d_crypt_action.setShortcut('Ctrl+D')
+        d_crypt_action.setStatusTip("Open an decryction popup window")
+        d_crypt_action.triggered.connect(self.show_decrypt)
+        about_menu.addAction(d_crypt_action)
+
         about_action = QAction(self.style().standardIcon(QStyle.SP_VistaShield), "About", self)
         about_action.setShortcut('Ctrl+H')
         about_action.setStatusTip("Open an about popup window")
         about_action.triggered.connect(self.show_about)
         about_menu.addAction(about_action)
-
-    # Functionality
-    # ----------------------------------------------------------------------------------------------------------
-    def get_savefile_location(self):
-        currnpk = self.npkentries[self.selectednpkentry]
-
-        path = self.output_folder + "/" + os.path.basename(self.npk.path) + "/"
-        if not currnpk.file_structure:
-            os.makedirs(path, exist_ok=True)
-            path = path  + hex(currnpk.file_sign) + "." + currnpk.ext
-
-        else:
-            filestructure = currnpk.file_structure.decode("utf-8").replace("\\", "/")
-            path = path + os.path.dirname(filestructure)
-            os.makedirs(path, exist_ok=True)
-            path = path + "/" + os.path.basename(filestructure)
-
-        return path
 
     def create_edit_menu(self):
         # Settings Menu Button
@@ -511,6 +407,76 @@ class MainWindow(QMainWindow):
         settings_action.setStatusTip("Open an about popup window")
         settings_action.triggered.connect(self.show_settings)
         settings_menu.addAction(settings_action)
+    
+    def create_extraction_menu(self):
+        """Creates the batch extraction menu."""
+        # Create extraction window instance
+        self.extraction_window = ExtractionViewer(self)
+
+        # Create the menu
+        extraction_menu = self.menuBar().addMenu("Batch *")
+
+        # Create extraction action
+        extraction_action = QAction(self.style().standardIcon(QStyle.SP_VistaShield), "Extract NPK", self)
+        extraction_action.setShortcut('Ctrl+,')
+        extraction_action.setStatusTip("Open an extraction popup window")
+        extraction_action.triggered.connect(self.show_extraction_window)  # Connect to a function
+        extraction_menu.addAction(extraction_action)
+
+    def show_extraction_window(self):
+        """Displays the extraction window when triggered."""
+        self.extraction_window.show()
+        self.extraction_window.raise_()
+
+
+    def show_decrypt(self):
+        """Show the decryption popup window."""
+        self.statusBar().showMessage("D-Key...")
+
+        # Load message from a text file
+        try:
+            with open("info/decryption_manager_info.txt", 'r') as file:
+                message = file.read()
+        except FileNotFoundError:
+            message = "Error: Message file not found."
+        # Initialize the decryption window with the loaded message
+        result, ok = QInputDialog().getInt(None, "Decryption Key", message, self.decryption_key, -1000,1000, 10)
+        if ok:
+            # Retrieve input text if the dialog was accepted
+            self.decryption_key = result  # Store the input for future use
+            self.config_manager.set("decryption_key", result)
+            print(f"Decryption Key Entered: {self.decryption_key}")
+            logger.debug(f"Decryption Key Entered: {self.decryption_key}")
+        self.statusBar().showMessage(f"Decryption key set to {result}")
+
+    def show_about(self):
+        """Show the about popup window."""
+        self.statusBar().showMessage("Preferences...")
+        # Load message from a text file
+        try:
+            with open("info/about_info.txt", 'r') as file:
+                message = file.read()
+        except FileNotFoundError:
+            message = "Error: Message file not found."
+
+        # Initialize the popup with the loaded message
+        popup = AboutPopup(message)
+        popup.exec_()
+
+    def show_settings(self):
+        """Show the settings window.""" # Edit Tab
+        self.statusBar().showMessage("Preferences...")
+        # Load message from a text file
+        try:
+            with open("info/about_info.txt", 'r') as file:
+                message = file.read()
+        except FileNotFoundError:
+            message = "Error: Message file not found."
+
+        # Initialize the popup with the loaded message
+        popup = AboutPopup(message)
+        popup.exec_()
+
 
     # Functionality
     # ----------------------------------------------------------------------------------------------------------
@@ -553,27 +519,70 @@ class MainWindow(QMainWindow):
             logger.critical(f"Error generating save file location: {e}")
             return None
 
-    def extract_file(self):
-        currnpk = self.npkentries[self.selectednpkentry]
-        # self.progress_bar.setValue((currnpk + 1) * 100 // len(self.npk.index_table)) # Update progress bar
-
-        path = self.get_savefile_location()
-
-        with open(path, "wb") as f:
-            f.write(currnpk.data)
-
-
     def set_output(self):
         file_path = QFileDialog.getExistingDirectory(self, "Select Folder")
-        self.output_folder = self.config_manager.set(f"output_folder", f"{os.path.basename(file_path)}")
-        self.status_bar.showMessage(f'Output Folder: {file_path}.')
-        logger.info(f'Output Folder: {file_path}.')
+        if file_path:
+            # self.output_folder = self.config_manager.set(f"output_folder", f"{os.path.basename(file_path)}")
+            self.output_folder = self.config_manager.set(f"output_folder", f"{file_path}")
+            self.status_bar.showMessage(f'Output Folder: {file_path}.')
+            logger.info(f'Output Folder: {file_path}.')
+        return self.output_folder
+
+    def extract_file(self):
+        """Extract the currently selected NPK entry to a user-specified location."""
+
+        # Ensure a file is selected
+        selected_indexes = self.list.selectionModel().selectedIndexes()
+        if not selected_indexes:
+            QMessageBox.warning(self, "Extraction Error", "No file selected for extraction.")
+            logger.warning("No file selected for extraction.")
+            return
+
+        selected_index = selected_indexes[0]
+        file_index = self.list.model().data(selected_index, Qt.UserRole)
+
+        if file_index is None or file_index not in self.npkentries:
+            QMessageBox.warning(self, "Extraction Error", "Invalid NPK entry selected.")
+            logger.warning("Invalid NPK entry selected.")
+            return
+
+        npk_entry = self.npkentries[file_index]
+
+        # Ensure there is data to extract
+        if not npk_entry.data or npk_entry.file_original_length == 0:
+            QMessageBox.warning(self, "Extraction Error", f"The selected file '{npk_entry.updated_name}' is empty.")
+            logger.warning(f"Skipping extraction: {npk_entry.updated_name} (empty file).")
+            return
+
+        # Get save file location with default name
+        save_path, _ = QFileDialog.getSaveFileName(
+            self, "Save File As", npk_entry.updated_name, "All Files (*.*)"
+        )
+        if not save_path:
+            self.status_bar.showMessage("Extraction canceled.")
+            return
+
+        # Write file to disk
+        try:
+            with open(save_path, "wb") as f:
+                f.write(npk_entry.data)
+
+            self.status_bar.showMessage(f"File extracted: {save_path}")
+            QMessageBox.information(self, "Extraction Complete", f"Successfully extracted:\n{save_path}")
+            logger.info(f"Extracted file: {save_path}")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Extraction Failed", f"An error occurred:\n{str(e)}")
+            logger.critical(f"Error extracting {npk_entry.updated_name}: {e}")
 
 
     def npk_config_data(self, config_file=None, force_new_file=False):
         """Load configuration data from a JSON file and save the last used config path."""
         # Check if a saved config path exists
+
         config_path_storage = "./utils/last_config.json"
+
+        # Load last used config if available
         if not force_new_file and not config_file and os.path.exists(config_path_storage):
             try:
                 with open(config_path_storage, "r") as storage_file:
@@ -584,56 +593,70 @@ class MainWindow(QMainWindow):
                 print(f"Error loading saved config path: {e}")
                 logger.warning(f"Error loading saved config path: {e}")
 
+        # If no valid config, ask user
         if not config_file or force_new_file:
             self.status_bar.showMessage('Choosing config file...')
             file_path = QFileDialog.getOpenFileName(self, "Choose file", filter="NPK Config (*.json)")[0]
-            if file_path:
-                config_file = file_path
+            if not file_path:  # User canceled file dialog
+                print("Config selection canceled.")
+                return
+            config_file = file_path
 
-        if config_file and config_file.endswith(".json"):
-            try:
-                # Load the JSON file
-                with open(config_file, "r") as file:
-                    data = json.load(file)
-                    mapping = data.get("Data", {})
-
-                    # Retrieve specific configuration values
-                    game_config = mapping.get("game_config", None)
-                    npk_type = mapping.get("npk_type", None)
-                    decryption_key = mapping.get("decryption_key", None)
-                    aes_key = mapping.get("aes_key", None)
-                    index_size = mapping.get("index_size", None)
-
-                    # Log the loaded configuration
-                    print(f"Loaded Config: {game_config}\nNPK Type = {npk_type}\nDecryption key = {decryption_key}\n"
-                        f"AES Key = {aes_key}\nIndex Size = {index_size}")
-                    logger.info(f"Loaded Config: {game_config}\nNPK Type = {npk_type}\nDecryption Key = {decryption_key}\n"
-                        f"AES Key = {aes_key}\nIndex Size = {index_size}")
-
-                    #Update application state
-                    self.game_config = game_config
-                    self.decryption_key = decryption_key
-                    self.npk_type = npk_type
-                    self.aes_key = aes_key
-                    self.index_size = index_size
-
-                    # Save the last used config path
-                    with open(config_path_storage, "w") as storage_file:
-                        json.dump({"last_used_config": config_file}, storage_file)
-                    # print(f"Saved last used config path: {config_file}")
-                        
-                # self.npk_type = self.config_manager.set("npk_type", {npk_type})
-                # self.decryption_key = self.config_manager.set("npk_type", {decryption_key})
-                # self.aes_key = self.config_manager.set("aes_key", {aes_key})
-                # self.index_size = self.config_manager.set("npk_type", {index_size})
-
-            except Exception as e:
-                print(f"Error loading Config file: {e}")
-                logger.critical(f"Error loading Config file: {e}")
-        else:
+        # Validate config file extension
+        if not config_file.endswith(".json"):
             print("Invalid File", "Please select a valid JSON configuration file.")
-            logger.warning("Please select a valid JSON configuration file.")
+            logger.warning("Invalid File selected for NPK Config.")
+            return
+        
+        try:
+            # Load the JSON file
+            with open(config_file, "r") as file:
+                data = json.load(file)
+                mapping = data.get("Data", {})
 
+                # Debugging - Print mapping
+                print(f"Mapping Loaded: {mapping}")
+
+                # Retrieve specific configuration values
+                game_config = mapping.get("game_config")
+                npk_type = int(mapping.get("npk_type", 0)) # Ensure it's an integer
+                decryption_key = int(mapping.get("decryption_key", 0))
+                aes_key = int(mapping.get("aes_key", 0))
+                index_size = int(mapping.get("index_size", 0))
+
+                # Debugging - Print values
+                print(f"Config Values Loaded: {game_config}, {npk_type}, {decryption_key}, {aes_key}, {index_size}")
+                logger.debug(f"Config Values Loaded: {game_config}, {npk_type}, {decryption_key}, {aes_key}, {index_size}")
+
+                #Update application state
+                self.game_config = game_config
+                self.npk_type = npk_type
+                self.decryption_key = decryption_key
+                self.aes_key = aes_key
+                self.index_size = index_size
+
+                # Save the last used config path
+                with open(config_path_storage, "w") as storage_file:
+                    json.dump({"last_used_config": config_file}, storage_file)
+                # print(f"Saved last used config path: {config_file}")
+                logger.info(f"Saved last used config path: {config_file}")
+                    
+            # Update Config Manager
+            if hasattr(self, "config_manager") and self.config_manager is not None:
+                self.config_manager.set("game_config", game_config)
+                self.config_manager.set("npk_type", npk_type)
+                self.config_manager.set("decryption_key", decryption_key)
+                self.config_manager.set("aes_key", aes_key)
+                self.config_manager.set("index_size", index_size)
+            else:
+                print("ERROR: config_manager is not initialized!")
+                logger.critical("ERROR: config_manager is not initialized!")
+        
+            self.status_bar2.showMessage(f"Game Config: {game_config}")
+
+        except Exception as e:
+            print(f"Error loading Config file: {e}")
+            logger.critical(f"Error loading Config file: {e}")
 
     def update_config_data(self, json_file_path, outer_key, inner_key, value):
         """Update a nested JSON file structure."""
@@ -667,196 +690,74 @@ class MainWindow(QMainWindow):
         logger.info(f"Updated {json_file_path}: Set {outer_key}.{inner_key} to {value}")
 
 
-    def show_about(self):
-        """Show the about popup window."""
-        self.statusBar().showMessage("About...")
-
-        # Load message from a text file
-        try:
-            with open("info/about_info.txt", 'r') as file:
-                message = file.read()
-        except FileNotFoundError:
-            message = "Error: Message file not found."
-        # Initialize the popup with the loaded message
-        result, ok = QInputDialog().getInt(None, "Decryption Key", message, self.decryption_key, -1000,1000, 10)
-        if ok:
-            # Retrieve input text if the dialog was accepted
-            self.decryption_key = result  # Store the input for future use
-            self.config_manager.set("decryption_key", result)
-            print(f"Decryption Key Entered: {self.decryption_key}")
-        self.statusBar().showMessage(f"Decryption key set to {result}")
-
-    def show_about_popup(self):
-        """Show the about popup window."""
-        self.statusBar().showMessage("About...")
-            logger.debug(f"{message}\n Error: Message file not found.")
-
-        # Initialize the popup with the loaded message
-        popup = AboutPopup(message)
-        popup.exec_()
-
-    # Edit Tab
-    def show_settings(self):
-        """Show the settings window."""
-        self.statusBar().showMessage("Preferences...")
-        # Load message from a text file
-        try:
-            with open("info/about_info.txt", 'r') as file:
-                message = file.read()
-        except FileNotFoundError:
-            message = "Error: Message file not found."
-
-        # Initialize the popup with the loaded message
-        popup = AboutPopup(message)
-        popup.exec_()
-
-
     def load_npk(self, json_file):
-        """Load an NPK file and populate the QListView."""
+        """Load an NPK file and populate the list."""
         self.clear_npk_data()
         self.status_bar.showMessage('Selecting file...')
-        file_path = (QFileDialog.getOpenFileName(self, "Open file", filter="NPK Files (*.npk)")[0])
-        if file_path and file_path[-4:] == ".npk":
-            # self.status_bar.showMessage(f'Loading NPK: {file_path}')
-            self.status_bar.showMessage(f'Loading NPK: {file_path}')
-            print("Path is: {}".format(file_path))
 
-            self.npk_file = io.BytesIO(open(file_path, 'rb').read())
-            if read_index(self, file_path) != -1:
-
-                currfile = 0
-                for file in self.npk.index_table:
-                    if not file[6]:
-                        widgetitem = QListWidgetItem(hex(file[0]))
-                    else:
-                        widgetitem = QListWidgetItem(file[6].decode("utf-8"))
-                    widgetitem.setData(3, currfile)
-                    widgetitem.setData(4, False)
-                    widgetitem.setIcon(self.style().standardIcon(QStyle.SP_DialogNoButton))
-                    self.file_list_widget.addItem(widgetitem)
-                    currfile += 1
-                    self.progress_bar.setValue((currfile + 1) * 100 // len(self.npk.index_table)) # Update progress bar
-
-                self.status_bar.showMessage(f'Finished loading NPK: {file_path}')
-                self.file_list_widget.sortItems(Qt.AscendingOrder)
-        else:
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open file", filter="NPK Files (*.npk)")
+        if not file_path or not file_path.endswith(".npk"):
             self.status_bar.showMessage("Select NPK to extract!")
-        self.file_list_widget.setCurrentRow(0)
+            return
 
-    def read_all_npk_data(self):
-        # Check viewer initialization
-        if hasattr(self, "npk"):
-            for x in range(self.file_list_widget.count()):
-                item = self.file_list_widget.item(x)
-                self.progress_bar.setValue((x + 1) * 100 // self.npk.files) # Update progress bar
-                npkentry = read_entry(self, item.data(3))
-                if npkentry.file_original_length == 0:
-                    if npkentry.file_structure:
-                        print(f"Index {npkentry.file_structure} is empty")
-                    else:
-                        print(f"Index {npkentry.file_sign} is empty")
-                else:
-                    if not bool(item.data(4)) and not npkentry.file_structure:
-                        item.setText(item.text() + f".{npkentry.ext}")
-                    item.setData(4, True)
-                    self.npkentries[item.data(3)] = npkentry
-                    item.setIcon(self.style().standardIcon(QStyle.SP_DialogYesButton))
+        self.status_bar.showMessage(f'Loading NPK: {file_path}')
+        # print("Path is: {}".format(file_path))
 
-            self.selectednpkentry = 0
-            self.file_list_widget.setCurrentRow(0)
+        # Read NPK File
+        self.npk_file = io.BytesIO(open(file_path, 'rb').read())
+        if read_index(self, file_path) == -1:
+            self.status_bar.showMessage("Failed to read NPK index!")
+            return
 
-        else:
-            QMessageBox.information(self, "Open NPK!", "You must open an NPK file before reading it!")
-        
-    def extract_all_npk_data(self):
-        file_path = QFileDialog.getOpenFileName(self, "Open file", filter="NPK Files (*.npk)")[0]
+        # Populate List Model
+        self.list_model.clear()
+        currfile = 0
+        for file in self.npk.index_table:
+            filename = file[6].decode("utf-8") if file[6] else hex(file[0])
 
-        if file_path and file_path.endswith(".npk"):
-            self.status_bar.showMessage(f'Loading NPK: {file_path}')
-            try:
-                self.npk_file = io.BytesIO(open(file_path, 'rb').read())
-            except Exception as e:
-                print(f"Failed to read NPK file: {str(e)}")
-                logger.critical(f"Failed to read NPK file: {str(e)}")
-                return
+            widgetitem = QStandardItem(filename)
+            widgetitem.setData(currfile, Qt.UserRole)  # Store file index as Qt.UserRole
+            widgetitem.setIcon(self.style().standardIcon(QStyle.SP_DialogNoButton))
 
-            if read_index(self, file_path) != -1:
-                # print(f"NPK file parsed successfully with {len(self.npk.index_table)} entries.")
-                
-                model = QStandardItemModel()  # Create a new model for QListView
+            self.list_model.appendRow(widgetitem)
+            currfile += 1
+            self.progress_bar.setValue((currfile + 1) * 100 // len(self.npk.index_table))  # Update progress bar
 
-                for i, file in enumerate(self.npk.index_table):  # Assign sequential indices
-                    try:
-                        # Validate file entry
-                        if not file or len(file) < 7:
-                            print(f"Index {i}: Invalid or incomplete file data, skipping")
-                            logger.warning(f"Index {i}: Invalid or incomplete file data, skipping")
-                            continue
+        self.status_bar.showMessage(f'Loading NPK: {file_path}')
+        self.read_all_npk_data(json_file)  # Call the existing read_all_npk_data
 
-                        self.progress_bar.setValue((i + 1) * 100 // len(self.npk.index_table))  # Update progress bar
+        info_size = determine_info_size(self)
+        logger.debug(f"Info Size: {info_size}")
 
-                        # Generate hash_value from file data
-                        hash_value = hex(file[0]) if not file[6] else file[6].decode("utf-8")
-
-                        # Create a new item for each entry
-                        item = QStandardItem(hash_value)
-                        item.setData(i, Qt.UserRole)  # Store file index in UserRole
-                        item.setData(i, 3)  # Assign sequential index for compatibility
-                        # item.setIcon(self.style().standardIcon(QStyle.SP_DialogNoButton))  # Default icon
-                        item.setIcon(QIcon.fromTheme("dialog-no"))  # Use a theme-based icon
-                        model.appendRow(item)
-
-                    except Exception as e:
-                        print(f"Index {i}: Failed to process entry - {str(e)}")
-                        logger.critical(f"Index {i}: Failed to process entry - {str(e)}")
-                        continue
-
-                self.list.setModel(model)  # Assign the model to QListView
-
-                self.read_all_npk_data(json_file)  # Process all NPK data
-
-                logger.debug(f"Info Size: {determine_info_size(self)}") # Print out info_size
-
-                #Temp. updating config info
-                # ______________________________________________________
-                # self.update_config_data(os.path.basename("./utils/npk_config.json"), "Data", "npk_type", 0) # update config entry - temp
-                # self.npk_type = self.config_manager.set("npk_type", 0)
-                # self.npk_type = self.config_manager.set("aes_key", 1)
-                # self.npk_type = self.config_manager.set("index_size", 2)
-                # _______________________________________________________
-
-                # self.status_bar.showMessage(f'Finished loading NPK: {file_path}')
-                self.setWindowTitle(f"NeoXtractor | {os.path.abspath(file_path)}")
-            else:
-                self.status_bar.showMessage("Failed to parse NPK file.")
-        else:
-            self.status_bar.showMessage("Select a valid NPK file!")
-
+        if self.list_model.rowCount() > 0:
+            self.list.setCurrentIndex(self.list_model.index(0, 0))  # Auto-select first item
 
     def read_all_npk_data(self, json_file):
+        """Read all entries from the NPK file and update the list with filenames."""
         if not hasattr(self, "npk"):
             QMessageBox.information(self, "Open NPK!", "You must open an NPK file first!")
             logger.info("Open NPK!", "You must open an NPK file first!")
             return
 
+        # Ensure list view has a model
         model = self.list.model()
         if model is None:
             print("No list-model set for the list view.")
             logger.critical("No list-model set for the list view.")
             return
-        
-        # Load JSON file for filename mapping (IDV*)
+
+        # Load JSON file for filename mapping
+        hash_mapping = {}
         try:
-            with open(json_file, "r") as file:
+            with open(json_file, "r", encoding="utf-8") as file:
                 data = json.load(file)
                 hash_mapping = data.get("characters", {})
-                ViewerWidget.json_mapping = hash_mapping
-                # print(f"Loaded JSON: {hash_mapping}")
+                ViewerWidget.json_mapping = hash_mapping  # Store mapping globally
         except Exception as e:
             print(f"Error loading JSON file: {e}")
             logger.debug(f"Error loading JSON file: {e}")
-            return
 
+        # Iterate through the model's rows
         for x in range(model.rowCount()):
             try:
                 item = model.item(x)
@@ -864,12 +765,12 @@ class MainWindow(QMainWindow):
                     continue
 
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Disable editing
-                fileindex = item.data(3)  # Retrieve file index
+                fileindex = item.data(Qt.UserRole)  # Retrieve file index
 
                 if fileindex is None or not (0 <= fileindex < len(self.npk.index_table)):
-                    # print(f"Row {x}: Invalid file index {fileindex}, skipping")
-                    continue
+                    continue  # Skip invalid indices
 
+                # Read entry from NPK
                 npkentry = read_entry(self, fileindex)
                 self.progress_bar.setValue((x + 1) * 100 // len(self.npk.index_table))  # Update progress bar
 
@@ -888,51 +789,71 @@ class MainWindow(QMainWindow):
                 npkentry.updated_name = updated_filename  # Store updated name in npkentry
                 self.npkentries[fileindex] = npkentry
 
-                item.setIcon(self.style().standardIcon(QStyle.SP_DialogYesButton))  # Success icon
+                # Set success icon
+                if self.style():
+                    item.setIcon(self.style().standardIcon(QStyle.SP_DialogYesButton))
+                else:
+                    item.setIcon(QIcon())  # Fallback if no style is available
+
             except Exception as e:
                 print(f"Failed to process entry at row {x}: {e}")
                 logger.debug(f"Failed to process entry at row {x}: {e}")
-                item.setIcon(self.style().standardIcon(QStyle.SP_DialogNoButton))  # Failure icon
+                if item and self.style():
+                    item.setIcon(self.style().standardIcon(QStyle.SP_DialogNoButton))  # Failure icon
 
-    def read_selected_npk_data(self):
-        # Check if there are selected entries
-        selected_items = self.file_list_widget.selectedItems()
-        if not selected_items:
-            print(self, "No Selection", "Please select files to read.")
+    def extract_processed_npk_data(self):
+        """Extract all processed NPK entries into an output folder."""
+        
+        if not hasattr(self, "npkentries") or not self.npkentries:
+            QMessageBox.warning(self, "Extraction Error", "No NPK data loaded. Load an NPK first!")
             return
+        
+        # Get output directory from config manager
+        # output_dir = QFileDialog.getExistingDirectory(self, "Select Output Folder")
+        output_dir = self.config_manager.get("output_folder", "")
 
-        # Loop through the selected items
-        for item in selected_items:
-            index = int(item.data(3))
+        if not output_dir:
+            self.status_bar.showMessage("Extraction canceled.")
+            return
+        
+        extracted_files = 0
+        total_files = len(self.npkentries)
 
-            # Check if the file is already processed
-            if index in self.npkentries:
-                print(f"File at index {index} is already processed.")
-                continue
+        # Extract each file
+        for file_index, npkentry in self.npkentries.items():
+            try:
+                if npkentry.file_original_length == 0:
+                    print(f"Skipping empty file: {npkentry.updated_name}")
+                    logger.debug(f"Skipping empty file: {npkentry.updated_name}")
+                    continue
 
-            # Read the entry
-            npkentry = read_entry(self, index)
+                # Generate output path
+                output_file_path = os.path.join(output_dir, npkentry.updated_name)
 
-            # Check if the file is empty
-            if npkentry.file_original_length == 0:
-                print(f"Index {index} is empty.")
-            else:
-                # Update item text and icon if necessary
-                if not bool(item.data(4)) and not npkentry.file_structure:
-                    item.setText(item.text() + f".{npkentry.ext}")
-                item.setData(4, True)
-                self.npkentries[index] = npkentry
-                # self.progress_bar.setValue((index + 1) * 100 // self.npk.files) # Update progress bar
-                item.setIcon(self.style().standardIcon(QStyle.SP_DialogYesButton))
+                # Write extracted file
+                with open(output_file_path, "wb") as f:
+                    f.write(npkentry.data)
+                    self.status_bar.showMessage(f"Extracting: {npkentry}.")
 
-        # Optionally set the last processed entry as the selected one
-        if selected_items:
-            self.selectednpkentry = int(selected_items[-1].data(3))
+                print(f"Extracted: {output_file_path}")
+                logger.info(f"Extracted: {output_file_path}")
+                extracted_files += 1
 
-        # Refresh List
-        self.refresh_file_list()
+                # Update progress bar
+                self.progress_bar.setValue((extracted_files * 100) // total_files)
 
-        QMessageBox.information(self, "Success", f"Processed {len(selected_items)} selected files.")
+            except Exception as e:
+                print(f"Failed to extract {npkentry.updated_name}: {e}")
+                logger.critical(f"Failed to extract {npkentry.updated_name}: {e}")
+
+        # Show completion message
+        if extracted_files > 0:
+            self.status_bar.showMessage(f"Extraction complete! {extracted_files} files saved to {output_dir}")
+            QMessageBox.information(self, "Extraction Complete", f"Successfully extracted {extracted_files} files.")
+        else:
+            self.status_bar.showMessage("No valid files were extracted.")
+            QMessageBox.warning(self, "Extraction Warning", "No valid files found to extract.")
+
 
     def extract_selected_npk_data(self):
         if hasattr(self, "npk"):
@@ -1006,25 +927,6 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.information(self, "Open NPK first", "You must open an NPK file before extracting it!")
 
-
-    def clear_npk_data(self):
-        self.file_list_widget.clear()
-                try:
-                    with open(path, "wb") as f:
-                        f.write(currnpk.data)
-
-                except Exception as e:
-                    print(f"Failed to save file: {str(e)}")
-                    logger.critical(f"Failed to save file: {str(e)}")
-            QMessageBox.information(self, "Finished!",
-                                    f"Saved {len(self.npkentries)} files to \"{self.output_folder}\" folder")
-            logger.info(f"Finished!", f"Saved {len(self.npkentries)} files to \"{self.output_folder}\" folder")
-
-        else:
-            QMessageBox.information(self, "Open NPK first", "You must open an NPK file before extracting it!")
-            logger.info("Open NPK first", "You must open an NPK file before extracting it!")
-
-
     def clear_npk_data(self):
         self.filter_input.clear()
         self.selectednpkentry = 0
@@ -1033,123 +935,97 @@ class MainWindow(QMainWindow):
             self.npk.clear()
         self.npkentry = None
 
+
     def on_item_clicked(self, item):
-        # Retrieve the index of the clicked item
-        index = int(item.data(3))
-        # Check if the item index is in the viewer's entries
+        """Handles single-click events in the list view."""
+        
+        # Get the model from the QListView
+        model = self.list.model()
+        if not model:
+            print("ERROR: Model is None.")
+            return
+
+        # Retrieve the index stored in UserRole
+        index = item.data(Qt.UserRole)  # Stored file index
+
+        # Ensure index is valid
+        if index is None or not (0 <= index < len(self.npkentries)):
+            print(f"Invalid item index: {index}")
+            logger.warning(f"Invalid item index: {index}")
+            return
+
+        # Check if the entry is already loaded
         if index not in self.npkentries:
-            # Read the entry corresponding to the index
             npkentry = read_entry(self, index)
 
             if npkentry.file_original_length == 0:
-                print(f"This index is empty")
-            else:
-                # Update item text and data if necessary
-                if not bool(item.data(4)) and not npkentry.file_structure:
-                    item.setText(item.text() + f".{npkentry.ext}")
-                item.setData(4, True)
-                self.npkentries[index] = npkentry
-                item.setIcon(self.style().standardIcon(QStyle.SP_DialogYesButton))
-        self.update()
+                print(f"This index {index} is empty.")
+                return
+
+            # Update item text with file extension if missing
+            if not bool(item.data(4)) and not npkentry.file_structure:
+                item.setText(item.text() + f".{npkentry.ext}")
+
+            # Mark item as updated
+            item.setData(4, True)
+            item.setIcon(self.style().standardIcon(QStyle.SP_DialogYesButton))
+
+            # Store entry in npkentries
+            self.npkentries[index] = npkentry
+
+        # Update selected entry reference
         self.selectednpkentry = index
 
-        # Optional: Collect all selected items (if required)
-        selected_items = [self.npkentries[i] for i in self.npkentries if i == index]
-        # print(f"Selected Items: {index}")
-
-    def on_item_double_clicked(self, item):
-        """Open the mesh viewer when a mesh or texure file is double-clicked."""
-        # Extract file name and check extension
-        selected_file = item.text()
-
-        # Combine allowed extensions
-        allowed_extensions = tuple(self.allowed_texture_exts + self.allowed_mesh_exts + self.allowed_text_ext)
-        if not selected_file.lower().endswith(allowed_extensions):
-            QMessageBox.warning(
-                self,
-                "Invalid File",
-                f"'{selected_file}' is not supported in the Mesh/Texture Viewer.\nAllowed types: {', '.join(allowed_extensions)}."
-            )
-            return
-        try:
-            # Determine the type of file and simulate user action
-            if any(selected_file.lower().endswith(ext) for ext in self.allowed_mesh_exts):
-                self.show_mesh()
-            elif any(selected_file.lower().endswith(ext) for ext in self.allowed_texture_exts):
-                self.show_texture()
-            elif any(selected_file.lower().endswith(ext) for ext in self.allowed_text_ext):
-                self.show_text()
-        except Exception as e:
-            # QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
-            print(self, "Error", f"An error occurred: {str(e)}")
-
-    def on_selection_changed(self):
-        # Get all selected items
-        selected_items = self.file_list_widget.selectedItems()
-
-        # Process selected items
-        selected_indexes = [int(item.data(3)) for item in selected_items]  # Retrieve the indexes stored in role 3
-
-        # Optionally process selected entries
-        selected_entries = [self.npkentries.get(index) for index in selected_indexes if index in self.npkentries]
-
-        self.selectednpkentry = selected_indexes[-1] if selected_indexes else None
-
-    def refresh_file_list(self):
-        for i in range(self.file_list_widget.count()):
-            item = self.file_list_widget.item(i)
-            index = int(item.data(3))  # Retrieve the index stored in role 3
-
-            # Check if the item is already processed
-            if index in self.npkentries:
-                npkentry = self.npkentries[index]
-                # Update text and icon based on npkentry state
-                if not bool(item.data(4)) and not npkentry.file_structure:
-                    item.setText(item.text() + f".{npkentry.ext}")
-                    self.progress_bar.setValue((index + 1) * 100 // self.npk.files) # Update progress bar
-
-                item.setIcon(self.style().standardIcon(QStyle.SP_DialogYesButton))
-                item.setData(4, True)  # Mark as processed
-        else:
-            self.update()
-
-    def append_console_output(self, text: str):
-        """Appends text to the console output."""
-        if hasattr(self.console_handler, 'text_output'):
-            self.console_handler.text_output.emit(text)
-        else:
-            print("Console handler is not properly initialized.")
+        # Print selected item for debugging
+        selected_item = self.npkentries.get(index, None)
+        if selected_item:
+            print(f"Selected item index: {index}, Data: {selected_item}")
 
     def on_item_double_clicked(self, index):
+        """Handles double-click events to open the appropriate viewer."""
+        
+        # Ensure the index is valid
         if not index.isValid():
             print("Invalid index.")
             logger.warning("Invalid index.")
             return
 
+        # Retrieve file index stored in UserRole
         file_index = self.list.model().data(index, Qt.UserRole)
         if file_index is None or not (0 <= file_index < len(self.npkentries)):
             print("No file index data associated.")
             logger.warning("No file index data associated.")
             return
 
+        # Retrieve the corresponding NPK entry
         npk_entry = self.npkentries.get(file_index)
         if not npk_entry:
             print(f"No entry found for index {file_index}.")
             logger.debug(f"No entry found for index {file_index}.")
             return
 
-        # Action based on file type
-        if any(npk_entry.updated_name.lower().endswith(ext) for ext in self.allowed_mesh_exts):
+        # Determine file type and open the correct viewer
+        filename_lower = npk_entry.updated_name.lower()
+
+        if filename_lower.endswith(tuple(self.allowed_mesh_exts)):
             self.show_mesh()
-            self.window_mesh.viewer.filename = npk_entry.updated_name.lower() # Filename to mesh viewer
-            self.window_mesh.viewer.filepath = self.list.selectionModel().selectedIndexes()
-        elif any(npk_entry.updated_name.lower().endswith(ext) for ext in self.allowed_texture_exts):
+            self.window_mesh.viewer.filename = npk_entry.updated_name
+            self.window_mesh.viewer.filepath = self.list.model().data(index, Qt.UserRole)  # Ensure correct path
+
+            # Check if scene exist befor calling focus selected object
+            if hasattr(self.window_mesh.viewer, "scene") and self.window_mesh.viewer.scene is not None:
+                self.window_mesh.viewer.focus_on_selected_object()
+            else:
+                print("Scene is not ready. Delaying focus...")
+                QTimer.singleShot(200, self.window_mesh.viewer.focus_on_selected_object)
+        elif filename_lower.endswith(tuple(self.allowed_texture_exts)):
             self.show_texture()
-        elif any(npk_entry.updated_name.lower().endswith(ext) for ext in self.allowed_text_exts):
+        elif filename_lower.endswith(tuple(self.allowed_text_exts)):
             self.show_text()
         else:
             print(f"Unsupported file type: {npk_entry.updated_name}")
             logger.debug(f"Unsupported file type: {npk_entry.updated_name}")
+
 
     def on_selection_changed(self):
         selected_indexes = self.list.selectionModel().selectedIndexes()
@@ -1212,8 +1088,10 @@ class MainWindow(QMainWindow):
             # If filtering for MESH and checkbox is enabled, apply additional ransack filtering (in-memory scan)
             if self.filtered_mesh_checkbox.isChecked():
                 if category == "MESH" and category_match:
+                    # self.list_model.beginResetModel()
                     if not self.ransack_agent(npk_entry.data, "biped head"):  # Scan in-memory data
                         category_match = False
+                    # self.list_model.endResetModel()
 
             # Hide or show based on filtering
             self.list.setRowHidden(row, not (text_match and category_match))
@@ -1239,6 +1117,13 @@ class MainWindow(QMainWindow):
             logger.warning(f"Error scanning in-memory data: {e}")
             return False
 
+    def append_console_output(self, text: str):
+            """Appends text to the console output."""
+            if hasattr(self.console_handler, 'text_output'):
+                self.console_handler.text_output.emit(text)
+            else:
+                print("Console handler is not properly initialized.")
+
 def main():
     app = QApplication(sys.argv)
     app.setPalette(qt_theme.palettes()["dark"]) # Set the dark palette
@@ -1247,7 +1132,6 @@ def main():
     main_window.show()
     logger.info("Application started")
     sys.exit(app.exec_())
-
 
 if __name__ == '__main__':
     main()

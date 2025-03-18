@@ -6,6 +6,7 @@ from utils.config_manager import ConfigManager
 from utils.console_handler import *
 from utils.util import *
 from converter import *
+import os
 
 from logger import logger
 
@@ -17,6 +18,37 @@ class FileSelector:
         )
         return file_name
 
+class MeshListWidget(QListWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def keyPressEvent(self, event):
+        """Handles key events for navigation in the mesh list."""
+        if event.key() == Qt.Key_Down:
+            selected_indexes = self.selectedIndexes()
+
+            if selected_indexes:
+                current_index = selected_indexes[0]
+                next_index = self.model().index(current_index.row() + 1, 0)
+
+                if next_index.isValid():
+                    self.setCurrentIndex(next_index)  # Move selection down
+                    self.itemActivated.emit(self.item(next_index.row()))  # Simulate double-click
+
+        elif event.key() == Qt.Key_Up:
+            selected_indexes = self.selectedIndexes()
+
+            if selected_indexes:
+                current_index = selected_indexes[0]
+                prev_index = self.model().index(current_index.row() - 1, 0)
+
+                if prev_index.isValid():
+                    self.setCurrentIndex(prev_index)  # Move selection up
+                    self.itemActivated.emit(self.item(prev_index.row()))  # Simulate double-click
+
+        else:
+            super().keyPressEvent(event)  # Handle other key events normally
+
 
 def show_input_dialog(title, text):
     dialogue_response, dialogue_complete = QInputDialog.getText(
@@ -24,22 +56,31 @@ def show_input_dialog(title, text):
     )
     return dialogue_response if dialogue_complete else ""
 
+
 def create_mesh_viewer_tab(self):
+    if hasattr(self, "window_mesh") and self.window_mesh is not None:
+        return self.window_mesh  # Reuse existing instance
+
+    print("Initializing mesh viewer tab...")
+
     # -----------------------------------
     # Mesh Viewer
     tab1 = QMainWindow()
     tab1.setGeometry(350, 150, 1400, 800)
     tab1.setWindowTitle("ModernGL Mesh Viewer")
+
     tab1.closeEvent = on_closing_mesh_view
 
     # Main Container
-    _main = QWidget()
-    main_layout = QHBoxLayout(_main)
+    central_widget = QWidget()
+    tab1.setCentralWidget(central_widget)
+    main_layout = QHBoxLayout(central_widget)
 
     # Left Side: File List Setup
-    tab1.mesh_list_widget = QListWidget()
+    tab1.mesh_list_widget = MeshListWidget()  # Use the subclassed list view
+    # tab1.mesh_list_widget = QListWidget()
     tab1.mesh_list_widget.setAcceptDrops(True)
-    tab1.mesh_list_widget.setFixedSize(300, 800)
+    tab1.mesh_list_widget.setFixedWidth(400)
     tab1.mesh_list_widget.setToolTip("List of .mesh files in the loaded folder.")
     main_layout.addWidget(tab1.mesh_list_widget)
 
@@ -62,43 +103,17 @@ def create_mesh_viewer_tab(self):
             except Exception as e:
                 logger.critical(tab1, "Error", f"Failed to load mesh file: {str(e)}")
 
-
-    # Zoom slider
-    tab1.zoom_speed_label = QLabel("Cam Speed:")
-    tab1.zoom_speed_slider = QSlider(Qt.Horizontal)
-    tab1.zoom_speed_slider.setMinimum(1)
-    tab1.zoom_speed_slider.setMaximum(200)
-    tab1.zoom_speed_slider.setValue(100)
-    tab1.zoom_speed_slider.setFixedWidth(400)
-    tab1.zoom_speed_slider.valueChanged.connect(update_zoom_speed)
-
-    tab1.zoom_speed_label.setFixedHeight(15)
-    tab1.zoom_speed_slider.setRange(1, 100)  # Convert from 0.01 to 1.0
-    tab1.zoom_speed_slider.setValue(20)  # Set default zoom speed to 0.2
-    full_layout.addWidget(right_widget)
-    full_layout.addWidget(left_widget)
-    tab1_layout.addWidget(full_widget)
-    tab1_layout.addWidget(tab1.zoom_speed_label)
-    tab1_layout.addWidget(tab1.zoom_speed_slider)
-    _main.setLayout(tab1_layout)
-    tab1.setCentralWidget(_main)
-    #tab1.setGeometry(50,50,1000,800)
-
-    create_view_menu(tab1)
-    create_save_menu(tab1)
-
-    return tab1
-
     tab1.on_mesh_item_clicked = on_mesh_item_clicked
     tab1.on_mesh_item_double_clicked = on_mesh_item_double_clicked
 
     # Connect the signals to the handlers
     tab1.mesh_list_widget.itemPressed.connect(tab1.on_mesh_item_clicked)
     tab1.mesh_list_widget.itemDoubleClicked.connect(tab1.on_mesh_item_double_clicked)
+    tab1.mesh_list_widget.itemActivated.connect(tab1.on_mesh_item_double_clicked) # process index using up and down arrow
 
     # Right Side: Viewer and Controls
     right_side = QVBoxLayout()
-
+    
     # Viewer Widget
     tab1.viewer = ViewerWidget(tab1)  # Placeholder for Mesh Viewer
     tab1.viewer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -108,8 +123,6 @@ def create_mesh_viewer_tab(self):
     # Viewport Navigation Label
     navigation_label = QLabel(
         "Fly mode:  W: Forward  |  A: Left  |  S: Backward  |  D: Right  |  Shift+Key: Sprint  |  Ctrl+'1,3,7': Flip View  |  'F' Key: Focus Object"
-        "Key 7: Top View  |  Key 3: Right View  |  Key 1: Front View  |  Ctrl+Key: Flip View  |  "
-        "Middle: Dolly  |  Left: Pan  |  Right: Orbit  |  'F' Key: Focus on Object"
     )
     navigation_label.setFixedHeight(20)
     right_side.addWidget(navigation_label)
@@ -127,9 +140,6 @@ def create_mesh_viewer_tab(self):
 
     # Zoom Speed Slider
     zoom_speed_label = QLabel(f"Camera Zoom Speed Control: {default_zoom_speed:.2f}")
-    tab1.flip_uv_checkbox = QCheckBox('Flip UVs V-axis on Save')
-    tab1.flip_uv_checkbox.setChecked(False)
-    right_side.addWidget(tab1.flip_uv_checkbox)
 
     # Zoom Speed Slider
     zoom_speed_label = QLabel("Camera Zoom Speed Control:")
@@ -139,10 +149,9 @@ def create_mesh_viewer_tab(self):
     zoom_speed_slider = QSlider(Qt.Horizontal)
     zoom_speed_slider.setRange(1, 100)  # Range: 1 to 100
     zoom_speed_slider.setValue(20)  # Default speed
-    zoom_speed_slider.setFixedWidth(400)
-    # zoom_speed_slider.valueChanged.connect(lambda: update_zoom_speed(tab1))
-    zoom_speed_slider.valueChanged.connect(lambda value: tab1.viewer.set_zoom_speed(value))
+    zoom_speed_slider.setFixedWidth(300)
     right_side.addWidget(zoom_speed_slider)
+    zoom_speed_slider.valueChanged.connect(lambda value: tab1.viewer.set_zoom_speed(value))
 
     def update_zoom_label(value):
         """Update the zoom speed label dynamically."""
@@ -152,22 +161,18 @@ def create_mesh_viewer_tab(self):
         zoom_speed_label.setText(f"Camera Zoom Speed Control: {zoom_speed:.2f}")
     zoom_speed_slider.valueChanged.connect(update_zoom_label)
 
+    # tab1.zoom_speed_slider.valueChanged.connect(update_zoom_label)
+
     # Add Right Side to Main Layout
     main_layout.addLayout(right_side)
 
-    # Set Main Layout
-    _main.setLayout(main_layout)
-    tab1.setCentralWidget(_main)
-
-    # Add Menus
+    # Create Menus
     create_open_menu(tab1)
-    create_view_menu(tab1)
     create_save_menu(tab1)
-
-    # Attach load_mesh method
-    setattr(tab1, "load_mesh", lambda file_path: load_mesh(tab1, file_path))
+    create_view_menu(tab1)
 
     return tab1
+
 
 def on_closing_mesh_view(event):
     dialogbox = QDialog()
@@ -199,93 +204,46 @@ def on_closing_mesh_view(event):
         event.ignore()
 
 
-def update_zoom_speed(tab1):
-    if hasattr(tab1.viewer.scene, "camera"):
-        zoom_speed = tab1.zoom_speed_slider.value() / 30.0
-        tab1.viewer.scene.camera.zoom_speed = zoom_speed
-        tab1.statusBar().showMessage(f"Zoom Speed: {zoom_speed:.1f}")
-    else:
-        tab1.statusBar().showMessage("No camera available to adjust zoom speed.")
-
-
 def create_view_menu(tab1):
-    # View Menu Button
     view_menu = tab1.menuBar().addMenu("View")
 
-    # Create the checkable action for "Show Bones"
-    show_bones_action = QAction("Show Bones", tab1)
-    show_bones_action.setShortcut('Alt+B')
-    show_bones_action.setCheckable(True)
-    show_bones_action.setChecked(True)
-    show_bones_action.triggered.connect(lambda checked: tab1.viewer.toggle_bone_visibility(checked))
-    view_menu.addAction(show_bones_action)
+    def add_menu_action(name, shortcut, callback, checkable=False, default_checked=False):
+        action = QAction(name, tab1)
+        action.setShortcut(shortcut)
+        action.setCheckable(checkable)
+        action.setChecked(default_checked)
+        action.triggered.connect(callback)
+        view_menu.addAction(action)
 
-    # Create the checkable action for "Show Wireframe"
-    show_wireframe_action = QAction("Wireframe Mode", tab1)
-    show_wireframe_action.setShortcut('Alt+W')
-    show_wireframe_action.setCheckable(True)
-    show_wireframe_action.setChecked(False)
-    show_wireframe_action.triggered.connect(lambda checked: tab1.viewer.toggle_wireframe_mode(checked))
-    view_menu.addAction(show_wireframe_action)
-
-    # Create the checkable action for "Show Normals"
-    show_norm_action = QAction("Show Normals", tab1)
-    show_norm_action.setShortcut('Alt+N')
-    show_norm_action.setCheckable(True)
-    show_norm_action.setChecked(False)
-    show_norm_action.triggered.connect(lambda checked: tab1.viewer.toggle_normals_visibility(checked))
-    view_menu.addAction(show_norm_action)
-
-    # Create the checkable action for "Show Normals"
-    show_norm_action = QAction("Enable Face Culling", tab1)
-    show_norm_action.setShortcut('Alt+C')
-    show_norm_action.setCheckable(True)
-    show_norm_action.setChecked(False)
-    show_norm_action.triggered.connect(lambda checked: tab1.viewer.toggle_culling_mode(checked))
-    view_menu.addAction(show_norm_action)
+    add_menu_action("Show Bones", "Alt+B", lambda checked: tab1.viewer.toggle_bone_visibility(checked), True, True)
+    add_menu_action("Wireframe Mode", "Alt+W", lambda checked: tab1.viewer.toggle_wireframe_mode(checked), True, False)
+    add_menu_action("Show Normals", "Alt+N", lambda checked: tab1.viewer.toggle_normals_visibility(checked), True, False)
+    add_menu_action("Enable Face Culling", "Alt+C", lambda checked: tab1.viewer.toggle_culling_mode(checked), True, False)
 
 def create_save_menu(tab1):
     save_menu = tab1.menuBar().addMenu("Save")
+
+    # def add_save_action(label, shortcut, callback):
+    #     action = QAction(f"Save as {label}", tab1)
+    #     action.setShortcut(shortcut)
+    #     action.triggered.connect(callback)
+    #     save_menu.addAction(action)
+
+    # add_save_action("OBJ", "Ctrl+Shift+O", lambda: tab1.viewer.save_mesh_obj(tab1.flip_uv_checkbox.isChecked()))
+    # add_save_action("SMD", "Ctrl+Shift+S", lambda: tab1.viewer.save_mesh_smd(tab1.flip_uv_checkbox.isChecked()))
+    # add_save_action("ASCII", "Ctrl+Shift+A", lambda: tab1.viewer.save_mesh_ascii(tab1.flip_uv_checkbox.isChecked()))
+    # add_save_action("PMX", "Ctrl+Shift+P", tab1.viewer.save_mesh_pmx)
+    # add_save_action("IQE", "Ctrl+Shift+I", tab1.viewer.save_mesh_iqe)
     
-    # Create the checkable action for "Show Bones"
-    store_obj_action = QAction("Save as OBJ", tab1)
-    store_obj_action.setShortcut('Alt+O')
-    store_obj_action.setCheckable(False)
-    store_obj_action.triggered.connect(lambda checked = tab1.flip_uv_checkbox.isChecked(): tab1.viewer.save_mesh_obj(checked))
-    save_menu.addAction(store_obj_action)
-    
-    store_obj_action = QAction("Save as SMD", tab1)
-    store_obj_action.setShortcut('Alt+O')
-    store_obj_action.setCheckable(False)
-    store_obj_action.triggered.connect(lambda checked = tab1.flip_uv_checkbox.isChecked(): tab1.viewer.save_mesh_smd(checked))
-    save_menu.addAction(store_obj_action)
-    
-    store_obj_action = QAction("Save as ASCII", tab1)
-    store_obj_action.setShortcut('Alt+O')
-    store_obj_action.setCheckable(False)
-    store_obj_action.triggered.connect(lambda checked = tab1.flip_uv_checkbox.isChecked(): tab1.viewer.save_mesh_ascii(checked))
-    save_menu.addAction(store_obj_action)
-    
-    store_obj_action = QAction("Save as PMX", tab1)
-    store_obj_action.setShortcut('Alt+O')
-    store_obj_action.setCheckable(False)
-    store_obj_action.triggered.connect(tab1.viewer.save_mesh_pmx)
-    save_menu.addAction(store_obj_action)
-    
-    store_obj_action = QAction("Save as IQE", tab1)
-    store_obj_action.setShortcut('Alt+O')
-    store_obj_action.setCheckable(False)
-    store_obj_action.triggered.connect(tab1.viewer.save_mesh_iqe)
-    save_menu.addAction(store_obj_action)
-    
+    ischecked = tab1.flip_uv_checkbox.isChecked()
 
     save_actions = [
         ("FBX - Coming Soon", "Ctrl+Shift+F",
          lambda: QMessageBox.information(tab1, "Coming Soon", "FBX support is not implemented yet.")),
         ("GLTF2", "Ctrl+Shift+G", tab1.viewer.save_mesh_gltf),
-        ("OBJ", "Ctrl+Shift+O", tab1.viewer.save_mesh_obj),
-        ("SMD", "Ctrl+Shift+S", tab1.viewer.save_mesh_smd),
-        ("ASCII", "Ctrl+Shift+A", tab1.viewer.save_mesh_ascii),
+        ("OBJ", "Ctrl+Shift+O", lambda: tab1.viewer.save_mesh_obj(ischecked)),
+        ("SMD", "Ctrl+Shift+S", lambda: tab1.viewer.save_mesh_smd(ischecked)),
+        ("ASCII", "Ctrl+Shift+A", lambda: tab1.viewer.save_mesh_ascii(ischecked)),
         ("PMX", "Ctrl+Shift+P", tab1.viewer.save_mesh_pmx),
         ("IQE", "Ctrl+Shift+I", tab1.viewer.save_mesh_iqe),
     ]
@@ -296,11 +254,8 @@ def create_save_menu(tab1):
         action.triggered.connect(func)
         save_menu.addAction(action)
 
-
 def create_open_menu(tab1):
     open_menu = tab1.menuBar().addMenu("Open")
-
-    # Open .mesh file
     open_action = QAction("Open file (.mesh)", tab1)
     open_action.setShortcut("Ctrl+O")
     open_action.triggered.connect(lambda: openFile(tab1))
@@ -311,6 +266,15 @@ def create_open_menu(tab1):
     open_folder_action.setShortcut("Ctrl+Shift+O")
     open_folder_action.triggered.connect(lambda: openFolder(tab1))
     open_menu.addAction(open_folder_action)
+
+
+def update_zoom_speed(tab1):
+    if hasattr(tab1.viewer.scene, "camera"):
+        zoom_speed = tab1.zoom_speed_slider.value() / 30.0
+        tab1.viewer.scene.camera.zoom_speed = zoom_speed
+        tab1.statusBar().showMessage(f"Zoom Speed: {zoom_speed:.1f}")
+    else:
+        tab1.statusBar().showMessage("No camera available to adjust zoom speed.")
 
 
 def openFile(tab1):
@@ -346,7 +310,6 @@ def openFile(tab1):
     if file_name:
         load_mesh(tab1, file_name)
 
-
 def openFolder(tab1):
     """Open a folder, filter .mesh files, and display them in mesh_list_widget."""
     folder_path = QFileDialog.getExistingDirectory(None, "Select Folder")
@@ -374,7 +337,6 @@ def openFolder(tab1):
     QMessageBox.information(tab1, "Success", f"Loaded {len(mesh_files)} .mesh files.")
     logger.info(tab1, "Success", f"Loaded {len(mesh_files)} .mesh files.")
 
-
 def load_mesh(tab1, file_path):
     try:
         # Attempt to parse the mesh directly from the file path
@@ -385,19 +347,6 @@ def load_mesh(tab1, file_path):
             tab1.viewer.filepath = os.path.abspath(file_path) # Filepath to mesh viewer
 
             return
-
-        # If fails, read the file as binary
-        # with io.BytesIO(file_path) as file:
-        #     mesh_data = file.read()
-
-        # with open(file_path, "rb") as file:
-        #     mesh_data = file.read()
-
-        # Attempt to parse different type of mesh from binary data
-        # mesh = mesh_from_path(mesh_data)
-        # if mesh:
-        #     tab1.viewer.load_mesh(mesh, file_path)
-        #     return
 
         # If neither type could be loaded, show an error
         print(tab1, "Error", "Failed to parse the mesh file. Unsupported format.")
