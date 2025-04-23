@@ -9,4 +9,5 @@ pyrr
 transformations
 zstandard
 arc4
-
+PyQt5-Frameless-Window
+astc-decomp-faster

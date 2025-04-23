@@ -67,9 +67,6 @@ class ViewerWidget(QModernGLWidget):
         # print("Scene initialized with OpenGL context.")
         logger.info("Scene initialized with OpenGL context.")
 
-        # Update UI label safely
-        self.parent().update_zoom_label(self.scene.camera.zoom_speed)
-
     def init(self):
         """Ensure the OpenGL context and scene are initialized."""
 

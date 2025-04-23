@@ -25,6 +25,18 @@ def init_rotor():
     import rotor
     rot = rotor.newrotor(asdf_tm)
     return rot
+    
+def init_rotor_2():
+    asdf_dn = 'j2h56ogodh3se'
+             #'' 
+    asdf_dt = '=dziaq.'
+             #''
+    asdf_df = '|os=5v7!"-234'
+             #''                                                 !     #                                 *     &
+    asdf_tm = asdf_dn * 4 + (asdf_dt + asdf_dn + asdf_df) * 5 + '!' + '#' + asdf_dt * 7 + asdf_df * 2 + '*' + '&' + "'"
+    import rotor
+    rot = rotor.newrotor(asdf_tm)
+    return rot
 
 def _reverse_string(s):
     l = list(s)
@@ -84,13 +96,8 @@ def zflag_decompress(npkentry):
             npkentry.data = zlib.decompress(npkentry.data, bufsize=npkentry.file_original_length)
         case 2:
             npkentry.data = lz4.block.decompress(npkentry.data,uncompressed_size=npkentry.file_original_length)
-        case 3:
-            import struct
-            x = struct.pack("Q", npkentry.file_sign)
-            if len(x) >= 8:
-                pass
-            else:            
-                npkentry.data = zstandard.ZstdDecompressor().decompress(npkentry.data)
+        case 3:         
+            npkentry.data = zstandard.ZstdDecompressor().decompress(npkentry.data)
         case 5:
             npkentry.data = lz4.block.decompress(npkentry.data,uncompressed_size=npkentry.file_original_length)
 

@@ -1,4 +1,4 @@
-import sys, os, io, time, json
+import sys, os, io, time, json, signal
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -66,7 +66,7 @@ class MainWindow(QMainWindow):
         self.console_handler.add_console(self.main_console.console_output)
 
         # Allowed extensions for respective window implementation
-        self.allowed_texture_exts = [".png", ".jpg", ".dds", ".ktx", ".pvr", ".astc", ".tga", "bmp"]
+        self.allowed_texture_exts = ["bmp", "gif", "jpg", "jpeg", "png", "pbm", "pgm", "ppm", "xbm", "xpm", "tga", "ico", "tiff", "dds", "pvr","astc", "ktx", "cbk"]
         self.allowed_mesh_exts = [".mesh"]
         self.allowed_text_exts = [".mtl", ".json", ".xml", ".trackgroup", ".nfx", ".h",
                                  ".shader", ".animation"]  # Only for double-clicking, context menu will still work for other formats
@@ -125,7 +125,7 @@ class MainWindow(QMainWindow):
             return True  # Block further processing
 
         # Handle Down Arrow Key and Skip Hidden Items
-        if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Down and source is self.list:
+        elif event.type() == QEvent.KeyPress and event.key() == Qt.Key_Down and source is self.list:
             selected_indexes = self.list.selectionModel().selectedIndexes()
             if not selected_indexes:
                 return True  # No selection, stop processing
@@ -145,7 +145,6 @@ class MainWindow(QMainWindow):
                 self.on_item_double_clicked(next_index)  # Simulate double-click
 
             return True  # Block default behavior
-
         return super().eventFilter(source, event)
 
     def initUI(self):
@@ -347,15 +346,13 @@ class MainWindow(QMainWindow):
             # If the texture viewer doesn't exist, create it
             if not hasattr(self, "window_texture") or self.window_texture is None:
                 self.window_texture = TextureViewer(npk_entry, parent=self)
-                self.window_texture.setAttribute(Qt.WA_DeleteOnClose)  # Cleanup on close
-            else:
-                # Update the existing viewer with the new texture
-                self.window_texture.updateDisplay(npk_entry)
-
+            
+            # Update the existing viewer with the new texture
             self.window_texture.show()
             self.window_texture.raise_()
+            self.window_texture.displayImage(npk_entry)
         except Exception as e:
-            logger.critical(f"An error occurred while loading the texture: {str(e)}")
+            logger.critical(f"An error occurred at location {e.__traceback__.tb_frame.f_code.co_name}; line {e.__traceback__.tb_lineno} while loading the texture: {str(e)}")
 
 
     # Main Toolbar
@@ -634,6 +631,7 @@ class MainWindow(QMainWindow):
                 self.decryption_key = decryption_key
                 self.aes_key = aes_key
                 self.index_size = index_size
+                self.compblks2png = compblks2png
 
                 # Save the last used config path
                 with open(config_path_storage, "w") as storage_file:
@@ -648,6 +646,7 @@ class MainWindow(QMainWindow):
                 self.config_manager.set("decryption_key", decryption_key)
                 self.config_manager.set("aes_key", aes_key)
                 self.config_manager.set("index_size", index_size)
+                self.config_manager.set("compblks2png", )
             else:
                 print("ERROR: config_manager is not initialized!")
                 logger.critical("ERROR: config_manager is not initialized!")
@@ -1128,6 +1127,7 @@ def main():
     app = QApplication(sys.argv)
     app.setPalette(qt_theme.palettes()["dark"]) # Set the dark palette
     app.setStyleSheet(qt_theme.style_modern()) # Apply the dark theme stylesheet
+    signal.signal(signal.SIGINT, lambda *a: app.quit())
     main_window = MainWindow()
     main_window.show()
     logger.info("Application started")
