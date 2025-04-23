@@ -9,5 +9,7 @@ pyrr
 transformations
 zstandard
 arc4
+pillow
+bitstring
 PyQt5-Frameless-Window
 astc-decomp-faster
