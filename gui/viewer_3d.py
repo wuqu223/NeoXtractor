@@ -53,7 +53,6 @@ class ViewerWidget(QModernGLWidget):
 
     def initializeGL(self):
         print("Creating OpenGL context...")
-        self.ctx = mgl.create_context() # Create the OpenGL context
         logger.info("Creating OpenGL context...")
         self.ctx = mgl.create_context()  # Create the OpenGL context
 
@@ -84,8 +83,6 @@ class ViewerWidget(QModernGLWidget):
         # self.text_renderer = TextRenderer(self.ctx)
         self.text_renderer = StaticTextRenderer(self.ctx)
         print("TextRenderer initialized.\n")
-        self.text_renderer = StaticTextRenderer(self.ctx)
-        # print("TextRenderer initialized.")
         logger.info("TextRenderer initialized.\n")
 
         self.setFocusPolicy(Qt.StrongFocus)  # Ensures widget can receive key events
@@ -236,6 +233,8 @@ class ViewerWidget(QModernGLWidget):
             self.text_renderer.render_static_text(f"{key}:", x=20, y=20 + i * 20, scale=1.0, color=(0.5, 1.0, 1.0))
             self.text_renderer.render_static_text(f"{action}", x=90, y=20 + i * 20, scale=1.0, color=(1.0, 1.0, 1.0))
 
+        y_cursor = self.viewport[3] - 20
+
         model_info = [
             ("Version", self.mesh_version),
             ("Bones", self.new_bone_count),
@@ -244,8 +243,8 @@ class ViewerWidget(QModernGLWidget):
             ("Name", filename),
         ]
         for i, (key1, info) in enumerate(model_info):
-            self.text_renderer.render_static_text(f"{key1} :", x=20, y=620 + i * 20, scale=1.0, color=(0.5, 1.0, 1.0))
-            self.text_renderer.render_static_text(f"{info}", x=90, y=620 + i * 20, scale=1.0, color=(1.0, 1.0, 1.0))
+            self.text_renderer.render_static_text(f"{key1} :", x=20, y=y_cursor - i * 20, scale=1.0, color=(0.5, 1.0, 1.0))
+            self.text_renderer.render_static_text(f"{info}", x=90, y=y_cursor - i * 20, scale=1.0, color=(1.0, 1.0, 1.0))
 
     def resizeEvent(self, event):
         """Handle resizing and update the viewport if context is ready."""
