@@ -5,7 +5,7 @@ from pyrr import Matrix44
 
 
 class StaticTextRenderer:
-    def __init__(self, ctx):
+    def __init__(self, ctx: moderngl.Context):
         self.ctx = ctx
 
         # Load font with FreeType
@@ -92,7 +92,7 @@ class StaticTextRenderer:
         self.program['text_texture'].value = 0
 
         # Set up orthographic projection
-        projection = Matrix44.orthogonal_projection(0, self.ctx.screen.width, 0, self.ctx.screen.height, -1, 1)
+        projection = Matrix44.orthogonal_projection(0, self.ctx.viewport[2], 0, self.ctx.viewport[3], -1, 1)
         self.program['projection'].write(projection.astype('f4').tobytes())
 
         for char in text:
