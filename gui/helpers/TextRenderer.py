@@ -56,57 +56,58 @@ class TextRenderer:
     def _create_texture_atlas(self, font_size):
         # Create texture atlas using PIL
         atlas_size = 512
-        self.atlas = Image.new('L', (atlas_size, atlas_size), 0)
-        self.atlas_draw = ImageDraw.Draw(self.atlas)
+        atlas = Image.new('L', (atlas_size, atlas_size), 0)
+        atlas_draw = ImageDraw.Draw(atlas)
         
+        font: ImageFont.FreeTypeFont | ImageFont.ImageFont
         try:
-            self.font = ImageFont.truetype("./fonts/Roboto-Regular.ttf", font_size)
+            font = ImageFont.truetype("./fonts/Roboto-Regular.ttf", font_size)
         except OSError:
             print("Failed to load font, falling back to default")
-            self.font = ImageFont.load_default()
+            font = ImageFont.load_default()
             
         # Create character map
-        self.char_data = {}
+        self.char_data: dict[str, Character] = {}
         cursor_x, cursor_y = 0, 0
         max_height = 0
         
-        ascent, descent = self.font.getmetrics()
-        self.total_height = ascent + descent
+        ascent, descent = font.getmetrics()
+        total_height = ascent + descent
         
         for char_code in range(32, 128):
             char = chr(char_code)
-            bbox = self.font.getbbox(char)
+            bbox = font.getbbox(char)
             char_width = bbox[2] - bbox[0]
             char_height = bbox[3] - bbox[1]
             
             if cursor_x + char_width >= atlas_size:
                 cursor_x = 0
-                cursor_y += self.total_height + 2
+                cursor_y += total_height + 2
                 max_height = 0
                 
             if char_height > max_height:
                 max_height = char_height
                 
             # Draw character aligned to the baseline
-            self.atlas_draw.text((cursor_x, cursor_y + ascent), char, font=self.font, fill=255, anchor="ls")
+            atlas_draw.text((cursor_x, cursor_y + ascent), char, font=font, fill=255, anchor="ls")
             
-            self.char_data[char] = {
-                'tex_coords': (
+            self.char_data[char] = Character(
+                (
                     cursor_x / atlas_size,
                     cursor_y / atlas_size,
                     (cursor_x + char_width) / atlas_size,
-                    (cursor_y + self.total_height) / atlas_size
+                    (cursor_y + total_height) / atlas_size
                 ),
-                'size': (char_width, self.total_height),
-                'ascent': ascent
-            }
+                (char_width, total_height),
+                ascent
+            )
             
             cursor_x += char_width + 2
             
         # Create ModernGL texture from atlas
         self.texture = self.ctx.texture(
-            self.atlas.size, 1,
-            self.atlas.tobytes(),
+            atlas.size, 1,
+            atlas.tobytes(),
             dtype='f1'
         )
         self.texture.swizzle = 'RRRR'
@@ -133,12 +134,12 @@ class TextRenderer:
                 continue
                 
             char_info = self.char_data[char]
-            w, h = char_info['size']
+            w, h = char_info.size
             w, h = w * scale, h * scale
-            tex_coords = char_info['tex_coords']
+            tex_coords = char_info.tex_coords
         
             # Position character relative to baseline
-            char_y = y - (char_info['ascent'] * scale)
+            char_y = y - (char_info.ascent * scale)
             
             quad = [
                 cursor_x, char_y + h, tex_coords[0], tex_coords[1],
@@ -158,8 +159,7 @@ class TextRenderer:
 
 
 class Character:
-    def __init__(self, texture_id, size, bearing, advance):
-        self.texture_id = texture_id
+    def __init__(self, tex_coords: tuple[int, int, int, int], size: tuple[int, int], ascent: int):
+        self.tex_coords = tex_coords
         self.size = size
-        self.bearing = bearing
-        self.advance = advance
+        self.ascent = ascent
