@@ -48,6 +48,7 @@ class ViewerWidget(QModernGLWidget):
         self.current_scale = 1.0
         self.viewport = (0, 0, 1200, 1200)  # Default viewport size
         self.camera = Camera()
+        self.show_overlay_text = True
 
         self.update_aspect_ratio()
 
@@ -91,8 +92,9 @@ class ViewerWidget(QModernGLWidget):
         self.ctx.viewport = self.viewport  # Ensure viewport matches window size
         self.screen.use()
         self.scene.draw()
-        # self.render_navigation_overlay(self.location)
-        self.render_navigation_overlay(self.filepath)
+        if self.show_overlay_text:
+            # self.render_overlay_text(self.location)
+            self.render_overlay_text(self.filepath)
         self.update_aspect_ratio()
         self.update()
 
@@ -150,7 +152,7 @@ class ViewerWidget(QModernGLWidget):
 
         return new_bone_count
 
-    def render_navigation_overlay(self, selected_file):
+    def render_overlay_text(self, selected_file):
 
         if not self.text_renderer:
             print("TextRenderer not initialized, skipping navigation keys rendering.")
@@ -490,6 +492,11 @@ class ViewerWidget(QModernGLWidget):
         # Update the scene based on the action's checked state
         self.scene.toggle_culling()
         self.scene.enable_culling = checked
+        self.update()
+
+    def toggle_overlay_text(self, checked):
+        # Update the scene based on the action's checked state
+        self.show_overlay_text = checked
         self.update()
 
 
