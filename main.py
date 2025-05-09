@@ -427,6 +427,17 @@ class MainWindow(QMainWindow):
         self.extraction_window.show()
         self.extraction_window.raise_()
 
+    def create_tools_menu(self):
+        tools_menu = self.menuBar().addMenu("Tools")
+
+        mesh_viewer_action = QAction("Mesh Viewer", self)
+        mesh_viewer_action.setStatusTip("Open Mesh Viewer")
+        mesh_viewer_action.triggered.connect(self.show_mesh_viewer_window)
+        tools_menu.addAction(mesh_viewer_action)
+
+    def show_mesh_viewer_window(self):
+        self.window_mesh.show()
+        self.window_mesh.raise_()
 
     def show_decrypt(self):
         """Show the decryption popup window."""
