@@ -157,7 +157,6 @@ class MainWindow(QMainWindow):
         # Define all the Windows that can be opened
         self.main_exploring = create_main_viewer_tab(self)
         self.window_mesh = create_mesh_viewer_tab(self)
-        self.window_mesh.show()
 
         self.list.installEventFilter(self)
 
@@ -268,8 +267,10 @@ class MainWindow(QMainWindow):
             return
     
         if not hasattr(self.window_mesh.viewer, "scene") or self.window_mesh.viewer.scene is None:
-            print("Viewer scene is not initialized. Calling initializeGL()...")
-            self.window_mesh.viewer.initializeGL()
+            print("Mesh viewer is not ready, waiting for initialization.")
+            self.window_mesh.viewer.on_init = lambda : self.show_mesh()
+            self.window_mesh.show()
+            return
 
         # Get all selected indexes from the QListView
         selected_indexes = self.list.selectionModel().selectedIndexes()
@@ -307,6 +308,7 @@ class MainWindow(QMainWindow):
 
                 # Ensure the mesh viewer window is displayed and raised
                 self.update()
+                self.window_mesh.show()
                 self.window_mesh.raise_()
 
             except Exception as e:
