@@ -79,11 +79,6 @@ class MainWindow(QMainWindow):
         qInstallMessageHandler(lambda mode, context, message: None) # Disable default output
         raise ValueError("This is an exception logged to file.") 
 
-    def closeEvent(self, a0):
-        self.window_mesh.thread().quit()
-        logger.warning("Closed Mesh Window!")
-        return super().closeEvent(a0)
-
     def eventFilter(self, source, event):
         # Handle Right-Click Context Menu
         if event.type() == QEvent.ContextMenu and source is self.list:

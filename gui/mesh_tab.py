@@ -65,7 +65,7 @@ def create_mesh_viewer_tab(self):
 
     # -----------------------------------
     # Mesh Viewer
-    tab1 = QMainWindow()
+    tab1 = QMainWindow(self)
     tab1.setGeometry(350, 150, 1400, 800)
     tab1.setWindowTitle("ModernGL Mesh Viewer")
 
