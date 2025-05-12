@@ -2,9 +2,9 @@ from pyrr import Matrix44, Vector3
 import numpy as np
 import transformations as tf
 import moderngl as mgl
-from gui.camera import *
+from gui.widgets.camera import *
 from utils.util import *
-from gui.viewer_3d import *
+from gui.widgets.viewer_3d import *
 
 class Scene:
     def __init__(self, ctx, viewer):

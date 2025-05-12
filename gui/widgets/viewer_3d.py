@@ -1,19 +1,16 @@
-import sys
 import os
 import io
 import struct
 import moderngl as mgl
-from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtOpenGL import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-from pyrr import Matrix44
 from gui.helpers.TextRenderer import TextRenderer
 from utils.util import *
-from gui.scene import Scene
-from gui.camera import Camera
+from gui.widgets.scene import Scene
+from gui.widgets.camera import Camera
 from converter import *
 
 def readuint8(f):

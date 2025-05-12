@@ -50,7 +50,6 @@ def create_main_viewer_tab(self):
   
     self.list = QListView()
     self.list.doubleClicked.connect(self.on_item_double_clicked)
-    self.list.clicked.connect(self.on_item_double_clicked)
     self.list_model = QStandardItemModel(self)
     self.list.setModel(self.list_model)
 
