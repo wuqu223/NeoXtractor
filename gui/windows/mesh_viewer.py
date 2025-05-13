@@ -95,7 +95,6 @@ def create_mesh_viewer_tab(self):
     tab1.on_mesh_item_double_clicked = on_mesh_item_double_clicked
 
     # Connect the signals to the handlers
-    tab1.mesh_list_widget.itemPressed.connect(tab1.on_mesh_item_clicked)
     tab1.mesh_list_widget.itemDoubleClicked.connect(tab1.on_mesh_item_double_clicked)
     tab1.mesh_list_widget.itemActivated.connect(tab1.on_mesh_item_double_clicked) # process index using up and down arrow
 

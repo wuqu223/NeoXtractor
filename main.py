@@ -161,7 +161,6 @@ class MainWindow(QMainWindow):
 
         # Connect double-click signal
         #self.list.clicked.connect(self.on_item_clicked) # not needed anymore
-        self.list.doubleClicked.connect(self.on_item_double_clicked)
 
         # Set up master status bar
         self.mstatus_bar = self.statusBar()
