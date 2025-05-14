@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-from gui.viewer_3d import ViewerWidget
+from gui.widgets.viewer_3d import ViewerWidget
 from utils.config_manager import ConfigManager
 from utils.console_handler import *
 from utils.util import *
@@ -61,8 +61,6 @@ def create_mesh_viewer_tab(self):
     if hasattr(self, "window_mesh") and self.window_mesh is not None:
         return self.window_mesh  # Reuse existing instance
 
-    print("Initializing mesh viewer tab...")
-
     # -----------------------------------
     # Mesh Viewer
     tab1 = QMainWindow(self)
@@ -83,13 +81,6 @@ def create_mesh_viewer_tab(self):
     main_layout.addWidget(tab1.mesh_list_widget)
 
     # Define and attach signal handlers
-    def on_mesh_item_clicked(item):
-        """Handle single-click event for mesh items."""
-        file_path = item.data(Qt.UserRole)
-        on_mesh_item_double_clicked(item)
-        logger.debug(f"Item clicked: {file_path}")
-
-
     def on_mesh_item_double_clicked(item):
         """Handle double-click event to load mesh into the viewer."""
         file_path = item.data(Qt.UserRole)
@@ -101,11 +92,9 @@ def create_mesh_viewer_tab(self):
             except Exception as e:
                 logger.critical(tab1, "Error", f"Failed to load mesh file: {str(e)}")
 
-    tab1.on_mesh_item_clicked = on_mesh_item_clicked
     tab1.on_mesh_item_double_clicked = on_mesh_item_double_clicked
 
     # Connect the signals to the handlers
-    tab1.mesh_list_widget.itemPressed.connect(tab1.on_mesh_item_clicked)
     tab1.mesh_list_widget.itemDoubleClicked.connect(tab1.on_mesh_item_double_clicked)
     tab1.mesh_list_widget.itemActivated.connect(tab1.on_mesh_item_double_clicked) # process index using up and down arrow
 
