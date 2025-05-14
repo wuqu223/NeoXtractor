@@ -71,11 +71,11 @@ def compile_shader_program(ctx, vertex_path, fragment_path):
 def res_from_path(path):
     return data_from_path('res/' + path)
 
-def mesh_from_path(path):
+def mesh_from_path(data: bytes):
     mesh = None
 
     try:
-            mesh = parse_mesh_adaptive(path)  # Atempting first parser
+            mesh = parse_mesh_adaptive(data)  # Atempting first parser
             if mesh is None or 'position' not in mesh:
                 raise ValueError("adaptive returned None or missing required data.")
     except Exception as e2:
@@ -97,9 +97,6 @@ def mesh_from_path(path):
 
     return mesh
 
-def log(*args, **kwargs):
-    print('log: ', *args, **kwargs)
-
 def grid(size, steps):
     u = np.repeat(np.linspace(-size, size, steps), 2)
     v = np.tile([-size, size], steps)
@@ -115,3 +112,13 @@ def file_paths_from_dir(path):
     file_names = file_names_from_dir(path)
     file_paths = list(map(lambda s: path + '/' + s, file_names))
     return file_paths
+
+def ransack_agent(data, search_string):
+    """Check if the given search_string is present in the in-memory NPK entry data."""
+    try:
+        if isinstance(data, bytes):  # Convert binary data to string for searching
+            data = data.decode('utf-8', errors='ignore')
+        return search_string in data.lower()
+    except Exception as e:
+        logger.warning("Error scanning data: %s", e)
+        return False

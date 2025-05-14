@@ -1249,7 +1249,7 @@ def parser_mesh_bytes(model, f):
     return model
 
 
-def parse_mesh_adaptive(path):
+def parse_mesh_adaptive(data: bytes):
     """
     Tries to parse a mesh file using multiple methods and returns the model if successful.
     Logs errors for debugging purposes.
@@ -1262,7 +1262,7 @@ def parse_mesh_adaptive(path):
         #     file_content = file.read()
 
         # Create a file-like object for parsing
-        with io.BytesIO(path) as f:
+        with io.BytesIO(data) as f:
             parse_mesh_dynamic
             # Attempt parsing using the original method
             try:
@@ -1279,7 +1279,7 @@ def parse_mesh_adaptive(path):
             try:
                 logger.debug("Attempting adaptive helper (bytes)...")
                 print("Attempting the adaptive helper (bytes)...")
-                parse_mesh_helper(path)
+                parse_mesh_helper(data)
                 logger.info("Successfully parsed using the adaptive helper parser (bytes).")
                 return model
             except Exception as e:
@@ -1314,7 +1314,7 @@ def parse_mesh_adaptive(path):
 
     try:
         # Open the file in binary mode and read its content
-        with open(path, 'rb') as f:
+        with open(data, 'rb') as f:
             # file_content = f.read()
 
         # Create a file-like object for parsing
@@ -1333,7 +1333,7 @@ def parse_mesh_adaptive(path):
             f.seek(0)
             try:
                 logger.debug("Attempting helper parser (path)...")
-                parse_mesh_helper(path)
+                parse_mesh_helper(data)
                 logger.info("Successfully parsed using helper parser (path).")
                 return model
             except Exception as e:
