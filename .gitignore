@@ -2,8 +2,6 @@
 
 *.pyc
 *__pycache__
-/bin/tacentview
-/bin/pvr
 /out/
 
-/logfile.txt
+settings.json

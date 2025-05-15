@@ -1,21 +1,23 @@
-import sys, signal
-from PyQt5.QtWidgets import QApplication
+"""NeoXtractor entrypoint"""
 
-from gui.fonts import loadFont
-from gui.qt_theme import qt_theme
-from gui.main_window import MainWindow
+import sys
+from PySide6 import QtWidgets
 
-from logger import logger
+from gui.windows.main_window import MainWindow
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    app.setPalette(qt_theme.palettes()["dark"]) # Set the dark palette
-    app.setStyleSheet(qt_theme.style_modern()) # Apply the dark theme stylesheet
+def run_gui():
+    """Run NeoXtractor as a GUI application."""
+    app = QtWidgets.QApplication(sys.argv)
 
-    loadFont("Roboto", "./fonts/Roboto-Regular.ttf")
-
-    signal.signal(signal.SIGINT, lambda *a: app.quit())
     main_window = MainWindow()
+    main_window.resize(1600, 900)
     main_window.show()
-    logger.info("Application started")
-    sys.exit(app.exec_())
+
+    sys.exit(app.exec())
+
+def run_cli():
+    """Run NeoXtractor as a CLI application."""
+    raise NotImplementedError("CLI mode is not implemented yet.")
+
+if __name__ == "__main__":
+    run_gui()
