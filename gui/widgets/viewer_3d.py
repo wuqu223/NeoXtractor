@@ -1,6 +1,7 @@
 import os
 import io
 import struct
+from typing import Callable
 import moderngl as mgl
 from PyQt5.QtCore import Qt
 from PyQt5.QtOpenGL import *
@@ -47,7 +48,7 @@ class ViewerWidget(QModernGLWidget):
         self.camera = Camera()
         self.show_overlay_text = True
 
-        self.on_init: function | None = None
+        self.on_init: Callable[[], None] | None = None
 
         self.update_aspect_ratio()
 

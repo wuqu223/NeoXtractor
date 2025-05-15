@@ -1,4 +1,5 @@
 import io, os, struct
+from typing import Literal, cast
 from decompression import zflag_decompress, special_decompress
 from decryption import file_decrypt
 from detection import get_ext, get_compression
@@ -30,33 +31,22 @@ INFO_SIZE_MAP = {
 }
 
 class NPKEntry:
-    ext = None
-    special_decompress = None
-    data = None
+    ext: str | None = None
+    special_decompress: Literal["nxs3"] | None = None
+    data: bytes = bytes()
     filename = None
-    has_ext = lambda ext: (type(ext) != None)
+    has_ext = False
     
-    def __init__(self, data=None):
-        if data:
-            self.file_sign = data[0]         # Unique file signature/hash
-            self.file_offset = data[1]       # File data offset in NPK
-            self.file_length = data[2]       # Compressed size
-            self.file_original_length = data[3] # Decompressed/original size
-            self.zcrc = data[4]              # Compressed CRC
-            self.crc = data[5]               # Decompressed CRC
-            self.file_structure = data[6]    # File path in archive (if available)
-            self.zflag = data[7]             # Compression flag
-            self.fileflag = data[8]          # File flag/type
-        else:
-            self.file_sign = 0
-            self.file_offset = 0
-            self.file_length = 0
-            self.file_original_length = 0
-            self.zcrc = 0
-            self.crc = 0
-            self.file_structure = None
-            self.zflag = 0
-            self.fileflag = 0
+    def __init__(self, data):
+        self.file_sign = data[0]         # Unique file signature/hash
+        self.file_offset = data[1]       # File data offset in NPK
+        self.file_length = data[2]       # Compressed size
+        self.file_original_length = data[3] # Decompressed/original size
+        self.zcrc = data[4]              # Compressed CRC
+        self.crc = data[5]               # Decompressed CRC
+        self.file_structure = cast(bytes, data[6])    # File path in archive (if available)
+        self.zflag = data[7]             # Compression flag
+        self.fileflag = data[8]          # File flag/type
 
 class NPKFile:
     path = ""

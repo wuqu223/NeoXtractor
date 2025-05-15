@@ -2,7 +2,7 @@
 def get_compression(data):
     if data[0:8] == b"NXS3\x03\x00\x00\x01":
         return 'nxs3'
-    return 'none'
+    return None
 
 #tries to get the file extension (will be WIP until 100% compatibility is reached)
 def get_ext(data):

@@ -21,7 +21,7 @@ class TextureViewer(QMainWindow):
 
         # QLabel for displaying the texture
         self.label = QLabel(self)
-        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         # Flip texture checkbox

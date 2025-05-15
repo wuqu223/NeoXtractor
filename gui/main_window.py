@@ -5,8 +5,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from gui.popups import AboutPopup
 from gui.widgets.viewer_3d import ViewerWidget
-from utils.npk_reader import NPKFile
-from gui.extraction_tab import ExtractionViewer
+from utils.npk_reader import NPKEntry, NPKFile
+from gui.windows.extractor import ExtractionViewer
 from gui.windows.mesh_viewer import MeshViewer
 from gui.windows.npk_metadata_dialog import NPKMetadataDialog
 from gui.windows.plain_text_viewer import PlainTextViewer
@@ -41,14 +41,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('NeoXtractor')
         self.setGeometry(150, 50, 1600, 950)
 
-        self.config_manager = ConfigManager() # Fetch Outputfolder from config manager
-        # todo: don't set these attributes
-        self.decryption_key = self.config_manager.get("decryption_key", 0)
-        self.output_folder = self.config_manager.get("output_folder", "")
-        self.project_folder = self.config_manager.get("project_folder", "")
-        self.aes_key = self.config_manager.get("aes_key", 0)
-        self.index_size = self.config_manager.get("index_size", 0)
-        self.npk_type = self.config_manager.get("npk_type", 0)
+        self.config_manager = ConfigManager()
 
         # Initialize the console output handler
         self.console_handler = ConsoleOutputHandler()
@@ -174,7 +167,7 @@ class MainWindow(QMainWindow):
                 return True
 
             # Retrieve associated file index
-            entry_index = self.list.model().data(index, Qt.UserRole)
+            entry_index = self.list.model().data(index, Qt.ItemDataRole.UserRole)
             npk_entry = self.npk_file.read_entry(entry_index)
             if npk_entry is None:
                 logger.debug("No valid file index associated with the item.")
@@ -274,7 +267,7 @@ class MainWindow(QMainWindow):
             mesh = mesh_from_path(data)
             if not mesh:
                 raise ValueError("Failed to parse the mesh file.")
-
+            
             # Load the mesh into the viewer
             self.window_mesh.viewer.load_mesh(mesh, self.get_savefile_location())
             self.window_mesh.viewer.focus_on_selected_object()
@@ -399,13 +392,12 @@ class MainWindow(QMainWindow):
         except FileNotFoundError:
             message = "Error: Message file not found."
         # Initialize the decryption window with the loaded message
-        result, ok = QInputDialog().getInt(None, "Decryption Key", message, self.decryption_key, -1000,1000, 10)
+        result, ok = QInputDialog().getInt(None, "Decryption Key", message, self.config_manager.get("decryption_key"), -1000,1000, 10)
         if ok:
             # Retrieve input text if the dialog was accepted
-            self.decryption_key = result  # Store the input for future use
             self.config_manager.set("decryption_key", result)
-            print(f"Decryption Key Entered: {self.decryption_key}")
-            logger.debug(f"Decryption Key Entered: {self.decryption_key}")
+            print(f"Decryption Key Entered: {result}")
+            logger.debug(f"Decryption Key Entered: {result}")
         self.statusBar().showMessage(f"Decryption key set to {result}")
 
     def show_about(self):
@@ -459,7 +451,7 @@ class MainWindow(QMainWindow):
                 return None
 
             # Construct the output path dynamically based on the NPK entry attributes
-            base_path = os.path.join(self.output_folder, os.path.basename(self.npk.path))
+            base_path = os.path.join(self.config_manager.get("output_folder"), os.path.basename(self.npk_file.path))
 
             if npk_entry.file_structure:
                 filestructure = npk_entry.file_structure.decode("utf-8").replace("\\", "/")
@@ -481,11 +473,10 @@ class MainWindow(QMainWindow):
     def set_output(self):
         file_path = QFileDialog.getExistingDirectory(self, "Select Folder")
         if file_path:
-            # self.output_folder = self.config_manager.set(f"output_folder", f"{os.path.basename(file_path)}")
-            self.output_folder = self.config_manager.set(f"output_folder", f"{file_path}")
+            output_folder = self.config_manager.set(f"output_folder", f"{file_path}")
             self.status_bar.showMessage(f'Output Folder: {file_path}.')
             logger.info(f'Output Folder: {file_path}.')
-        return self.output_folder
+        return output_folder
 
     def extract_file(self, npk_entry):
         """Extract the currently selected NPK entry to a user-specified location."""
@@ -522,7 +513,7 @@ class MainWindow(QMainWindow):
         """Load configuration data from a JSON file and save the last used config path."""
         # Check if a saved config path exists
 
-        config_path_storage = "./utils/last_config.json"
+        config_path_storage = "./last_config.json"
 
         # Load last used config if available
         if not force_new_file and not config_file and os.path.exists(config_path_storage):
@@ -572,10 +563,6 @@ class MainWindow(QMainWindow):
 
                 #Update application state
                 self.game_config = game_config
-                self.npk_type = npk_type
-                self.decryption_key = decryption_key
-                self.aes_key = aes_key
-                self.index_size = index_size
                 self.compblks2png = compblks2png
 
                 # Save the last used config path
@@ -602,37 +589,6 @@ class MainWindow(QMainWindow):
             print(f"Error loading Config file: {e}")
             logger.critical(f"Error loading Config file: {e}")
 
-    def update_config_data(self, json_file_path, outer_key, inner_key, value):
-        """Update a nested JSON file structure."""
-        # Check if the file exists
-        if not os.path.exists(json_file_path):
-            print(f"File {json_file_path} does not exist. Creating a new one.")
-            logger.warning(f"File {json_file_path} does not exist. Creating a new one.")
-            data = {outer_key: {}}  # Create a nested structure if the file doesn't exist
-        else:
-            # Read the existing JSON data
-            try:
-                with open(json_file_path, "r") as file:
-                    data = json.load(file)
-            except json.JSONDecodeError:
-                print(f"File {json_file_path} contains invalid JSON. Starting with an empty dictionary.")
-                logger.warning(f"File {json_file_path} contains invalid JSON. Starting with an empty dictionary.")
-                data = {outer_key: {}}
-
-        # Ensure the outer key exists
-        if outer_key not in data:
-            data[outer_key] = {}
-
-        # Update the nested dictionary
-        data[outer_key][inner_key] = value
-
-        # Write the updated data back to the file
-        with open(json_file_path, "w") as file:
-            json.dump(data, file, indent=4)
-
-        print(f"Updated {json_file_path}: Set {outer_key}.{inner_key} to {value}")
-        logger.info(f"Updated {json_file_path}: Set {outer_key}.{inner_key} to {value}")
-
     def load_npk(self):
         """Load an NPK file and populate the list."""
         self.npk_file = None
@@ -652,7 +608,7 @@ class MainWindow(QMainWindow):
         self.npk_file = NPKFile(file_path, self.config_manager)
 
         if self.npk_file.pkg_type == 1:
-            checked = QMessageBox.question(self, "Check Decryption Key!", "Your decryption key is {}, program may fail if the key is wrong!\nAre you sure you want to continue?".format(self.decryption_key))
+            checked = QMessageBox.question(self, "Check Decryption Key!", "Your decryption key is {}, program may fail if the key is wrong!\nAre you sure you want to continue?".format(self.config_manager.get("decryption_key")))
             if checked == QMessageBox.No:
                 return
         
@@ -665,7 +621,7 @@ class MainWindow(QMainWindow):
             filename = file[6].decode("utf-8") if file[6] else hex(file[0])
 
             widgetitem = QStandardItem(filename)
-            widgetitem.setData(index, Qt.UserRole)  # Store file index as Qt.UserRole
+            widgetitem.setData(index, Qt.ItemDataRole.UserRole)  # Store file index as Qt.ItemDataRole.UserRole
             widgetitem.setIcon(self.style().standardIcon(QStyle.SP_DialogNoButton))
 
             self.list_model.appendRow(widgetitem)
@@ -709,7 +665,7 @@ class MainWindow(QMainWindow):
                     continue
 
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Disable editing
-                entry_index = item.data(Qt.UserRole)  # Retrieve file index
+                entry_index = item.data(Qt.ItemDataRole.UserRole)  # Retrieve file index
 
                 if entry_index is None or not (0 <= entry_index < len(self.npk_file.index_table)):
                     continue  # Skip invalid indices
@@ -809,7 +765,7 @@ class MainWindow(QMainWindow):
             logger.warning("Invalid index.")
             return
         
-        entry_index = index.data(Qt.UserRole)
+        entry_index = index.data(Qt.ItemDataRole.UserRole)
 
         # Retrieve the corresponding NPK entry
         npk_entry = self.npk_file.read_entry(entry_index)
@@ -848,7 +804,7 @@ class MainWindow(QMainWindow):
         
         for row in range(model.rowCount()):
             item = model.item(row)
-            entry_index = item.data(Qt.UserRole)
+            entry_index = item.data(Qt.ItemDataRole.UserRole)
 
             npk_entry = self.npk_file.read_entry(entry_index)
             filename_lower = npk_entry.filename.lower()

@@ -3,7 +3,6 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 import os
 from logger import logger
-from utils.console_handler import ConsoleWidget
 
 class ExtractionViewer(QMainWindow):
     def __init__(self, parent=None):
@@ -152,7 +151,7 @@ class ExtractionViewer(QMainWindow):
 
         for npk_file in npk_files:
             item = QListWidgetItem(os.path.basename(npk_file))  # Show only the file name
-            item.setData(Qt.UserRole, npk_file)  # Store the full file path in UserRole
+            item.setData(Qt.ItemDataRole.UserRole, npk_file)  # Store the full file path in UserRole
             self.npk_file_list_widget.addItem(item)
 
         logger.info(self, "Success", f"Loaded {len(npk_files)} .npk files.")

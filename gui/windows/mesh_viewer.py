@@ -128,7 +128,7 @@ class MeshViewer(QMainWindow):
 
     def on_mesh_item_double_clicked(self, item):
         """Handle double-click event to load mesh into the viewer."""
-        file_path = item.data(Qt.UserRole)
+        file_path = item.data(Qt.ItemDataRole.UserRole)
         if file_path and os.path.isfile(file_path):
             try:
                 load_mesh(self, file_path)
@@ -266,7 +266,7 @@ def openFolder(tab1):
 
     for mesh_file in mesh_files:
         item = QListWidgetItem(os.path.basename(mesh_file))  # Show only the file name
-        item.setData(Qt.UserRole, mesh_file)  # Store the full file path in UserRole
+        item.setData(Qt.ItemDataRole.UserRole, mesh_file)  # Store the full file path in UserRole
         tab1.mesh_list_widget.addItem(item)
 
     QMessageBox.information(tab1, "Success", f"Loaded {len(mesh_files)} .mesh files.")
