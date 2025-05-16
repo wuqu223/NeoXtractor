@@ -9,6 +9,7 @@ from arc4 import ARC4
 from core.npk.decompression import check_nxs3, decompress_entry, unpack_nxs3
 from core.npk.decryption import decrypt_entry
 from core.npk.enums import NPKFileType
+from logger import get_logger
 
 from .detection import get_ext
 from .keys import KeyGenerator
@@ -96,7 +97,7 @@ class NPKFile:
         self.info_size = self._determine_info_size(file)
 
         if self.hash_mode == 2:
-            print("HASHING MODE 2 DETECTED, COMPATIBILITY IS NOT GURANTEED")
+            get_logger().warning("HASHING MODE 2 DETECTED, COMPATIBILITY IS NOT GURANTEED")
         elif self.hash_mode == 3:
             self.arc_key = ARC4(b'61ea476e-8201-11e5-864b-fcaa147137b7')
         elif self.encrypt_mode == 256:

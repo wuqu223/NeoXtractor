@@ -2,6 +2,8 @@ import json
 import os
 from typing import Any
 
+from logger import get_logger
+
 class SettingsManager:
     """
     A manager for application settings that handles loading, saving, and accessing
@@ -45,7 +47,7 @@ class SettingsManager:
                 self.settings = {}
             return True
         except (json.JSONDecodeError, FileNotFoundError, PermissionError) as e:
-            print(f"Error loading config: {e}")
+            get_logger().error("Error loading config: %s", e)
             self.settings = {}
             return False
 
@@ -56,7 +58,7 @@ class SettingsManager:
                 json.dump(self.settings, f, indent=4)
             return True
         except (FileNotFoundError, PermissionError, OSError) as e:
-            print(f"Error saving config: {e}")
+            get_logger().error("Error saving config: %s", e)
             return False
 
     def get(self, key: str, default: Any = None, save = False) -> Any:
@@ -74,7 +76,7 @@ class SettingsManager:
                 current = current[part]
             else:
                 return default
-        
+
         if save:
             self.save_config()
 
