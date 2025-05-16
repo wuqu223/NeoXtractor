@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout,
 
 from core.config import Config
 from gui.config_manager import ConfigManager
+from gui.windows.new_config_dialog import NewConfigDialog
 
 class ConfigManagerWindow(QDialog):
     """Config Manager Dialog for managing game configurations."""
@@ -70,15 +71,13 @@ class ConfigManagerWindow(QDialog):
 
     def add_config(self):
         """Add a new config."""
-        # This is a placeholder - in a real app, you'd show a dialog to create a new config
         try:
-            # For demo purposes, create a simple config
-            new_config = Config()
-            new_config.name = f"NewConfig_{len(self.config_manager.configs) + 1}"
-            new_config.decryption_key = 12345  # Sample key
-
-            self.config_manager.add_config(new_config)
-            self.refresh_config_list()
+            dialog = NewConfigDialog(self)
+            if dialog.exec():
+                new_config = dialog.get_config()
+                self.config_manager.add_config(new_config)
+                self.refresh_config_list()
+                QMessageBox.information(self, "Success", f"Config '{new_config.name}' added successfully")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to add config: {str(e)}")
 
@@ -130,10 +129,12 @@ class ConfigManagerWindow(QDialog):
             QMessageBox.warning(self, "Warning", "Please select at least one config to export.")
             return
 
-        selected_configs = []
+        selected_configs: list[Config] = []
         for item in selected_items:
             config_name = item.text()
-            selected_configs.append(self.config_manager.get_config(config_name))
+            cfg = self.config_manager.get_config(config_name)
+            if cfg:
+                selected_configs.append(cfg)
 
         if not selected_configs:
             QMessageBox.critical(self, "Error", "No matching configs found.")
@@ -152,11 +153,7 @@ class ConfigManagerWindow(QDialog):
             try:
                 with open(file_path, "w", encoding="utf-8") as config_file:
                     # Create a dictionary representing the config
-                    config_dict = {
-                        "name": config.name,
-                        "decryption_key": config.decryption_key
-                    }
-                    json.dump(config_dict, config_file, indent=4)
+                    json.dump(config.to_dict(), config_file, indent=4)
 
                 QMessageBox.information(self, "Success", f"Exported config to: {file_path}")
             except Exception as e:
@@ -175,11 +172,7 @@ class ConfigManagerWindow(QDialog):
                 for config in selected_configs:
                     file_path = os.path.join(dir_path, f"{config.name}.json")
                     with open(file_path, "w", encoding="utf-8") as config_file:
-                        config_dict = {
-                            "name": config.name,
-                            "decryption_key": config.decryption_key
-                        }
-                        json.dump(config_dict, config_file, indent=4)
+                        json.dump(config.to_dict(), config_file, indent=4)
                     successful_exports += 1
 
                 QMessageBox.information(

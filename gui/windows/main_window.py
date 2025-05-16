@@ -4,6 +4,7 @@ import os
 
 from PySide6 import QtWidgets, QtGui
 
+from core.config import Config
 from gui.config_manager import ConfigManager
 from gui.settings_manager import SettingsManager
 from gui.utils.config import get_config_dict_list
@@ -29,9 +30,10 @@ class MainWindow(QtWidgets.QMainWindow):
                                       get_config_dict_list(self.config_manager),
                                       True)
         else:
-            self.config_manager.add_configs(self.settings_manager.get("gameconfigs", []))
+            self.config_manager.add_configs([Config.from_dict(config) for config in
+                                             self.settings_manager.get("gameconfigs", [])])
 
-        self.main_layout = QtWidgets.QHBoxLayout()
+        self.main_layout = QtWidgets.QVBoxLayout()
 
         def file_menu() -> QtWidgets.QMenu:
             menu = QtWidgets.QMenu(title="File")

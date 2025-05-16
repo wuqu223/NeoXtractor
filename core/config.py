@@ -1,6 +1,6 @@
 """Provides game config utilities."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 from typing import Any
 
@@ -9,6 +9,8 @@ class Config:
     """Represents a game config."""
     name = "Default"
     decryption_key: int | None = None
+
+    entry_signature_name_map: dict[str, str] = field(default_factory=dict)
 
     @staticmethod
     def from_dict(obj: dict[str, Any]) -> 'Config':
@@ -26,6 +28,9 @@ class Config:
         cfg.decryption_key = obj.get("decryption_key")
         if cfg.decryption_key is not None and not isinstance(cfg.decryption_key, int):
             raise ValueError("Invalid dict: decryption_key must be an integer.")
+        cfg.entry_signature_name_map = obj.get("entry_signature_name_map", {})
+        if not isinstance(cfg.entry_signature_name_map, dict):
+            raise ValueError("Invalid dict: entry_signature_name_map must be a dictionary.")
         return cfg
 
     @staticmethod
@@ -41,5 +46,6 @@ class Config:
         """
         return {
             "name": self.name,
-            "decryption_key": self.decryption_key
+            "decryption_key": self.decryption_key,
+            "entry_signature_name_map": self.entry_signature_name_map,
         }

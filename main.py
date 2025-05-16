@@ -10,7 +10,7 @@ def run_gui():
     app = QtWidgets.QApplication(sys.argv)
 
     main_window = MainWindow()
-    main_window.resize(1600, 900)
+    main_window.resize(600, 1000)
     main_window.show()
 
     sys.exit(app.exec())
