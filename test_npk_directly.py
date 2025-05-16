@@ -42,7 +42,7 @@ def main():
         for i in range(min(5, npk.file_count)):
             try:
                 entry = npk.get_entry(i)
-                out_file = os.path.join(output_dir, f"file_{i}{entry.extension}")
+                out_file = os.path.join(output_dir, entry.filename)
 
                 print(f"Extracting file {i}: {len(entry.data)} bytes, extension: {entry.extension}")
                 entry.save_to_file(out_file)
@@ -53,7 +53,6 @@ def main():
                 traceback.print_exc()
 
         print(f"Extracted {len(extracted)} files")
-        npk.close()
 
         return 0
     except Exception as e:
