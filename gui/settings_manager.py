@@ -105,3 +105,14 @@ class SettingsManager:
 
         if save:
             self.save_config()
+
+    def __getattr__(self, name: str) -> Any:
+        """Get a setting using dot notation."""
+        return self.get(name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Set a setting using dot notation."""
+        if name in ["settings", "_path"]:
+            super().__setattr__(name, value)
+        else:
+            self.set(name, value)

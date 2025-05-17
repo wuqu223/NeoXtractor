@@ -29,6 +29,11 @@ class ConfigManager:
         self.configs.remove(cfg)
         self._name_dict.pop(cfg.name)
 
+    def clear(self):
+        """Clear all configs."""
+        self.configs.clear()
+        self._name_dict.clear()
+
     def get_config(self, name: str) -> Config | None:
         """Get a config by name."""
         return self._name_dict.get(name)

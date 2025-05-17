@@ -1,19 +1,15 @@
 """Provides MainWindow class."""
 
-import os
 from typing import cast
 
 from PySide6 import QtCore, QtWidgets, QtGui
 
 from core.config import Config
+from core.npk.enums import NPKFileType
 from core.npk.npk_file import NPKFile
-from gui.config_manager import ConfigManager
 from gui.models.npk_file_model import NPKFileModel
-from gui.settings_manager import SettingsManager
-from gui.utils.config import get_config_dict_list
 from gui.widgets.npk_file_list import NPKFileList
 from gui.windows.config_manager_window import ConfigManagerWindow
-from utils import get_application_path
 
 class MainWindow(QtWidgets.QMainWindow):
     """Main window class."""
@@ -26,6 +22,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.app = cast(QtCore.QCoreApplication, QtWidgets.QApplication.instance())
+
         # Connect signals to slots
         self.update_progress_signal.connect(self._update_progress)
         self.update_model_signal.connect(self._update_model)
@@ -33,22 +31,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.setWindowTitle("NeoXtractor")
 
-        # TODO: See if this required to be stored in here.
-        self.npk_file: NPKFile | None = None
+        self.config: Config | None = None
 
-        first_run = not os.path.exists("settings.json")
-        self.config_manager = ConfigManager()
-        self.settings_manager = SettingsManager()
-
-        # First run, setup default settings
-        if first_run:
-            self.config_manager.load_from_path(os.path.join(get_application_path(), "configs"))
-            self.settings_manager.set("gameconfigs",
-                                      get_config_dict_list(self.config_manager),
-                                      True)
-        else:
-            self.config_manager.add_configs([Config.from_dict(config) for config in
-                                             self.settings_manager.get("gameconfigs", [])])
+        self.config_manager = self.app.property("config_manager")
 
         self.main_layout = QtWidgets.QVBoxLayout()
 
@@ -66,6 +51,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.active_config = QtWidgets.QComboBox()
         self.active_config.setMinimumWidth(200)
+        self.active_config.currentIndexChanged.connect(self.on_config_changed)
         self.config_section.addWidget(self.active_config)
 
         self.main_layout.addLayout(self.config_section)
@@ -92,6 +78,13 @@ class MainWindow(QtWidgets.QMainWindow):
             menu.addAction(open_file)
 
             def open_file_dialog():
+                if self.config is None:
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "No Config Selected",
+                        "Please select a config before opening a file."
+                    )
+                    return
                 file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
                     self,
                     "Open NPK File",
@@ -138,6 +131,18 @@ class MainWindow(QtWidgets.QMainWindow):
             self.active_config.addItem(config.name)
         self.active_config.setCurrentIndex(0)
 
+    def on_config_changed(self, index: int):
+        """Handle config change."""
+
+        self.list_widget.unload()
+
+        if index == -1:
+            self.config = None
+        else:
+            self.config = self.config_manager.configs[index]
+
+        self.app.setProperty("game_config", self.config)
+
     def load_npk(self, path: str):
         """Load an NPK file and populate the list widget."""
         self.open_file_action.setEnabled(False)
@@ -155,8 +160,20 @@ class MainWindow(QtWidgets.QMainWindow):
         # Apply disabled style while keeping the widget enabled for scrolling
         self.list_widget.setStyleSheet("QListView { color: #888; background-color: #f0f0f0; }")
 
-        npk_file = self.npk_file = NPKFile(path)
-        self.list_widget.set_npk_file(self.npk_file)
+        npk_file = NPKFile(path)
+
+        if npk_file.file_type == NPKFileType.EXPK and cast(Config, self.config).decryption_key is None:
+            if QtWidgets.QMessageBox.warning(
+                self,
+                "Check Decryption Key",
+                "This is an EXPK file. Make sure to set the decryption key",
+                buttons=QtWidgets.QMessageBox.StandardButton.Ok | QtWidgets.QMessageBox.StandardButton.Cancel,
+                defaultButton=QtWidgets.QMessageBox.StandardButton.Ok,
+                ) == QtWidgets.QMessageBox.StandardButton.Cancel:
+                self._loading_complete()
+                return
+
+        self.list_widget.set_npk_file(npk_file)
 
         self.progress_bar.setFormat("Loading entries... (%v/%m)")
         self.progress_bar.setRange(0, npk_file.file_count)

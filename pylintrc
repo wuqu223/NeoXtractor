@@ -442,7 +442,9 @@ disable=raw-checker-failed,
         # Pylint doesn't recognize pyis.
         no-member,
         # Qt windows contains many attributes for widgets
-        too-many-instance-attributes
+        too-many-instance-attributes,
+        # Method overrides are required to be use the same name
+        unused-argument
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
