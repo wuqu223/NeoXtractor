@@ -14,6 +14,8 @@ class NPKEntryDataFlags(IntFlag):
 class NPKIndex:
     """Represents an index entry in an NPK file."""
 
+    filename = ""
+
     file_signature: int = 0
     file_offset: int = 0
     file_length: int = 0
@@ -41,7 +43,6 @@ class NPKEntry(NPKIndex):
     def __init__(self):
         super().__init__()
         self.data: bytes = b""
-        self.filename: str = ""
         self.extension: str = ""
         self.special_decompress: str = ""
 

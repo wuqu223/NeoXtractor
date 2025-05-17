@@ -169,13 +169,24 @@ class NPKFile:
                 # Store file structure name if available
                 index.file_structure = self.nxfn_files[i] if self.nxfn_files else None
 
+                # Generate a filename
+                index.filename = f"{index.file_structure.decode("utf-8")
+                                    if index.file_structure else hex(index.file_signature)}"
+
                 self.indices.append(index)
 
-    def get_entry_count(self) -> int:
-        """Get the number of entries in the NPK file."""
-        return self.file_count
+    def is_entry_loaded(self, index: int) -> bool:
+        """Check if an entry is already loaded.
 
-    def get_entry(self, index: int) -> NPKEntry:
+        Args:
+            index: The index of the entry to check
+
+        Returns:
+            bool: True if the entry is loaded, False otherwise
+        """
+        return index in self.entries
+
+    def read_entry(self, index: int) -> NPKEntry:
         """Get an entry by its index.
 
         If the entry has been loaded before, returns the cached entry.
@@ -205,9 +216,8 @@ class NPKFile:
             # Load the actual data
             self._load_entry_data(entry, file)
 
-        # Generate a filename
-        entry.filename = f"{entry.file_structure.decode("utf-8")
-                            if entry.file_structure else hex(entry.file_signature)}.{entry.extension}"
+        # Update filename with extension
+        entry.filename = f"{entry.filename}.{entry.extension}"
 
         # Store in the cache
         self.entries[index] = entry

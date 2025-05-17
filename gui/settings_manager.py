@@ -1,3 +1,5 @@
+"""Provides a SettingsManager class to manage GUI mode settings."""
+
 import json
 import os
 from typing import Any

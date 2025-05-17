@@ -176,7 +176,7 @@ class ConfigManagerWindow(QDialog):
                     successful_exports += 1
 
                 QMessageBox.information(
-                    self, 
+                    self,
                     "Success", 
                     f"Exported {successful_exports} configs to: {dir_path}"
                 )
