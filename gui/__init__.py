@@ -4,7 +4,6 @@ import os
 import sys
 
 from PySide6 import QtWidgets
-from core.config import Config
 from gui.config_manager import ConfigManager
 from gui.settings_manager import SettingsManager
 from gui.utils.config import load_config_manager_from_settings, save_config_manager_to_settings
