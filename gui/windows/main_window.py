@@ -9,6 +9,7 @@ from core.npk.enums import NPKFileType
 from core.npk.npk_file import NPKFile
 from gui.models.npk_file_model import NPKFileModel
 from gui.widgets.npk_file_list import NPKFileList
+from gui.windows.about_window import AboutWindow
 from gui.windows.config_manager_window import ConfigManagerWindow
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -121,6 +122,10 @@ class MainWindow(QtWidgets.QMainWindow):
             return menu
 
         self.menuBar().addMenu(file_menu())
+
+        self.menuBar().addAction("About",
+            lambda: AboutWindow(self).exec()
+        )
 
         self.refresh_config_list()
 

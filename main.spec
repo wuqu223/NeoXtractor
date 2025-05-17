@@ -1,11 +1,24 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import subprocess
+import sys
+import atexit
+
+subprocess.call([sys.executable, 'tools/build_info_tool.py', 'gen'])
+
+def cleanup():
+    try:
+        subprocess.call([sys.executable, 'tools/build_info_tool.py', 'del'])
+    except Exception as e:
+        print(f"Error during cleanup: {e}")
+
+atexit.register(cleanup)
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('configs', 'configs')],
+    datas=[('configs', 'configs'), ('fonts', 'fonts')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
