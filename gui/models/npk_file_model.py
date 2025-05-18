@@ -5,6 +5,7 @@ from PySide6 import QtCore, QtWidgets
 
 from core.config import Config
 from core.npk.npk_file import NPKFile
+from core.utils import get_filename_in_config
 
 class NPKFileModel(QtCore.QAbstractListModel):
     """
@@ -41,7 +42,6 @@ class NPKFileModel(QtCore.QAbstractListModel):
             return self._npk_file.indices[index.row()]
         return None
 
-    # TODO: Integrate this into the NPKFile
     def get_filename(self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex, invalidate_cache = False) -> str:
         """Get the filename for a given index."""
         if not index.isValid():
@@ -50,15 +50,6 @@ class NPKFileModel(QtCore.QAbstractListModel):
         if index.row() in self._file_names_cache and not invalidate_cache:
             return self._file_names_cache[index.row()]
 
-        entry_index = self._npk_file.indices[index.row()]
-        if hex(entry_index.file_signature) in self._game_config.entry_signature_name_map:
-            base_name = self._game_config.entry_signature_name_map[hex(entry_index.file_signature)]
-            if self._npk_file.is_entry_loaded(index.row()):
-                name = base_name + "." + self._npk_file.entries[index.row()].extension
-                self._file_names_cache[index.row()] = name
-                return name
-            self._file_names_cache[index.row()] = base_name
-            return base_name
-        name = entry_index.filename if not self._npk_file.is_entry_loaded(index.row()) else self._npk_file.entries[index.row()].filename
-        self._file_names_cache[index.row()] = name
-        return name
+        filename = get_filename_in_config(self._game_config, index.row(), self._npk_file)
+        self._file_names_cache[index.row()] = filename
+        return filename
