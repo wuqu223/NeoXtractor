@@ -254,6 +254,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.open_file_action.setEnabled(False)
         self.active_config.setEnabled(False)
+        self.name_filter_input.setEnabled(False)
+        self.file_type_filter_combobox.setEnabled(False)
         self.progress_bar.setVisible(True)
 
         self.progress_bar.setFormat("Reading NPK file...")
@@ -316,6 +318,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.list_widget.setStyleSheet("") # Remove the disabled styling
         self.open_file_action.setEnabled(True)
         self.active_config.setEnabled(True)
+        self.name_filter_input.setEnabled(True)
+        self.file_type_filter_combobox.setEnabled(True)
         self.progress_bar.setVisible(False)
         self.extract_button_widget.setVisible(True)
         self.filter.apply_filter()
