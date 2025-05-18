@@ -42,7 +42,7 @@ def run():
 
     get_logger().debug("Showing main window.")
     main_window = MainWindow()
-    main_window.resize(600, 1000)
+    main_window.resize(500, 800)
     main_window.show()
 
     app.exec()
