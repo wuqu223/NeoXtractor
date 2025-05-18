@@ -15,6 +15,11 @@ class NPKFileModel(QtCore.QAbstractListModel):
 
     def __init__(self, npk_file: NPKFile, parent: QtCore.QObject | None = None):
         super().__init__(parent)
+
+        if isinstance(parent, QtWidgets.QWidget):
+            self._loading_icon = parent.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_BrowserReload)
+            self._file_icon = parent.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_FileIcon)
+
         self._npk_file = npk_file
         app = cast(QtCore.QCoreApplication, QtWidgets.QApplication.instance())
         self._game_config: Config = app.property("game_config")
@@ -28,10 +33,10 @@ class NPKFileModel(QtCore.QAbstractListModel):
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
             return self.get_filename(index)
         if role == QtCore.Qt.ItemDataRole.DecorationRole:
-            parent = self.parent()
-            if not isinstance(parent, QtWidgets.QWidget):
-                return None
-            return parent.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_BrowserReload if not self._npk_file.is_entry_loaded(index.row()) else QtWidgets.QStyle.StandardPixmap.SP_FileIcon)
+            if not self._npk_file.is_entry_loaded(index.row()):
+                return self._loading_icon
+
+            return self._file_icon
         if role == QtCore.Qt.ItemDataRole.UserRole:
             return self._npk_file.indices[index.row()]
         return None
