@@ -10,6 +10,7 @@ from core.npk.npk_file import NPKFile
 from gui.config_manager import ConfigManager
 from gui.models.npk_file_model import NPKFileModel
 from gui.npk_entry_filter import NPKEntryFilter
+from gui.utils.config import save_config_manager_to_settings
 from gui.widgets.npk_file_list import NPKFileList
 from gui.windows.about_window import AboutWindow
 from gui.windows.config_manager_window import ConfigManagerWindow
@@ -155,6 +156,7 @@ class MainWindow(QtWidgets.QMainWindow):
             def open_config_manager():
                 dialog = ConfigManagerWindow(self.config_manager)
                 dialog.exec()
+                save_config_manager_to_settings(self.config_manager, self.app.property("settings_manager"))
                 self.refresh_config_list()
 
             config_manager.triggered.connect(open_config_manager)
