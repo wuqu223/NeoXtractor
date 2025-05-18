@@ -7,6 +7,7 @@ from PySide6 import QtCore, QtWidgets, QtGui
 from core.config import Config
 from core.npk.enums import NPKEntryFileType, NPKFileType
 from core.npk.npk_file import NPKFile
+from gui.config_manager import ConfigManager
 from gui.models.npk_file_model import NPKFileModel
 from gui.npk_entry_filter import NPKEntryFilter
 from gui.widgets.npk_file_list import NPKFileList
@@ -16,10 +17,12 @@ from gui.windows.config_manager_window import ConfigManagerWindow
 class MainWindow(QtWidgets.QMainWindow):
     """Main window class."""
 
-    # Add a custom signal for thread-safe UI updates
+    # Custom signals for thread-safe UI updates
     update_progress_signal = QtCore.Signal(int)
     update_model_signal = QtCore.Signal(int)
     loading_complete_signal = QtCore.Signal()
+
+    _config_list_refreshing = False
 
     def __init__(self):
         super().__init__()
@@ -35,7 +38,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.config: Config | None = None
 
-        self.config_manager = self.app.property("config_manager")
+        self.config_manager: ConfigManager = self.app.property("config_manager")
 
         self.main_layout = QtWidgets.QVBoxLayout()
 
@@ -170,23 +173,39 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def refresh_config_list(self):
         """Refresh the config list from the config manager."""
+        previous_config = self.config
+
+        self._config_list_refreshing = True
+
         self.active_config.clear()
-        for config in self.config_manager.configs:
+        for i, config in enumerate(self.config_manager.configs):
             self.active_config.addItem(config.name)
-        self.active_config.setCurrentIndex(0)
+            if previous_config == config:
+                self.active_config.setCurrentIndex(i)
+
+        self._config_list_refreshing = False
+
+        # Trigger the config change event
+        self.on_config_changed(self.active_config.currentIndex())
 
     def on_config_changed(self, index: int):
         """Handle config change."""
 
-        self.app.setProperty("npk_file", None)
-        self.list_widget.refresh_npk_file()
+        if self._config_list_refreshing:
+            return
+
+        previous_config = self.config
 
         if index == -1:
             self.config = None
         else:
             self.config = self.config_manager.configs[index]
 
-        self.app.setProperty("game_config", self.config)
+        if previous_config != self.config:
+            self.app.setProperty("npk_file", None)
+            self.list_widget.refresh_npk_file()
+
+            self.app.setProperty("game_config", self.config)
 
     def load_npk(self, path: str):
         """Load an NPK file and populate the list widget."""
