@@ -1,0 +1,50 @@
+{
+    "formats": {
+        "key": {
+            "foreground": "#9CDCFE"
+        },
+        "string": {
+            "foreground": "#CE9178"
+        },
+        "number": {
+            "foreground": "#B5CEA8"
+        },
+        "boolean": {
+            "foreground": "#569CD6",
+            "bold": true
+        },
+        "null": {
+            "foreground": "#569CD6",
+            "italic": true
+        },
+        "punctuation": {
+            "foreground": "#D4D4D4"
+        }
+    },
+    "rules": [
+        {
+            "pattern": "\"([^\"\\\\]|\\\\.)*\"\\s*:",
+            "format": "key"
+        },
+        {
+            "pattern": ":\\s*\"([^\"\\\\]|\\\\.)*\"",
+            "format": "string"
+        },
+        {
+            "pattern": "\\b\\-?\\d+(\\.\\d+)?([eE][+-]?\\d+)?\\b",
+            "format": "number"
+        },
+        {
+            "pattern": "\\b(true|false)\\b",
+            "format": "boolean"
+        },
+        {
+            "pattern": "\\bnull\\b",
+            "format": "null"
+        },
+        {
+            "pattern": "[\\{\\}\\[\\]\\,\\:]",
+            "format": "punctuation"
+        }
+    ]
+}

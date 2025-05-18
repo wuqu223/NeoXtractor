@@ -1,0 +1,65 @@
+{
+    "formats": {
+        "tag": {
+            "foreground": "#569CD6"
+        },
+        "attribute": {
+            "foreground": "#9CDCFE"
+        },
+        "value": {
+            "foreground": "#CE9178"
+        },
+        "comment": {
+            "foreground": "#6A9955",
+            "italic": true
+        },
+        "entity": {
+            "foreground": "#D7BA7D"
+        },
+        "cdata": {
+            "foreground": "#D4D4D4",
+            "background": "#1E1E1E"
+        },
+        "declaration": {
+            "foreground": "#808080"
+        }
+    },
+    "rules": [
+        {
+            "pattern": "<\\?xml[^>]*\\?>",
+            "format": "declaration"
+        },
+        {
+            "pattern": "<!DOCTYPE[^>]*>",
+            "format": "declaration"
+        },
+        {
+            "pattern": "<!--[\\s\\S]*?-->",
+            "format": "comment"
+        },
+        {
+            "pattern": "<!\\[CDATA\\[[\\s\\S]*?\\]\\]>",
+            "format": "cdata"
+        },
+        {
+            "pattern": "<\\/?[a-zA-Z0-9_-]+(:[a-zA-Z0-9_-]+)?",
+            "format": "tag"
+        },
+        {
+            "pattern": "\\s[a-zA-Z0-9_-]+(:[a-zA-Z0-9_-]+)?=",
+            "format": "attribute"
+        },
+        {
+            "pattern": "\"[^\"]*\"|'[^']*'",
+            "format": "value"
+        },
+        {
+            "pattern": "&[a-zA-Z0-9#]+;",
+            "format": "entity"
+        },
+        {
+            "pattern": ">|\\/>",
+            "format": "tag"
+        }
+    ]
+}

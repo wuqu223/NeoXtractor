@@ -1,0 +1,13 @@
+{
+    "formats": {
+        "default": {
+            "foreground": "#D4D4D4"
+        }
+    },
+    "rules": [
+        {
+            "pattern": ".*",
+            "format": "default"
+        }
+    ]
+}
