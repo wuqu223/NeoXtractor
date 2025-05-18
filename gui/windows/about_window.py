@@ -2,7 +2,7 @@
 
 from PySide6 import QtWidgets, QtGui, QtCore
 
-from build_info import BuildInfo
+from core.build_info import BuildInfo
 
 class LogoWidget(QtWidgets.QWidget):
     """Custom widget that draws the NeoXtractor logo with perfect text positioning"""

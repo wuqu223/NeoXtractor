@@ -4,13 +4,13 @@ import os
 import sys
 
 from PySide6 import QtWidgets
+from core.utils import get_application_path
 from gui.config_manager import ConfigManager
 from gui.fonts import load_font
 from gui.settings_manager import SettingsManager
 from gui.utils.config import load_config_manager_from_settings, save_config_manager_to_settings
 from gui.windows.main_window import MainWindow
-from logger import get_logger
-from utils import get_application_path
+from core.logger import get_logger
 
 def run():
     """Run NeoXtractor as a GUI application."""

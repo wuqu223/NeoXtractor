@@ -5,7 +5,7 @@ from typing import cast
 from PySide6 import QtCore
 
 from core.npk.npk_file import NPKFile
-from logger import get_logger
+from core.logger import get_logger
 
 def get_npk_file() -> NPKFile | None:
     """Get the current NPK file from the application instance."""

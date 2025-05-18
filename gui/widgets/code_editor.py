@@ -10,7 +10,7 @@ from PySide6.QtCore import QRegularExpression, Qt, QRect, QSize
 from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont, QTextDocument, QPainter
 from PySide6.QtWidgets import QPlainTextEdit, QWidget
 
-from utils import get_application_path
+from core.utils import get_application_path
 
 class LineNumberArea(QWidget):
     """

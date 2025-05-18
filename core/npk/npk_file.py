@@ -9,7 +9,7 @@ from arc4 import ARC4
 from core.npk.decompression import check_nxs3, decompress_entry, unpack_nxs3
 from core.npk.decryption import decrypt_entry
 from core.npk.enums import NPKFileType
-from logger import get_logger
+from core.logger import get_logger
 
 from .detection import get_ext, get_file_category
 from .keys import KeyGenerator

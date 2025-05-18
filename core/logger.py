@@ -6,7 +6,7 @@ import inspect
 
 from PySide6.QtCore import QtMsgType, qInstallMessageHandler, QMessageLogContext
 
-from args import arguments
+from core.args import arguments
 
 LEVEL_MAP = {
     "DEBUG": logging.DEBUG,

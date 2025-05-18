@@ -2,7 +2,7 @@
 
 import argparse
 
-from build_info import BuildInfo
+from core.build_info import BuildInfo
 
 parser = argparse.ArgumentParser(description='NeoXtractor')
 parser.add_argument('--version', '-v',

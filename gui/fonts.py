@@ -2,7 +2,7 @@
 
 from PySide6.QtGui import QFontDatabase
 
-from logger import get_logger
+from core.logger import get_logger
 
 fonts: dict[str, int] = {}
 

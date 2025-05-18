@@ -1,8 +1,8 @@
 """NeoXtractor entrypoint"""
 
-from args import arguments, parse_args
+from core.args import arguments, parse_args
 from gui import run as run_gui
-from logger import setup_logger
+from core.logger import setup_logger
 
 def run_cli():
     """Run NeoXtractor as a CLI application."""

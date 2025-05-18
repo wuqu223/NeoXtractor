@@ -8,7 +8,7 @@ from core.config import Config
 from core.npk.types import NPKEntry
 from gui.models.npk_file_model import NPKFileModel
 from gui.utils.config import save_config_manager_to_settings
-from gui.utils.npk_file import get_npk_file
+from gui.utils.npk import get_npk_file
 
 class NPKFileList(QtWidgets.QListView):
     """

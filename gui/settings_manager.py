@@ -4,7 +4,7 @@ import json
 import os
 from typing import Any
 
-from logger import get_logger
+from core.logger import get_logger
 
 class SettingsManager:
     """

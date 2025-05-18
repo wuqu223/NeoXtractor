@@ -1,7 +1,7 @@
 """Provides a filter for NPK entries in the NPK file list."""
 
 from core.npk.enums import NPKEntryFileType
-from gui.utils.npk_file import get_npk_file, ransack_agent
+from gui.utils.npk import get_npk_file, ransack_agent
 from gui.widgets.npk_file_list import NPKFileList
 
 class NPKEntryFilter:
