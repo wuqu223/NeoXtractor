@@ -59,6 +59,8 @@ class NPKFile:
         # Key generator for advanced decryption
         self.key_generator = KeyGenerator()
 
+        get_logger().info("Opening NPK file: %s", self.file_path)
+
         with open(self.file_path, 'rb') as file:
             # Read NPK header.
             self._read_header(file)
@@ -76,6 +78,8 @@ class NPKFile:
             bool: True if the file was successfully opened
         """
 
+        get_logger().debug("Reading NPK header from %s", self.file_path)
+
         # Read NPK header
         magic = file.read(4)
         if magic == b'NXPK':
@@ -86,15 +90,25 @@ class NPKFile:
             file.close()
             raise ValueError(f"Not a valid NPK file: {self.file_path}")
 
+        get_logger().debug("NPK type: %s", self.file_type)
+
         # Read basic header info
         self.file_count = read_uint32(file)
-        _var1 = read_uint32(file)  # Unknown variable
+        var1 = read_uint32(file)  # Unknown variable
         self.encrypt_mode = read_uint32(file)
         self.hash_mode = read_uint32(file)
         self.index_offset = read_uint32(file)
 
+        get_logger().info("NPK entry count: %d", self.file_count)
+        get_logger().debug("NPK unknown var: %d", var1)
+        get_logger().info("NPK encryption mode: %s", DecryptionType.get_name(self.encrypt_mode))
+        get_logger().info("NPK hash mode: %s", CompressionType.get_name(self.hash_mode))
+        get_logger().info("NPK index offset: 0x%X", self.index_offset)
+
         # Determine index entry size
         self.info_size = self._determine_info_size(file)
+
+        get_logger().debug("NPK index entry size: %d", self.info_size)
 
         if self.hash_mode == 2:
             get_logger().warning("HASHING MODE 2 DETECTED, COMPATIBILITY IS NOT GURANTEED")
@@ -168,6 +182,8 @@ class NPKFile:
 
                 # Store file structure name if available
                 index.file_structure = self.nxfn_files[i] if self.nxfn_files else None
+
+                get_logger().debug("Index %d: %s", i, index)
 
                 # Generate a filename
                 index.filename = f"{index.file_structure.decode("utf-8")
@@ -253,3 +269,5 @@ class NPKFile:
             entry.extension = get_ext(entry.data)
 
         entry.file_type = get_file_category(entry.extension)
+
+        get_logger().debug("Entry %s: %s", entry.filename, entry.file_type)

@@ -1,12 +1,46 @@
 """Logger module."""
 
+import os
 import logging
 import inspect
+
 from PySide6.QtCore import QtMsgType, qInstallMessageHandler, QMessageLogContext
+
+from args import arguments
+
+LEVEL_MAP = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL
+}
+
+log_level = logging.INFO
+
+if arguments.log_level is not None:
+    log_level = arguments.log_level
+elif os.environ.get("LOG_LEVEL") is not None:
+    log_level = os.environ.get("LOG_LEVEL")
+
+if isinstance(log_level, str):
+    if log_level.isdigit():
+        idx = int(log_level)
+        if idx in LEVEL_MAP:
+            log_level = LEVEL_MAP[idx]
+        else:
+            print(f"Invalid log level index: {idx}. Using default (INFO).")
+    else:
+        log_level = log_level.upper()
+        
+        if log_level in LEVEL_MAP:
+            log_level = LEVEL_MAP[log_level]
+        else:
+            print(f"Invalid log level: {log_level}. Using default (INFO).")
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=log_level,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     handlers=[
         logging.StreamHandler()  # Print logs to the console
@@ -56,3 +90,5 @@ def get_logger(module_name=None):
 
 # Default logger with the main application name
 default_logger = get_logger("NeoXtractor")
+
+get_logger().debug("Logger initialized with level: %s", log_level)
