@@ -17,11 +17,13 @@ class LogoWidget(QtWidgets.QWidget):
         self.normal_font.setWeight(QtGui.QFont.Weight.ExtraLight)
 
         self.x_font = QtGui.QFont()
+        self.x_font.setFamily("Noto Sans SemiBold")
         self.x_font.setPointSize(64)
-        self.x_font.setBold(True)
+        self.x_font.setWeight(QtGui.QFont.Weight.DemiBold)
         self.x_font.setItalic(True)
 
         self.ver_font = QtGui.QFont()
+        self.ver_font.setFamily("Roboto")
         self.ver_font.setPointSize(10)
         self.ver_font.setWeight(QtGui.QFont.Weight.ExtraLight)
 
@@ -70,13 +72,13 @@ class LogoWidget(QtWidgets.QWidget):
         # X
         painter.setFont(self.x_font)
         painter.setPen(QtGui.QColor("#EE0000"))
-        x_rect = QtCore.QRect(x_start + self.neo_width - 20, 0, self.x_width, self.x_height)
+        x_rect = QtCore.QRect(x_start + self.neo_width - 10, -15, self.x_width, self.x_height)
         painter.drawText(x_rect, QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop, "X")
 
         # tractor
         painter.setFont(self.normal_font)
         painter.setPen(QtGui.QColor("#000000"))
-        tractor_rect = QtCore.QRect(x_start + self.neo_width + self.x_width - 30, 30, self.tractor_width, self.normal_height)
+        tractor_rect = QtCore.QRect(x_start + self.neo_width + self.x_width - 25, 30, self.tractor_width, self.normal_height)
         painter.drawText(tractor_rect, QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop, "tractor")
 
         # Version
@@ -132,5 +134,9 @@ class AboutWindow(QtWidgets.QDialog):
             layout.addStretch()
         
         layout.addWidget(copyright_info)
+
+        close_button = QtWidgets.QPushButton("Close")
+        close_button.clicked.connect(self.close)
+        layout.addWidget(close_button)
 
         self.setLayout(layout)

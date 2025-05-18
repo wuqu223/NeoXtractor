@@ -19,6 +19,7 @@ def run():
 
     app = QtWidgets.QApplication(sys.argv)
 
+    load_font("NotoSansLatin_600_italic", os.path.join(get_application_path(), "fonts", "noto-sans-latin-600-italic.ttf"))
     load_font("Orbitron", os.path.join(get_application_path(), "fonts", "orbitron-latin-400-normal.ttf"))
 
     first_run = not os.path.exists("settings.json")
