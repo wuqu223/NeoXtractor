@@ -4,9 +4,9 @@ from typing import cast
 from PySide6 import QtCore, QtWidgets
 
 from core.config import Config
-from core.npk.npk_file import NPKFile
 from gui.models.npk_file_model import NPKFileModel
 from gui.utils.config import save_config_manager_to_settings
+from gui.utils.npk_file import get_npk_file
 
 class NPKFileList(QtWidgets.QListView):
     """
@@ -15,8 +15,6 @@ class NPKFileList(QtWidgets.QListView):
 
     def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
-
-        self._npk_file: NPKFile | None = None
 
         self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.setDragEnabled(False)
@@ -35,20 +33,19 @@ class NPKFileList(QtWidgets.QListView):
         """
         return cast(NPKFileModel, super().model())
 
-    def set_npk_file(self, npk_file: NPKFile):
+    def refresh_npk_file(self):
         """
         Set the NPK file to be displayed in the list.
 
         :param npk_file: The NPK file to display.
         """
 
-        self._npk_file = npk_file
-        self.setModel(NPKFileModel(npk_file, self))
+        npk_file = get_npk_file()
 
-    def unload(self):
-        """Unloads the current NPK file."""
-        self._npk_file = None
-        self.setModel(None)
+        if npk_file is None:
+            self.setModel(None)
+        else:
+            self.setModel(NPKFileModel(npk_file, self))
 
     def on_item_double_clicked(self, index: QtCore.QModelIndex):
         """
@@ -56,7 +53,9 @@ class NPKFileList(QtWidgets.QListView):
         
         :param index: The model index that was double-clicked.
         """
-        if not self.model() or self._npk_file is None:
+        npk_file = get_npk_file()
+
+        if not self.model() or npk_file is None:
             return
 
         # Get the row index from the model index
@@ -64,7 +63,7 @@ class NPKFileList(QtWidgets.QListView):
 
         entry_index = index.data(QtCore.Qt.ItemDataRole.UserRole)
 
-        entry = self._npk_file.read_entry(row_index)
+        entry = npk_file.read_entry(row_index)
 
     def show_context_menu(self, position):
         """
@@ -72,7 +71,9 @@ class NPKFileList(QtWidgets.QListView):
         
         :param position: Position where the context menu was requested.
         """
-        if not self.model() or self._npk_file is None:
+        npk_file = get_npk_file()
+
+        if not self.model() or npk_file is None:
             return
 
         # Check if there are any selected items
@@ -95,10 +96,12 @@ class NPKFileList(QtWidgets.QListView):
         
         :param index: The model index of the item to rename.
         """
-        if not self.model() or self._npk_file is None:
+        npk_file = get_npk_file()
+
+        if not self.model() or npk_file is None:
             return
 
-        entry_index = self._npk_file.indices[index.row()]
+        entry_index = npk_file.indices[index.row()]
 
         # Show input dialog to get new name
         new_name, ok = QtWidgets.QInputDialog.getText(
@@ -116,4 +119,6 @@ class NPKFileList(QtWidgets.QListView):
             settings_manager = app.property("settings_manager")
             config.entry_signature_name_map[hex(entry_index.file_signature)] = new_name
             save_config_manager_to_settings(config_manager, settings_manager)
-            self.update(self.model().index(index.row()))
+            model = self.model()
+            model.get_filename(index, invalidate_cache=True)
+            self.update(model.index(index.row()))

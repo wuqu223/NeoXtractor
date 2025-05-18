@@ -5,9 +5,10 @@ from typing import cast
 from PySide6 import QtCore, QtWidgets, QtGui
 
 from core.config import Config
-from core.npk.enums import NPKFileType
+from core.npk.enums import NPKEntryFileType, NPKFileType
 from core.npk.npk_file import NPKFile
 from gui.models.npk_file_model import NPKFileModel
+from gui.npk_entry_filter import NPKEntryFilter
 from gui.widgets.npk_file_list import NPKFileList
 from gui.windows.about_window import AboutWindow
 from gui.windows.config_manager_window import ConfigManagerWindow
@@ -58,6 +59,44 @@ class MainWindow(QtWidgets.QMainWindow):
         self.main_layout.addLayout(self.config_section)
 
         self.list_widget = NPKFileList(self)
+
+        self.filter = NPKEntryFilter(self.list_widget)
+
+        self.filter_section = QtWidgets.QVBoxLayout()
+
+        self.filter_label = QtWidgets.QLabel("Filters")
+        self.filter_label.setStyleSheet("font-weight: bold;")
+        self.filter_section.addWidget(self.filter_label)
+
+        self.name_filter_input = QtWidgets.QLineEdit()
+        self.name_filter_input.setPlaceholderText("Search by filename...")
+        def filter_text_changed():
+            self.filter.filter_string = self.name_filter_input.text().lower()
+            self.filter.apply_filter()
+        self.name_filter_input.textChanged.connect(filter_text_changed)
+        self.filter_section.addWidget(self.name_filter_input)
+
+        self.file_type_filter_combobox = QtWidgets.QComboBox()
+        self.file_type_filter_combobox.addItem("All", None)
+        for i in NPKEntryFileType:
+            self.file_type_filter_combobox.addItem(i.value, i)
+        self.file_type_filter_combobox.setCurrentIndex(0)
+        def filter_type_changed(index: int):
+            self.filter.filter_type = self.file_type_filter_combobox.itemData(index)
+            self.mesh_biped_head_filter_checkbox.setVisible(self.filter.filter_type == NPKEntryFileType.MESH)
+            self.filter.apply_filter()
+        self.file_type_filter_combobox.currentIndexChanged.connect(filter_type_changed)
+        self.filter_section.addWidget(self.file_type_filter_combobox)
+
+        self.mesh_biped_head_filter_checkbox = QtWidgets.QCheckBox("Only 'biped head' meshes")
+        self.mesh_biped_head_filter_checkbox.setVisible(False)
+        def filter_mesh_biped_head_changed(checked: bool):
+            self.filter.mesh_biped_head = checked
+            self.filter.apply_filter()
+        self.mesh_biped_head_filter_checkbox.toggled.connect(filter_mesh_biped_head_changed)
+        self.filter_section.addWidget(self.mesh_biped_head_filter_checkbox)
+
+        self.main_layout.addLayout(self.filter_section)
         self.main_layout.addWidget(self.list_widget)
 
         self.progress_bar = QtWidgets.QProgressBar(self)
@@ -139,7 +178,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_config_changed(self, index: int):
         """Handle config change."""
 
-        self.list_widget.unload()
+        self.app.setProperty("npk_file", None)
+        self.list_widget.refresh_npk_file()
 
         if index == -1:
             self.config = None
@@ -150,10 +190,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def load_npk(self, path: str):
         """Load an NPK file and populate the list widget."""
+        self.app.setProperty("npk_file", None)
+
         self.open_file_action.setEnabled(False)
         self.active_config.setEnabled(False)
         self.progress_bar.setVisible(True)
-        self.list_widget.unload()
+        self.list_widget.refresh_npk_file()
 
         self.progress_bar.setFormat("Reading NPK file...")
         self.progress_bar.setRange(0, 0)
@@ -178,7 +220,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._loading_complete()
                 return
 
-        self.list_widget.set_npk_file(npk_file)
+        self.app.setProperty("npk_file", npk_file)
+
+        self.list_widget.refresh_npk_file()
 
         self.progress_bar.setFormat("Loading entries... (%v/%m)")
         self.progress_bar.setRange(0, npk_file.file_count)
@@ -201,7 +245,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def _update_model(self, index):
         """Update model from the signal."""
         model = cast(NPKFileModel, self.list_widget.model())
-        self.list_widget.update(model.index(index))
+        idx = model.index(index)
+        model.get_filename(idx, invalidate_cache=True)
+        self.list_widget.update(idx)
 
     def _loading_complete(self):
         """Handle completion of loading from the signal."""
@@ -212,3 +258,4 @@ class MainWindow(QtWidgets.QMainWindow):
         self.open_file_action.setEnabled(True)
         self.active_config.setEnabled(True)
         self.progress_bar.setVisible(False)
+        self.filter.apply_filter()

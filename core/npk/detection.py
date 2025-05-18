@@ -1,5 +1,8 @@
 """Utilities for file format detection in NPK files."""
 
+from core.npk.enums import NPKEntryFileType
+
+
 def get_ext(data):
     """Get the file extension based on file signature.
 
@@ -219,19 +222,17 @@ def get_file_category(extension):
     """
     extension = extension.lower()
 
-    # todo: use enum for categories
-
-    # Images
-    if extension in [".bmp", ".gif", ".jpg", ".jpeg", ".png", ".pbm", ".pgm", ".ppm", ".xbm",
-                     ".xpm", ".tga", ".ico", ".tiff", ".dds", ".pvr", ".astc", ".ktx", ".cbk"]:
-        return "TEXTURE"
+    # Textures
+    if extension in ["bmp", "gif", "jpg", "jpeg", "png", "pbm", "pgm", "ppm", "xbm",
+                     "xpm", "tga", "ico", "tiff", "dds", "pvr", "astc", "ktx", "cbk"]:
+        return NPKEntryFileType.TEXTURE
 
     # 3D Models
-    if extension in [".mesh"]:
-        return "MESH"
+    if extension in ["mesh"]:
+        return NPKEntryFileType.MESH
 
     # Text formats
-    if extension in [".mtl", ".json", ".xml", ".trackgroup", ".nfx", ".h", ".shader", ".animation"]:
-        return "TEXT FORMAT"
+    if extension in ["mtl", "json", "xml", "trackgroup", "nfx", "h", "shader", "animation"]:
+        return NPKEntryFileType.TEXT
 
-    return 'OTHER'
+    return NPKEntryFileType.OTHER

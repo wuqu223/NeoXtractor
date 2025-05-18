@@ -11,6 +11,8 @@ class NPKFileModel(QtCore.QAbstractListModel):
     Custom model for displaying NPK files in a QListView.
     """
 
+    _file_names_cache: dict[int, str] = {}
+
     def __init__(self, npk_file: NPKFile, parent: QtCore.QObject | None = None):
         super().__init__(parent)
         self._npk_file = npk_file
@@ -24,13 +26,7 @@ class NPKFileModel(QtCore.QAbstractListModel):
         if not index.isValid():
             return None
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
-            entry_index = self._npk_file.indices[index.row()]
-            if hex(entry_index.file_signature) in self._game_config.entry_signature_name_map:
-                base_name = self._game_config.entry_signature_name_map[hex(entry_index.file_signature)]
-                if self._npk_file.is_entry_loaded(index.row()):
-                    return base_name + "." + self._npk_file.entries[index.row()].extension
-                return base_name
-            return entry_index.filename if not self._npk_file.is_entry_loaded(index.row()) else self._npk_file.entries[index.row()].filename
+            return self.get_filename(index)
         if role == QtCore.Qt.ItemDataRole.DecorationRole:
             parent = self.parent()
             if not isinstance(parent, QtWidgets.QWidget):
@@ -39,3 +35,24 @@ class NPKFileModel(QtCore.QAbstractListModel):
         if role == QtCore.Qt.ItemDataRole.UserRole:
             return self._npk_file.indices[index.row()]
         return None
+
+    def get_filename(self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex, invalidate_cache = False) -> str:
+        """Get the filename for a given index."""
+        if not index.isValid():
+            return ""
+
+        if index.row() in self._file_names_cache and not invalidate_cache:
+            return self._file_names_cache[index.row()]
+
+        entry_index = self._npk_file.indices[index.row()]
+        if hex(entry_index.file_signature) in self._game_config.entry_signature_name_map:
+            base_name = self._game_config.entry_signature_name_map[hex(entry_index.file_signature)]
+            if self._npk_file.is_entry_loaded(index.row()):
+                name = base_name + "." + self._npk_file.entries[index.row()].extension
+                self._file_names_cache[index.row()] = name
+                return name
+            self._file_names_cache[index.row()] = base_name
+            return base_name
+        name = entry_index.filename if not self._npk_file.is_entry_loaded(index.row()) else self._npk_file.entries[index.row()].filename
+        self._file_names_cache[index.row()] = name
+        return name

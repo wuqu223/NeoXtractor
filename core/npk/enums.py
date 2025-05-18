@@ -1,5 +1,6 @@
 """NPK module enums for compression and encryption types."""
-from enum import IntEnum
+from enum import IntEnum, StrEnum
+
 
 class NPKFileType(IntEnum):
     """Enum defining the NPK file types."""
@@ -43,3 +44,12 @@ class DecryptionType(IntEnum):
             return cls(flag).name
         except ValueError:
             return f"UNKNOWN({flag})"
+
+class NPKEntryFileType(StrEnum):
+    """Enum defining the file types for NPK entries."""
+    MESH = "Mesh"
+    TEXTURE = "Texture"
+    CHARACTER = "Character"
+    SKIN = "Skin"
+    TEXT = "Text"
+    OTHER = "Other"

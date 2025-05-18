@@ -11,7 +11,7 @@ from core.npk.decryption import decrypt_entry
 from core.npk.enums import NPKFileType
 from logger import get_logger
 
-from .detection import get_ext
+from .detection import get_ext, get_file_category
 from .keys import KeyGenerator
 from .types import NPKEntryDataFlags, NPKIndex, NPKEntry, CompressionType, DecryptionType
 
@@ -251,3 +251,5 @@ class NPKFile:
         # Detect file extension if not already set
         if not entry.extension:
             entry.extension = get_ext(entry.data)
+
+        entry.file_type = get_file_category(entry.extension)
