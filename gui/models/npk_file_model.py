@@ -41,6 +41,7 @@ class NPKFileModel(QtCore.QAbstractListModel):
             return self._npk_file.indices[index.row()]
         return None
 
+    # TODO: Integrate this into the NPKFile
     def get_filename(self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex, invalidate_cache = False) -> str:
         """Get the filename for a given index."""
         if not index.isValid():

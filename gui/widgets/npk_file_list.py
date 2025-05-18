@@ -1,9 +1,11 @@
 """Custom QListView to display NPK files."""
 
+import os
 from typing import cast
 from PySide6 import QtCore, QtWidgets
 
 from core.config import Config
+from core.npk.types import NPKEntry
 from gui.models.npk_file_model import NPKFileModel
 from gui.utils.config import save_config_manager_to_settings
 from gui.utils.npk_file import get_npk_file
@@ -12,6 +14,9 @@ class NPKFileList(QtWidgets.QListView):
     """
     Custom QListView to display NPK files.
     """
+
+    preview_entry = QtCore.Signal(int, NPKEntry)
+    open_entry = QtCore.Signal(int, NPKEntry)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
@@ -24,6 +29,9 @@ class NPKFileList(QtWidgets.QListView):
 
         # Connect double-click signal to handler
         self.doubleClicked.connect(self.on_item_double_clicked)
+
+        # Connect single-click signal to handler
+        self.clicked.connect(self.on_item_clicked)
 
     def model(self) -> NPKFileModel:
         """
@@ -47,6 +55,24 @@ class NPKFileList(QtWidgets.QListView):
         else:
             self.setModel(NPKFileModel(npk_file, self))
 
+    def on_item_clicked(self, index: QtCore.QModelIndex):
+        """
+        Handle single-click on an item in the list.
+        
+        :param index: The model index that was clicked.
+        """
+        npk_file = get_npk_file()
+
+        if not self.model() or npk_file is None:
+            return
+
+        # Get the row index from the model index
+        row_index = index.row()
+
+        entry = npk_file.read_entry(row_index)
+
+        self.preview_entry.emit(row_index, entry)
+
     def on_item_double_clicked(self, index: QtCore.QModelIndex):
         """
         Handle double-click on an item in the list.
@@ -61,9 +87,9 @@ class NPKFileList(QtWidgets.QListView):
         # Get the row index from the model index
         row_index = index.row()
 
-        entry_index = index.data(QtCore.Qt.ItemDataRole.UserRole)
-
         entry = npk_file.read_entry(row_index)
+
+        self.open_entry.emit(row_index, entry)
 
     def show_context_menu(self, position):
         """
@@ -83,12 +109,106 @@ class NPKFileList(QtWidgets.QListView):
 
         menu = QtWidgets.QMenu(self)
 
+        # Add extract option for any selection
+        extract = menu.addAction("Extract")
+        extract.triggered.connect(lambda: self.extract_selected_entries(indexes))
+
         if len(indexes) == 1:
+            menu.addSeparator()
             rename = menu.addAction("Rename")
             rename.triggered.connect(lambda: self.show_rename_dialog(indexes[0]))
 
         # Show the context menu at the current position
         menu.exec(self.viewport().mapToGlobal(position))
+
+    def extract_selected_entries(self, indexes: list[QtCore.QModelIndex]):
+        """
+        Extract selected entries from the NPK file.
+        
+        :param indexes: List of model indexes for the selected entries.
+        """
+        npk_file = get_npk_file()
+        if not self.model() or npk_file is None:
+            return
+
+        if len(indexes) == 1:
+            # For single file, show file save dialog with filename pre-filled
+            index = indexes[0]
+            row_index = index.row()
+            filename = index.data(QtCore.Qt.ItemDataRole.DisplayRole)
+
+            # Get the entry data
+            entry = npk_file.read_entry(row_index)
+
+            # Show save file dialog
+            file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+                self,
+                "Extract File",
+                filename,
+                "All Files (*.*)"
+            )
+
+            if file_path:
+                try:
+                    with open(file_path, 'wb') as f:
+                        f.write(entry.data)
+                    QtWidgets.QMessageBox.information(
+                        self,
+                        "Success", 
+                        f"File extracted to {file_path}"
+                    )
+                except Exception as e:
+                    QtWidgets.QMessageBox.critical(
+                        self,
+                        "Error", 
+                        f"Failed to extract file: {str(e)}"
+                    )
+        else:
+            # For multiple files, show directory selection dialog
+            dir_path = QtWidgets.QFileDialog.getExistingDirectory(
+                self,
+                "Select Directory to Extract Files",
+                "",
+                QtWidgets.QFileDialog.Option.ShowDirsOnly
+            )
+
+            if dir_path:
+                try:
+                    success_count = 0
+                    fail_count = 0
+
+                    for index in indexes:
+                        row_index = index.row()
+                        filename = index.data(QtCore.Qt.ItemDataRole.DisplayRole)
+
+                        # Create safe filename
+                        safe_filename = os.path.basename(filename)
+                        if not safe_filename:
+                            safe_filename = f"unknown_file_{row_index}"
+
+                        file_path = os.path.join(dir_path, safe_filename)
+
+                        # Get the entry data
+                        entry = npk_file.read_entry(row_index)
+
+                        try:
+                            with open(file_path, 'wb') as f:
+                                f.write(entry.data)
+                            success_count += 1
+                        except Exception:
+                            fail_count += 1
+
+                    message = f"Extracted {success_count} files to {dir_path}"
+                    if fail_count > 0:
+                        message += f"\n{fail_count} files failed to extract"
+
+                    QtWidgets.QMessageBox.information(self, "Extraction Complete", message)
+                except Exception as e:
+                    QtWidgets.QMessageBox.critical(
+                        self,
+                        "Error",
+                        f"Failed to extract files: {str(e)}"
+                    )
 
     def show_rename_dialog(self, index: QtCore.QModelIndex):
         """
