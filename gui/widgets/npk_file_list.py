@@ -111,7 +111,7 @@ class NPKFileList(QtWidgets.QListView):
 
         # Add extract option for any selection
         extract = menu.addAction("Extract")
-        extract.triggered.connect(lambda: self.extract_selected_entries(indexes))
+        extract.triggered.connect(lambda: self.extract_entries(indexes))
 
         if len(indexes) == 1:
             menu.addSeparator()
@@ -121,7 +121,7 @@ class NPKFileList(QtWidgets.QListView):
         # Show the context menu at the current position
         menu.exec(self.viewport().mapToGlobal(position))
 
-    def extract_selected_entries(self, indexes: list[QtCore.QModelIndex]):
+    def extract_entries(self, indexes: list[QtCore.QModelIndex]):
         """
         Extract selected entries from the NPK file.
         

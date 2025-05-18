@@ -1,5 +1,6 @@
 """Provides MainWindow class."""
 
+import os
 from typing import cast
 
 from PySide6 import QtCore, QtWidgets, QtGui
@@ -107,6 +108,35 @@ class MainWindow(QtWidgets.QMainWindow):
         self.progress_bar.setVisible(False)
         self.main_layout.addWidget(self.progress_bar)
 
+        def extract_all(visible_only: bool = False):
+            model = self.list_widget.model()
+            all_indexes = [model.index(i, 0) for i in range(model.rowCount())]
+
+            if visible_only:
+                indexes = [idx for idx in all_indexes if not self.list_widget.isRowHidden(idx.row())]
+            else:
+                indexes = all_indexes
+            self.list_widget.extract_entries(indexes)
+
+        self.extract_button_widget = QtWidgets.QWidget()
+        self.extract_button_widget.setVisible(False)
+
+        self.extract_buttons = QtWidgets.QHBoxLayout()
+        self.extract_button_widget.setLayout(self.extract_buttons)
+
+        self.extract_all = QtWidgets.QPushButton("Extract All")
+        self.extract_all.setStatusTip("Extract all files in the NPK file.")
+        self.extract_all.clicked.connect(lambda: extract_all(False))
+        self.extract_buttons.addWidget(self.extract_all)
+
+        self.extract_filtered = QtWidgets.QPushButton("Extract Filtered")
+        self.extract_filtered.setStatusTip("Extract all files in the list.")
+        self.extract_filtered.clicked.connect(lambda: extract_all(True))
+
+        self.extract_buttons.addWidget(self.extract_filtered)
+
+        self.main_layout.addWidget(self.extract_button_widget)
+
         self.open_file_action: QtGui.QAction
 
         def file_menu() -> QtWidgets.QMenu:
@@ -173,6 +203,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.refresh_config_list()
 
+    def unload_npk(self):
+        """Unload the NPK file."""
+        self.setWindowTitle("NeoXtractor")
+        self.app.setProperty("npk_file", None)
+        self.list_widget.refresh_npk_file()
+        self.extract_button_widget.setVisible(False)
+
     def refresh_config_list(self):
         """Refresh the config list from the config manager."""
         previous_config = self.config
@@ -204,19 +241,20 @@ class MainWindow(QtWidgets.QMainWindow):
             self.config = self.config_manager.configs[index]
 
         if previous_config != self.config:
-            self.app.setProperty("npk_file", None)
-            self.list_widget.refresh_npk_file()
+            self.unload_npk()
 
             self.app.setProperty("game_config", self.config)
 
     def load_npk(self, path: str):
         """Load an NPK file and populate the list widget."""
-        self.app.setProperty("npk_file", None)
+
+        self.unload_npk()
+
+        self.setWindowTitle(f"NeoXtractor - {os.path.basename(path)}")
 
         self.open_file_action.setEnabled(False)
         self.active_config.setEnabled(False)
         self.progress_bar.setVisible(True)
-        self.list_widget.refresh_npk_file()
 
         self.progress_bar.setFormat("Reading NPK file...")
         self.progress_bar.setRange(0, 0)
@@ -279,4 +317,5 @@ class MainWindow(QtWidgets.QMainWindow):
         self.open_file_action.setEnabled(True)
         self.active_config.setEnabled(True)
         self.progress_bar.setVisible(False)
+        self.extract_button_widget.setVisible(True)
         self.filter.apply_filter()
