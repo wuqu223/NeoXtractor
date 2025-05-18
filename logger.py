@@ -16,37 +16,6 @@ LEVEL_MAP = {
     "CRITICAL": logging.CRITICAL
 }
 
-log_level = logging.INFO
-
-if arguments.log_level is not None:
-    log_level = arguments.log_level
-elif os.environ.get("LOG_LEVEL") is not None:
-    log_level = os.environ.get("LOG_LEVEL")
-
-if isinstance(log_level, str):
-    if log_level.isdigit():
-        idx = int(log_level)
-        if idx in LEVEL_MAP:
-            log_level = LEVEL_MAP[idx]
-        else:
-            print(f"Invalid log level index: {idx}. Using default (INFO).")
-    else:
-        log_level = log_level.upper()
-        
-        if log_level in LEVEL_MAP:
-            log_level = LEVEL_MAP[log_level]
-        else:
-            print(f"Invalid log level: {log_level}. Using default (INFO).")
-
-# Configure logging
-logging.basicConfig(
-    level=log_level,
-    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-    handlers=[
-        logging.StreamHandler()  # Print logs to the console
-    ]
-)
-
 def custom_logging_handler(mode: QtMsgType, _context: QMessageLogContext, message: str | None):
     """
     Custom logging handler for Qt to log messages to a file.
@@ -91,4 +60,37 @@ def get_logger(module_name=None):
 # Default logger with the main application name
 default_logger = get_logger("NeoXtractor")
 
-get_logger().debug("Logger initialized with level: %s", log_level)
+def setup_logger():
+    """Setup logger for NeoXtractor."""
+    log_level = logging.INFO
+
+    if arguments.log_level is not None:
+        log_level = arguments.log_level
+    elif os.environ.get("LOG_LEVEL") is not None:
+        log_level = os.environ.get("LOG_LEVEL")
+
+    if isinstance(log_level, str):
+        if log_level.isdigit():
+            idx = int(log_level)
+            if idx in LEVEL_MAP:
+                log_level = LEVEL_MAP[idx]
+            else:
+                print(f"Invalid log level index: {idx}. Using default (INFO).")
+        else:
+            log_level = log_level.upper()
+
+            if log_level in LEVEL_MAP:
+                log_level = LEVEL_MAP[log_level]
+            else:
+                print(f"Invalid log level: {log_level}. Using default (INFO).")
+
+    # Configure logging
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+        handlers=[
+            logging.StreamHandler()  # Print logs to the console
+        ]
+    )
+
+    get_logger().debug("Logger initialized with level: %s", log_level)
