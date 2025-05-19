@@ -330,20 +330,25 @@ class HexArea(QtWidgets.QWidget):
 
             # Draw bytes for this row
             max_bytes = min(bytes_per_row, len(self._data) - row_addr)
+            col_width = self._char_width * 4
 
             for col in range(max_bytes):
                 byte_addr = row_addr + col
                 byte_val = self._data[byte_addr]
 
                 # Calculate position for this byte
-                col_width = self._char_width * 4  # Increased width for hex columns
                 byte_x = hex_x + col * col_width
 
                 # Add extra space for group separator
                 if col > 0 and col % self._bytes_per_group == 0:
                     byte_x += self._char_width
 
-                byte_rect = QtCore.QRect(byte_x, y, col_width - self._char_width, row_height)
+                byte_rect = QtCore.QRect(
+                    int(byte_x + self._char_width / 2),
+                    y,
+                    col_width - self._char_width,
+                    row_height
+                    )
 
                 # Check if this byte is selected or cursor is here
                 is_selected = (self._selection_start >= 0 and
