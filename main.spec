@@ -18,7 +18,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('configs', 'configs'), ('fonts', 'fonts')],
+    datas=[('configs', 'configs'), ('data', 'data')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

@@ -19,15 +19,17 @@ def run():
 
     app = QtWidgets.QApplication(sys.argv)
 
+    fonts_dir = os.path.join(get_application_path(), "data", "fonts")
+
     # Fonts used by About window
-    load_font("NotoSansLatin_600_italic", os.path.join(get_application_path(), "fonts", "noto-sans-latin-600-italic.ttf"))
-    load_font("Orbitron", os.path.join(get_application_path(), "fonts", "orbitron-latin-400-normal.ttf"))
+    load_font("NotoSansLatin_600_italic", os.path.join(fonts_dir, "noto-sans-latin-600-italic.ttf"))
+    load_font("Orbitron", os.path.join(fonts_dir, "orbitron-latin-400-normal.ttf"))
 
     # Fonts used by Code Editor
-    load_font("SpaceMono", os.path.join(get_application_path(), "fonts", "space-mono-latin-400-normal.ttf"))
-    load_font("SpaceMono_italic", os.path.join(get_application_path(), "fonts", "space-mono-latin-400-italic.ttf"))
-    load_font("SpaceMono_Ext", os.path.join(get_application_path(), "fonts", "space-mono-latin-ext-400-normal.ttf"))
-    load_font("SpaceMono_Ext_italic", os.path.join(get_application_path(), "fonts", "space-mono-latin-ext-400-italic.ttf"))
+    load_font("SpaceMono", os.path.join(fonts_dir, "space-mono-latin-400-normal.ttf"))
+    load_font("SpaceMono_italic", os.path.join(fonts_dir, "space-mono-latin-400-italic.ttf"))
+    load_font("SpaceMono_Ext", os.path.join(fonts_dir, "space-mono-latin-ext-400-normal.ttf"))
+    load_font("SpaceMono_Ext_italic", os.path.join(fonts_dir, "space-mono-latin-ext-400-italic.ttf"))
 
     first_run = not os.path.exists("settings.json")
 
