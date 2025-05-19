@@ -6,8 +6,10 @@ from core.npk.enums import NPKEntryFileType
 from core.npk.types import NPKEntry
 from gui.widgets.code_editor import CodeEditor
 
-SELECT_FILE_TEXT = "Select a file to preview."
+SELECT_ENTRY_TEXT = "Select an entry to preview."
 SELECT_PREVIEWER_TEXT = "Unknown file type, select a previewer manually."
+
+PREVIEW_CODE_VIEWER = "Code Viewer"
 
 class PreviewWidget(QtWidgets.QWidget):
     """
@@ -20,7 +22,7 @@ class PreviewWidget(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
 
-        self.message_label = QtWidgets.QLabel(SELECT_FILE_TEXT)
+        self.message_label = QtWidgets.QLabel(SELECT_ENTRY_TEXT)
         self.message_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
         self.widget_layout = QtWidgets.QVBoxLayout(self)
@@ -46,7 +48,7 @@ class PreviewWidget(QtWidgets.QWidget):
         self.widget_layout.addLayout(self.control_bar_layout)
 
         self.code_editor = CodeEditor()
-        self.previewer_selector.addItem("Code Editor", self.code_editor)
+        self.previewer_selector.addItem(PREVIEW_CODE_VIEWER, self.code_editor)
         self._previewers.append(self.code_editor)
 
         for previewer in self._previewers:
@@ -80,6 +82,7 @@ class PreviewWidget(QtWidgets.QWidget):
         if self._current_entry is None:
             return
 
+        # Update the previewer with the current entry data
         if isinstance(previewer, CodeEditor):
             self.code_editor.set_content(self._current_entry.data.decode("utf-8", errors="replace"), self._current_entry.extension)
 
@@ -96,7 +99,7 @@ class PreviewWidget(QtWidgets.QWidget):
         self.set_control_bar_visible(True)
 
         if npk_entry.file_type == NPKEntryFileType.TEXT:
-            self.previewer_selector.setCurrentText("Code Editor")
+            self.previewer_selector.setCurrentText(PREVIEW_CODE_VIEWER)
             self.select_previewer(self.code_editor)
         else:
             self.previewer_selector.setCurrentIndex(-1)
