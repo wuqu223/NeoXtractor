@@ -1,4 +1,5 @@
 {
+    "name": "XML",
     "formats": {
         "tag": {
             "foreground": "#569CD6"

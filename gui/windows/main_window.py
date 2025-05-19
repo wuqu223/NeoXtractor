@@ -13,6 +13,7 @@ from gui.models.npk_file_model import NPKFileModel
 from gui.npk_entry_filter import NPKEntryFilter
 from gui.utils.config import save_config_manager_to_settings
 from gui.widgets.npk_file_list import NPKFileList
+from gui.widgets.preview_widget import PreviewWidget
 from gui.windows.about_window import AboutWindow
 from gui.windows.config_manager_window import ConfigManagerWindow
 
@@ -42,12 +43,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.config_manager: ConfigManager = self.app.property("config_manager")
 
-        self.main_layout = QtWidgets.QVBoxLayout()
+        self.main_layout = QtWidgets.QHBoxLayout()
 
-        # Create a central widget and set the layout on it
-        self.central_widget = QtWidgets.QWidget()
-        self.central_widget.setLayout(self.main_layout)
-        self.setCentralWidget(self.central_widget)
+        self.control_layout = QtWidgets.QVBoxLayout()
 
         self.config_section = QtWidgets.QHBoxLayout()
 
@@ -61,9 +59,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.active_config.currentIndexChanged.connect(self.on_config_changed)
         self.config_section.addWidget(self.active_config)
 
-        self.main_layout.addLayout(self.config_section)
+        self.control_layout.addLayout(self.config_section)
 
         self.list_widget = NPKFileList(self)
+        self.list_widget.preview_entry.connect(lambda _row, entry: self.preview_widget.set_file(entry))
 
         self.filter = NPKEntryFilter(self.list_widget)
 
@@ -101,12 +100,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.mesh_biped_head_filter_checkbox.toggled.connect(filter_mesh_biped_head_changed)
         self.filter_section.addWidget(self.mesh_biped_head_filter_checkbox)
 
-        self.main_layout.addLayout(self.filter_section)
-        self.main_layout.addWidget(self.list_widget)
+        self.control_layout.addLayout(self.filter_section)
+        self.control_layout.addWidget(self.list_widget)
 
         self.progress_bar = QtWidgets.QProgressBar(self)
         self.progress_bar.setVisible(False)
-        self.main_layout.addWidget(self.progress_bar)
+        self.control_layout.addWidget(self.progress_bar)
 
         def extract_all(visible_only: bool = False):
             model = self.list_widget.model()
@@ -135,7 +134,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.extract_buttons.addWidget(self.extract_filtered)
 
-        self.main_layout.addWidget(self.extract_button_widget)
+        self.control_layout.addWidget(self.extract_button_widget)
+
+        self.main_layout.addLayout(self.control_layout, stretch=1)
+
+        self.preview_widget = PreviewWidget(self)
+        self.main_layout.addWidget(self.preview_widget, stretch=2)
+
+        # Create a central widget and set the layout on it
+        self.central_widget = QtWidgets.QWidget()
+        self.central_widget.setLayout(self.main_layout)
+        self.setCentralWidget(self.central_widget)
 
         self.open_file_action: QtGui.QAction
 
@@ -209,6 +218,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.app.setProperty("npk_file", None)
         self.list_widget.refresh_npk_file()
         self.extract_button_widget.setVisible(False)
+        self.preview_widget.clear()
 
     def refresh_config_list(self):
         """Refresh the config list from the config manager."""

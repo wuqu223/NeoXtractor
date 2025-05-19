@@ -6,32 +6,34 @@ Provides a flexible syntax highlighting system with JSON-based rules.
 import json
 import os
 
-from PySide6.QtCore import QRegularExpression, Qt, QRect, QSize
-from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont, QTextDocument, QPainter
-from PySide6.QtWidgets import QPlainTextEdit, QWidget
+from PySide6.QtCore import QRegularExpression, Qt, QRect, QSize, Signal
+from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont, QTextDocument, QPainter, QPaintEvent
+from PySide6.QtWidgets import QPlainTextEdit, QWidget, QHBoxLayout, QLabel, QComboBox, QFrame, QVBoxLayout
 
+from core.logger import get_logger
 from core.utils import get_application_path
 
 class LineNumberArea(QWidget):
     """
     Widget that displays line numbers for a QPlainTextEdit.
     
-    This widget is displayed in the left margin of the CodeEditor and 
+    This widget is displayed in the left margin of the CodeViewer and 
     shows the line numbers for the visible text.
     """
 
-    def __init__(self, editor):
+    def __init__(self, editor: 'CodeViewer'):
         """
         Initialize the line number area.
         
         Args:
-            editor: The CodeEditor instance this line number area belongs to
+            editor: The CodeViewer instance this line number area belongs to
         """
         super().__init__(editor)
         self.editor = editor
 
         # Set background color
         self.background_color = QColor("#2a2a2a")
+        self.current_line_color = QColor("#3a3a3a")
         self.text_color = QColor("white")
         self.font_size = 10
 
@@ -39,7 +41,7 @@ class LineNumberArea(QWidget):
         """Calculate the appropriate width for the line number area."""
         return QSize(self.editor.line_number_area_width(), 0)
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
         """Paint the line numbers."""
         painter = QPainter(self)
         painter.fillRect(event.rect(), self.background_color)
@@ -59,6 +61,8 @@ class LineNumberArea(QWidget):
         while block.isValid() and top <= event.rect().bottom():
             if block.isVisible() and bottom >= event.rect().top():
                 number = str(block_number + 1)
+                if number == str(self.editor.textCursor().blockNumber() + 1):
+                    painter.fillRect(0, top, self.width(), self.editor.fontMetrics().height(), self.current_line_color)
                 painter.setPen(self.text_color)
                 painter.drawText(0, top, self.width() - 5,
                               self.editor.fontMetrics().height(),
@@ -110,15 +114,20 @@ class CodeHighlighter(QSyntaxHighlighter):
         self.highlighting_rules = []
         self.formats = {}
         self.language = language
+        self.language_name: str | None = None
 
         # Get the syntax file path using get_application_path
         rules_file = os.path.join(get_application_path(), "data", "hlsyntax", f"{language}.json")
         if not os.path.exists(rules_file):
+            get_logger().warning("Language rules file not found: %s", rules_file)
             return False
 
         try:
             with open(rules_file, 'r', encoding='utf-8') as f:
                 rules_data = json.load(f)
+
+            if 'name' in rules_data:
+                self.language_name = rules_data['name']
 
             # Create formats first
             if 'formats' in rules_data:
@@ -157,7 +166,7 @@ class CodeHighlighter(QSyntaxHighlighter):
 
             return True
         except (json.JSONDecodeError, IOError, KeyError) as e:
-            print(f"Error loading language rules for {language}: {str(e)}")
+            get_logger().error("Error loading language rules for %s: %s", language, str(e))
             return False
 
     def highlightBlock(self, text: str) -> None:
@@ -174,17 +183,19 @@ class CodeHighlighter(QSyntaxHighlighter):
                 self.setFormat(match.capturedStart(), match.capturedLength(), format_data)
 
 
-class CodeEditor(QPlainTextEdit):
+class CodeViewer(QPlainTextEdit):
     """
-    A code editor widget with syntax highlighting support.
+    A code viewer widget with syntax highlighting support.
     
     This widget is a read-only code viewer by default but can be switched
     to edit mode if needed.
     """
 
+    languageChanged = Signal(str)
+
     def __init__(self, parent=None, language: str = "text"):
         """
-        Initialize the code editor.
+        Initialize the code viewer.
 
         Args:
             parent: Parent widget
@@ -209,13 +220,9 @@ class CodeEditor(QPlainTextEdit):
         # Connect signals for line numbers
         self.blockCountChanged.connect(self.update_line_number_area_width)
         self.updateRequest.connect(self.update_line_number_area)
-        self.cursorPositionChanged.connect(self.highlight_current_line)
 
         # Initialize the line number area width
-        self.update_line_number_area_width(0)
-
-        # Highlight the current line
-        self.highlight_current_line()
+        self.update_line_number_area_width()
 
         # Create and apply the syntax highlighter
         self.highlighter = CodeHighlighter(self.document(), language)
@@ -230,16 +237,14 @@ class CodeEditor(QPlainTextEdit):
         Returns:
             bool: True if language rules were loaded successfully
         """
-        return self.highlighter.load_language(language)
+        result = self.highlighter.load_language(language)
 
-    def set_read_only(self, read_only: bool = True) -> None:
-        """
-        Set whether the editor is read-only.
+        if result:
+            self.highlighter.rehighlight()
+            # Emit signal to notify about the language change
+            self.languageChanged.emit(language)
 
-        Args:
-            read_only: True for read-only mode, False for edit mode
-        """
-        self.setReadOnly(read_only)
+        return result
 
     def line_number_area_width(self):
         """Calculate the width of the line number area."""
@@ -252,7 +257,7 @@ class CodeEditor(QPlainTextEdit):
         space = 2 * 3 + self.fontMetrics().horizontalAdvance('9') * digits
         return space
 
-    def update_line_number_area_width(self, _):
+    def update_line_number_area_width(self):
         """Update the width of the editor to accommodate line numbers."""
         self.setViewportMargins(self.line_number_area_width(), 0, 0, 0)
 
@@ -264,7 +269,7 @@ class CodeEditor(QPlainTextEdit):
             self.line_number_area.update(0, rect.y(), self.line_number_area.width(), rect.height())
 
         if rect.contains(self.viewport().rect()):
-            self.update_line_number_area_width(0)
+            self.update_line_number_area_width()
 
     def resizeEvent(self, event):
         """Handle resize events to adjust the line number area."""
@@ -273,7 +278,100 @@ class CodeEditor(QPlainTextEdit):
         cr = self.contentsRect()
         self.line_number_area.setGeometry(QRect(cr.left(), cr.top(), self.line_number_area_width(), cr.height()))
 
-    def highlight_current_line(self):
-        """Highlight the line where the cursor is currently positioned."""
-        # TODO: Implement line highlighting
-        pass
+class CodeEditor(QWidget):
+    """
+    CodeEditor is a widget for displaying and editing code with syntax highlighting.
+    This widget combines a CodeViewer for text editing with a status bar that shows
+    the cursor position and allows language selection for syntax highlighting.
+    Attributes:
+        viewer (CodeViewer): The text editing component with syntax highlighting.
+        status_bar (QFrame): A frame containing status information.
+        cursor_position_label (QLabel): Label showing the current cursor position.
+        language_selector (QComboBox): Dropdown for selecting the syntax highlighting language.
+        main_layout (QVBoxLayout): The main layout of the widget.
+    """
+
+    _ext_lang_map: dict[str, str] = {}
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.viewer = CodeViewer(self)
+        self.viewer.languageChanged.connect(self._on_language_changed)
+
+        # Create bottom status bar
+        self.status_bar = QFrame()
+        self.status_bar.setFrameShape(QFrame.Shape.StyledPanel)
+        self.status_bar.setStyleSheet("background-color: #2a2a2a; color: white;")
+
+        # Setup status bar layout
+        status_layout = QHBoxLayout(self.status_bar)
+        status_layout.setContentsMargins(5, 2, 5, 2)
+
+        # Cursor position label
+        self.cursor_position_label = QLabel("Line: 1, Column: 1")
+
+        # Language selector
+        self.language_selector = QComboBox()
+        self.language_selector.setToolTip("Select syntax highlighting language")
+        self.language_selector.currentIndexChanged.connect(self._on_language_selected)
+
+        # Add widgets to status bar
+        status_layout.addWidget(self.cursor_position_label)
+        status_layout.addStretch()
+        status_layout.addWidget(QLabel("Language:"))
+        status_layout.addWidget(self.language_selector)
+
+        # Create main layout
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
+
+        # Add editor and status bar to main layout
+        self.main_layout.addWidget(self.viewer)
+        self.main_layout.addWidget(self.status_bar)
+
+        self.setLayout(self.main_layout)
+
+        # Update cursor position when cursor changes
+        self.viewer.cursorPositionChanged.connect(self._update_cursor_position)
+
+        data_dir = os.path.join(get_application_path(), "data")
+
+        with open(os.path.join(data_dir, "ext_lang_map.json"), 'r', encoding='utf-8') as f:
+            self._ext_lang_map = json.load(f)
+
+        # Add available languages
+        hlsyntax_dir = os.path.join(data_dir, "hlsyntax")
+
+        for file in os.listdir(hlsyntax_dir):
+            if file.endswith(".json"):
+                language = file[:-5]
+                with open(os.path.join(hlsyntax_dir, file), 'r', encoding='utf-8') as f:
+                    rules_data = json.load(f)
+                    self.language_selector.addItem(rules_data['name'] if 'name' in rules_data else language, language)
+
+        self.language_selector.setCurrentText(self.viewer.highlighter.language_name or "Unknown")
+
+    def _on_language_selected(self, index: int):
+        """Handle language selection changes."""
+        self.viewer.set_language(self.language_selector.itemData(index))
+
+    def _on_language_changed(self, language):
+        """Handle language changes in the viewer."""
+        self.language_selector.setCurrentText(self.viewer.highlighter.language_name or "Unknown")
+
+    def _update_cursor_position(self):
+        """Update the cursor position label."""
+        cursor = self.viewer.textCursor()
+        line = cursor.blockNumber() + 1
+        column = cursor.columnNumber() + 1
+        self.cursor_position_label.setText(f"Line: {line}, Column: {column}")
+
+    def set_content(self, content: str, extension: str | None = None):
+        """Set the content of the code editor."""
+        if extension:
+            self.viewer.set_language(self._ext_lang_map.get(extension, "text"))
+        else:
+            self.viewer.set_language("text")
+        self.viewer.setPlainText(content)

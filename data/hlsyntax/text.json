@@ -1,13 +1,43 @@
 {
-    "formats": {
-        "default": {
-            "foreground": "#D4D4D4"
-        }
+  "name": "Plain Text",
+  "formats": {
+    "default": {
+      "foreground": "black"
     },
-    "rules": [
-        {
-            "pattern": ".*",
-            "format": "default"
-        }
-    ]
+    "url": {
+      "foreground": "#3794FF",
+      "underline": true
+    },
+    "path": {
+      "foreground": "#DCDCAA"
+    },
+    "number": {
+      "foreground": "#B5CEA8"
+    },
+    "email": {
+      "foreground": "#4EC9B0"
+    }
+  },
+  "rules": [
+    {
+      "pattern": ".*",
+      "format": "default"
+    },
+    {
+      "pattern": "\\b(?:https?|ftp)://[\\w\\d\\-\\.]+\\.[a-zA-Z]{2,}[\\w\\d\\-\\._~:/?#[\\]@!$&'()*+,;=]*",
+      "format": "url"
+    },
+    {
+      "pattern": "\\b(?:[A-Za-z]:\\\\|/)[\\w\\d\\-\\._~:/\\\\]*\\b",
+      "format": "path"
+    },
+    {
+      "pattern": "\\b\\d+(?:\\.\\d+)?\\b",
+      "format": "number"
+    },
+    {
+      "pattern": "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b",
+      "format": "email"
+    }
+  ]
 }
