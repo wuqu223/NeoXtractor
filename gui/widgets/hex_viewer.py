@@ -1,3 +1,5 @@
+"""Provides Hex viewing related widgets"""
+
 from PySide6 import QtWidgets, QtCore, QtGui
 
 class HexArea(QtWidgets.QWidget):
@@ -21,6 +23,7 @@ class HexArea(QtWidgets.QWidget):
     _selection_end = -1
     _visible_lines = 0
     _total_width = 0
+    _total_lines = 0
 
     # Colors
     _address_color = QtGui.QColor(80, 80, 80)
@@ -143,7 +146,7 @@ class HexArea(QtWidgets.QWidget):
         self._visible_lines = max(1, self._hex_widget.height() // self._char_height)
 
         # Calculate total lines needed to display all data
-        total_lines = (len(self._data) + self._bytes_per_line - 1) // self._bytes_per_line
+        self._total_lines = total_lines = (len(self._data) + self._bytes_per_line - 1) // self._bytes_per_line
 
         # Vertical scrollbar visibility and range
         if total_lines <= self._visible_lines:
@@ -395,6 +398,23 @@ class HexArea(QtWidgets.QWidget):
 
                     painter.drawText(char_rect, QtCore.Qt.AlignmentFlag.AlignCenter, char)
 
+    def _ensure_cursor_visible(self):
+        """Ensure the cursor is visible by scrolling if necessary."""
+        if len(self._data) == 0:
+            return
+
+        cursor_line = self._cursor_pos // self._bytes_per_line
+
+        if cursor_line < self._v_scrollbar.value():
+            # Cursor is above visible area, scroll up
+            self._v_scrollbar.setValue(cursor_line)
+        elif cursor_line >= self._v_scrollbar.value() + self._visible_lines:
+            # Cursor is below visible area, scroll down
+            offset = 1
+            if cursor_line >= self._total_lines - 1:
+                offset += 1
+            self._v_scrollbar.setValue(cursor_line - self._visible_lines + offset)
+
     def setFont(self, font: QtGui.QFont | str):
         super().setFont(font)
         self._measure_font_metrics()
@@ -403,6 +423,363 @@ class HexArea(QtWidgets.QWidget):
         """Handle resize events to update the scrollbar and layout."""
         self._update_scrollbar()
         self.update()
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent):
+        """Handle mouse press events."""
+        if len(self._data) == 0 or event.button() != QtCore.Qt.MouseButton.LeftButton:
+            return
+
+        # Calculate which byte was clicked, if any
+        byte_addr = self._byte_at_position(event.position().toPoint())
+        if byte_addr >= 0 and byte_addr < len(self._data):
+            self._cursor_pos = byte_addr
+
+            if event.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier:
+                # Extend selection
+                if self._selection_start < 0:
+                    self._selection_start = byte_addr
+                self._selection_end = byte_addr
+            else:
+                # Start new selection
+                self._selection_start = byte_addr
+                self._selection_end = byte_addr
+
+            self.update()
+            self.cursorPositionChanged.emit(byte_addr)
+            self.selectionChanged.emit(
+                min(self._selection_start, self._selection_end),
+                max(self._selection_start, self._selection_end)
+            )
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent):
+        """Handle mouse move events."""
+        if len(self._data) == 0 or not event.buttons() & QtCore.Qt.MouseButton.LeftButton:
+            return
+
+        # Extend selection if button is pressed
+        byte_addr = self._byte_at_position(event.position().toPoint())
+        if byte_addr >= 0 and byte_addr < len(self._data):
+            self._cursor_pos = byte_addr
+            self._selection_end = byte_addr
+
+            self.update()
+            self.selectionChanged.emit(
+                min(self._selection_start, self._selection_end),
+                max(self._selection_start, self._selection_end)
+            )
+
+    def _byte_at_position(self, pos: QtCore.QPoint) -> int:
+        """Get the byte address at the given position."""
+        # Adjust position for horizontal scrolling
+        pos.setX(pos.x() + self._h_scrollbar.value())
+
+        # Ignore clicks outside the content area - fully account for scrollbars
+        rect = self._hex_widget.geometry()
+
+        if not rect.contains(pos):
+            return -1
+
+        # Skip header
+        rect.setTop(rect.top() + self._char_height + 8)  # Increased header height
+
+        if pos.y() < rect.top():
+            return -1
+
+        # Calculate layout
+        address_width = self._calculate_address_width()
+        hex_width = (self._char_width * 4) * self._bytes_per_line  # Increased width for hex columns
+        if self._bytes_per_group > 1:
+            hex_width += (self._bytes_per_line // self._bytes_per_group - 1) * self._char_width
+
+        # Check if click is in hex area or ASCII area
+        hex_start_x = rect.left() + address_width + 10  # Increased spacing
+        hex_end_x = hex_start_x + hex_width
+
+        in_hex_area = pos.x() >= hex_start_x and pos.x() < hex_end_x
+
+        in_ascii_area = False
+        ascii_start_x = 0
+        if self._show_ascii:
+            ascii_start_x = hex_end_x + 15  # Increased spacing between hex and ASCII
+            ascii_end_x = ascii_start_x + int(self._char_width * 1.5) * self._bytes_per_line
+            in_ascii_area = pos.x() >= ascii_start_x and pos.x() < ascii_end_x
+
+        if not (in_hex_area or in_ascii_area):
+            return -1
+
+        # Calculate row and column
+        row = (pos.y() - rect.top()) // self._char_height
+        row += self._v_scrollbar.value()
+
+        col = -1
+
+        if in_hex_area:
+            # Calculate column in hex area
+            rel_x = pos.x() - hex_start_x
+            col_width = self._char_width * 4  # Increased width for hex columns
+
+            for i in range(self._bytes_per_line):
+                col_x = i * col_width
+
+                # Add extra space for group separator
+                if i > 0 and i % self._bytes_per_group == 0:
+                    col_x += self._char_width
+
+                if rel_x >= col_x and rel_x < col_x + col_width:
+                    col = i
+                    break
+
+        elif in_ascii_area:
+            # Calculate column in ASCII area
+            rel_x = pos.x() - ascii_start_x
+            col = rel_x // int(self._char_width * 1.5)
+
+        if col >= 0 and col < self._bytes_per_line:
+            byte_addr = row * self._bytes_per_line + col
+            if byte_addr < len(self._data):
+                return byte_addr
+
+        return -1
+
+    def wheelEvent(self, event: QtGui.QWheelEvent):
+        """Handle mouse wheel events."""
+        if len(self._data) == 0:
+            return
+
+        # Check if we should scroll horizontally (with Shift key)
+        if event.modifiers() & QtGui.Qt.KeyboardModifier.ShiftModifier:
+            # Horizontal scrolling
+            if not self._h_scrollbar.isVisible():
+                return
+
+            # Calculate scroll amount
+            delta = event.angleDelta().x() if event.angleDelta().x() != 0 else event.angleDelta().y()
+            pixels_to_scroll = max(self._char_width * 2, abs(delta) // 4)
+
+            if delta > 0:
+                # Scroll left
+                self._h_scrollbar.setValue(max(0, self._h_scrollbar.value() - pixels_to_scroll))
+            else:
+                # Scroll right
+                max_scroll = self._h_scrollbar.maximum()
+                self._h_scrollbar.setValue(min(max_scroll, self._h_scrollbar.value() + pixels_to_scroll))
+
+        else:
+            # Vertical scrolling
+            if not self._v_scrollbar.isVisible():
+                return
+
+            # Calculate scroll amount
+            delta = event.angleDelta().y()
+            lines_to_scroll = max(1, abs(delta) // 40)
+
+            if delta > 0:
+                # Scroll up
+                self._v_scrollbar.setValue(max(0, self._v_scrollbar.value() - lines_to_scroll))
+            else:
+                # Scroll down
+                max_first_line = max(0, (len(self._data) + self._bytes_per_line - 1) //
+                                   self._bytes_per_line - self._visible_lines)
+                self._v_scrollbar.setValue(min(max_first_line, self._v_scrollbar.value() + lines_to_scroll))
+
+        self.update()
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent):
+        """Handle key press events."""
+        if len(self._data) == 0:
+            return
+
+        if event.key() == QtGui.Qt.Key.Key_Left:
+            # Move cursor left
+            if self._cursor_pos > 0:
+                self._cursor_pos -= 1
+
+                # Update selection if shift is pressed
+                if event.modifiers() & QtGui.Qt.KeyboardModifier.ShiftModifier:
+                    if self._selection_start < 0:
+                        self._selection_start = self._cursor_pos + 1
+                    self._selection_end = self._cursor_pos
+                else:
+                    self._selection_start = self._selection_end = self._cursor_pos
+
+                # Ensure cursor is visible
+                self._ensure_cursor_visible()
+                self.update()
+                self.cursorPositionChanged.emit(self._cursor_pos)
+                self.selectionChanged.emit(
+                    min(self._selection_start, self._selection_end),
+                    max(self._selection_start, self._selection_end)
+                )
+
+        elif event.key() == QtGui.Qt.Key.Key_Right:
+            # Move cursor right
+            if self._cursor_pos < len(self._data) - 1:
+                self._cursor_pos += 1
+
+                # Update selection if shift is pressed
+                if event.modifiers() & QtGui.Qt.KeyboardModifier.ShiftModifier:
+                    if self._selection_start < 0:
+                        self._selection_start = self._cursor_pos - 1
+                    self._selection_end = self._cursor_pos
+                else:
+                    self._selection_start = self._selection_end = self._cursor_pos
+
+                # Ensure cursor is visible
+                self._ensure_cursor_visible()
+                self.update()
+                self.cursorPositionChanged.emit(self._cursor_pos)
+                self.selectionChanged.emit(
+                    min(self._selection_start, self._selection_end),
+                    max(self._selection_start, self._selection_end)
+                )
+
+        elif event.key() == QtGui.Qt.Key.Key_Up:
+            # Move cursor up
+            if self._cursor_pos >= self._bytes_per_line:
+                self._cursor_pos -= self._bytes_per_line
+
+                # Update selection if shift is pressed
+                if event.modifiers() & QtGui.Qt.KeyboardModifier.ShiftModifier:
+                    if self._selection_start < 0:
+                        self._selection_start = self._cursor_pos + self._bytes_per_line
+                    self._selection_end = self._cursor_pos
+                else:
+                    self._selection_start = self._selection_end = self._cursor_pos
+
+                # Ensure cursor is visible
+                self._ensure_cursor_visible()
+                self.update()
+                self.cursorPositionChanged.emit(self._cursor_pos)
+                self.selectionChanged.emit(
+                    min(self._selection_start, self._selection_end),
+                    max(self._selection_start, self._selection_end)
+                )
+
+        elif event.key() == QtGui.Qt.Key.Key_Down:
+            # Move cursor down
+            if self._cursor_pos + self._bytes_per_line < len(self._data):
+                self._cursor_pos += self._bytes_per_line
+
+                # Update selection if shift is pressed
+                if event.modifiers() & QtGui.Qt.KeyboardModifier.ShiftModifier:
+                    if self._selection_start < 0:
+                        self._selection_start = self._cursor_pos - self._bytes_per_line
+                    self._selection_end = self._cursor_pos
+                else:
+                    self._selection_start = self._selection_end = self._cursor_pos
+
+                # Ensure cursor is visible
+                self._ensure_cursor_visible()
+                self.update()
+                self.cursorPositionChanged.emit(self._cursor_pos)
+                self.selectionChanged.emit(
+                    min(self._selection_start, self._selection_end),
+                    max(self._selection_start, self._selection_end)
+                )
+
+        elif event.key() == QtGui.Qt.Key.Key_Home:
+            # Move cursor to start of line
+            line_start = (self._cursor_pos // self._bytes_per_line) * self._bytes_per_line
+            self._cursor_pos = line_start
+
+            # Update selection if shift is pressed
+            if event.modifiers() & QtGui.Qt.KeyboardModifier.ShiftModifier:
+                if self._selection_start < 0:
+                    self._selection_start = line_start + self._bytes_per_line - 1
+                self._selection_end = self._cursor_pos
+            else:
+                self._selection_start = self._selection_end = self._cursor_pos
+
+            # Ensure cursor is visible
+            self._ensure_cursor_visible()
+            self.update()
+            self.cursorPositionChanged.emit(self._cursor_pos)
+            self.selectionChanged.emit(
+                min(self._selection_start, self._selection_end),
+                max(self._selection_start, self._selection_end)
+            )
+
+        elif event.key() == QtGui.Qt.Key.Key_End:
+            # Move cursor to end of line
+            line_start = (self._cursor_pos // self._bytes_per_line) * self._bytes_per_line
+            line_end = min(line_start + self._bytes_per_line - 1, len(self._data) - 1)
+            self._cursor_pos = line_end
+
+            # Update selection if shift is pressed
+            if event.modifiers() & QtGui.Qt.KeyboardModifier.ShiftModifier:
+                if self._selection_start < 0:
+                    self._selection_start = line_start
+                self._selection_end = self._cursor_pos
+            else:
+                self._selection_start = self._selection_end = self._cursor_pos
+
+            # Ensure cursor is visible
+            self._ensure_cursor_visible()
+            self.update()
+            self.cursorPositionChanged.emit(self._cursor_pos)
+            self.selectionChanged.emit(
+                min(self._selection_start, self._selection_end),
+                max(self._selection_start, self._selection_end)
+            )
+
+        elif event.key() == QtGui.Qt.Key.Key_PageUp:
+            # Move cursor up one page
+            old_pos = self._cursor_pos
+            lines_to_move = min(self._visible_lines, self._cursor_pos // self._bytes_per_line)
+            self._cursor_pos -= lines_to_move * self._bytes_per_line
+
+            # Update selection if shift is pressed
+            if event.modifiers() & QtGui.Qt.KeyboardModifier.ShiftModifier:
+                if self._selection_start < 0:
+                    self._selection_start = old_pos
+                self._selection_end = self._cursor_pos
+            else:
+                self._selection_start = self._selection_end = self._cursor_pos
+
+            # Ensure cursor is visible
+            self._ensure_cursor_visible()
+            self.update()
+            self.cursorPositionChanged.emit(self._cursor_pos)
+            self.selectionChanged.emit(
+                min(self._selection_start, self._selection_end),
+                max(self._selection_start, self._selection_end)
+            )
+
+        elif event.key() == QtGui.Qt.Key.Key_PageDown:
+            # Move cursor down one page
+            old_pos = self._cursor_pos
+            bytes_per_page = self._visible_lines * self._bytes_per_line
+
+            if self._cursor_pos + bytes_per_page < len(self._data):
+                self._cursor_pos += bytes_per_page
+            else:
+                self._cursor_pos = len(self._data) - 1
+
+            # Update selection if shift is pressed
+            if event.modifiers() & QtGui.Qt.KeyboardModifier.ShiftModifier:
+                if self._selection_start < 0:
+                    self._selection_start = old_pos
+                self._selection_end = self._cursor_pos
+            else:
+                self._selection_start = self._selection_end = self._cursor_pos
+
+            # Ensure cursor is visible
+            self._ensure_cursor_visible()
+            self.update()
+            self.cursorPositionChanged.emit(self._cursor_pos)
+            self.selectionChanged.emit(
+                min(self._selection_start, self._selection_end),
+                max(self._selection_start, self._selection_end)
+            )
+
+        elif event.key() == QtGui.Qt.Key.Key_Escape:
+            # Clear selection
+            self._selection_start = self._selection_end = -1
+            self.update()
+            self.selectionChanged.emit(-1, -1)
+
+        else:
+            super().keyPressEvent(event)
 
     def paintEvent(self, event: QtGui.QPaintEvent):
         """Paint the hex viewer."""
@@ -442,6 +819,119 @@ class HexArea(QtWidgets.QWidget):
 
         # Draw content rows
         self._draw_hex_content(painter, rect, address_width, hex_width, ascii_width)
+
+    def contextMenuEvent(self, event: QtGui.QContextMenuEvent):
+        """Handle context menu events."""
+        menu = QtWidgets.QMenu(self)
+
+        # Copy actions
+        copy_hex_action = QtGui.QAction("Copy as Hex", self)
+        copy_hex_action.triggered.connect(self._copy_selection_as_hex)
+        menu.addAction(copy_hex_action)
+
+        copy_ascii_action = QtGui.QAction("Copy as ASCII", self)
+        copy_ascii_action.triggered.connect(self._copy_selection_as_ascii)
+        menu.addAction(copy_ascii_action)
+
+        # Selection actions
+        menu.addSeparator()
+
+        select_all_action = QtGui.QAction("Select All", self)
+        select_all_action.triggered.connect(self._select_all)
+        menu.addAction(select_all_action)
+
+        # Navigation actions
+        menu.addSeparator()
+
+        go_to_action = QtGui.QAction("Go to Address...", self)
+        go_to_action.triggered.connect(self._go_to_address)
+        menu.addAction(go_to_action)
+
+        # Execute the menu
+        menu.exec(event.globalPos())
+
+    def _copy_selection_as_hex(self):
+        """Copy the selected bytes as hex values."""
+        if self._selection_start < 0 or len(self._data) == 0:
+            return
+
+        start = min(self._selection_start, self._selection_end)
+        end = max(self._selection_start, self._selection_end)
+
+        if start >= len(self._data):
+            start = len(self._data) - 1
+        if end >= len(self._data):
+            end = len(self._data) - 1
+
+        selected_bytes = self._data[start:end+1]
+        hex_text = ' '.join(f"{b:02X}" for b in selected_bytes)
+
+        QtWidgets.QApplication.clipboard().setText(hex_text)
+
+    def _copy_selection_as_ascii(self):
+        """Copy the selected bytes as ASCII text."""
+        if self._selection_start < 0 or len(self._data) == 0:
+            return
+
+        start = min(self._selection_start, self._selection_end)
+        end = max(self._selection_start, self._selection_end)
+
+        if start >= len(self._data):
+            start = len(self._data) - 1
+        if end >= len(self._data):
+            end = len(self._data) - 1
+
+        selected_bytes = self._data[start:end+1]
+        ascii_text = ''.join(chr(b) if 32 <= b <= 126 else '.' for b in selected_bytes)
+
+        QtWidgets.QApplication.clipboard().setText(ascii_text)
+
+    def _select_all(self):
+        """Select all bytes."""
+        if len(self._data) == 0:
+            return
+
+        self._selection_start = 0
+        self._selection_end = len(self._data) - 1
+        self._cursor_pos = self._selection_end
+
+        self.update()
+        self.cursorPositionChanged.emit(self._cursor_pos)
+        self.selectionChanged.emit(self._selection_start, self._selection_end)
+
+    def _go_to_address(self):
+        """Go to a specific address."""
+        address, ok = QtWidgets.QInputDialog.getText(
+            self, "Go to Address", "Enter address (decimal or 0x prefix for hex):"
+        )
+
+        if ok and address:
+            try:
+                # Try to parse as hex if it has 0x prefix
+                if address.lower().startswith("0x"):
+                    addr = int(address[2:], 16)
+                else:
+                    addr = int(address)
+
+                # Ensure address is in range
+                if 0 <= addr < len(self._data):
+                    self._cursor_pos = addr
+                    self._selection_start = self._selection_end = addr
+
+                    self._ensure_cursor_visible()
+                    self.update()
+                    self.cursorPositionChanged.emit(self._cursor_pos)
+                    self.selectionChanged.emit(addr, addr)
+                else:
+                    QtWidgets.QMessageBox.warning(
+                        self, "Invalid Address",
+                        f"Address must be between 0 and {len(self._data)-1}"
+                    )
+            except ValueError:
+                QtWidgets.QMessageBox.warning(
+                    self, "Invalid Address",
+                    "Please enter a valid decimal or hexadecimal address"
+                )
 
 # For standalone testing
 if __name__ == "__main__":
