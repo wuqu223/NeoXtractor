@@ -28,8 +28,6 @@ def run():
     # Fonts used by Code Editor
     load_font("SpaceMono", os.path.join(fonts_dir, "space-mono-latin-400-normal.ttf"))
     load_font("SpaceMono_italic", os.path.join(fonts_dir, "space-mono-latin-400-italic.ttf"))
-    load_font("SpaceMono_Ext", os.path.join(fonts_dir, "space-mono-latin-ext-400-normal.ttf"))
-    load_font("SpaceMono_Ext_italic", os.path.join(fonts_dir, "space-mono-latin-ext-400-italic.ttf"))
 
     first_run = not os.path.exists("settings.json")
 
