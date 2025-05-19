@@ -227,6 +227,11 @@ class CodeViewer(QPlainTextEdit):
         # Create and apply the syntax highlighter
         self.highlighter = CodeHighlighter(self.document(), language)
 
+    def setReadOnly(self, read_only: bool):
+        super().setReadOnly(read_only)
+        if read_only:
+            self.setTextInteractionFlags(self.textInteractionFlags() | Qt.TextInteractionFlag.TextSelectableByKeyboard)
+
     def set_language(self, language: str) -> bool:
         """
         Set the highlighting language.
