@@ -1,6 +1,52 @@
 """Provides Hex viewing related widgets"""
 
+import struct
+#import uuid
 from PySide6 import QtWidgets, QtCore, QtGui
+
+def decode_uleb128(data, pos):
+    """Decode an unsigned LEB128 value from the data at the given position."""
+    result = 0
+    shift = 0
+    offset = 0
+
+    while True:
+        if pos + offset >= len(data):
+            return None
+
+        byte = data[pos + offset]
+        result |= ((byte & 0x7f) << shift)
+        offset += 1
+
+        if not byte & 0x80:
+            break
+
+        shift += 7
+
+    return result
+
+def decode_sleb128(data, pos):
+    """Decode a signed LEB128 value from the data at the given position."""
+    result = 0
+    shift = 0
+    offset = 0
+
+    while True:
+        if pos + offset >= len(data):
+            return None
+
+        byte = data[pos + offset]
+        result |= ((byte & 0x7f) << shift)
+        offset += 1
+
+        if not (byte & 0x80):
+            if byte & 0x40:  # Sign bit is set
+                result |= -(1 << (shift + 7))
+            break
+
+        shift += 7
+
+    return result
 
 class HexArea(QtWidgets.QWidget):
     """
@@ -37,6 +83,9 @@ class HexArea(QtWidgets.QWidget):
 
     def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
+
+        self.setFocusPolicy(QtGui.Qt.FocusPolicy.StrongFocus)
+        self.setMouseTracking(True)
 
         self._main_layout = QtWidgets.QGridLayout(self)
         self._main_layout.setContentsMargins(0, 0, 0, 0)
@@ -86,12 +135,9 @@ class HexArea(QtWidgets.QWidget):
     @addressing_base.setter
     def addressing_base(self, value: int):
         """Set the addressing base."""
-        if value == 0:
-            self._addressing_base = 16
-        elif value == 1:
-            self._addressing_base = 10
-        else:
-            self._addressing_base = 8
+        if value not in (16, 10, 8):
+            raise ValueError("Addressing base must be 16 (hex), 10 (decimal), or 8 (octal).")
+        self._addressing_base = value
         self.update()
 
     @property
@@ -101,14 +147,10 @@ class HexArea(QtWidgets.QWidget):
 
     @bytes_per_line.setter
     def bytes_per_line(self, value: int):
-        if value == 0:
-            self._bytes_per_line = 8
-        elif value == 1:
-            self._bytes_per_line = 16
-        elif value == 2:
-            self._bytes_per_line = 32
-        else:
-            self._bytes_per_line = 64
+        """Set the number of bytes per line."""
+        if value not in (8, 16, 32, 64):
+            raise ValueError("Bytes per line must be 8, 16, 32, or 64.")
+        self._bytes_per_line = value
         self._update_scrollbar()
         self.update()
 
@@ -133,6 +175,18 @@ class HexArea(QtWidgets.QWidget):
         self._show_ascii = value
         self._update_scrollbar()
         self.update()
+
+    @property
+    def cursor_byte_pos(self):
+        """Get the cursor position in bytes."""
+        return self._cursor_pos
+
+    @property
+    def cursor_pos(self):
+        """Get the cursor position in the hex viewer."""
+        column = self._cursor_pos // self._bytes_per_line
+        row = self._cursor_pos - column * self._bytes_per_line
+        return (row + 1, column + 1)
 
     def _update_scrollbar(self):
         """Update the vertical and horizontal scrollbars based on data size and viewport."""
@@ -175,7 +229,7 @@ class HexArea(QtWidgets.QWidget):
             ascii_width = int(self._char_width * 1.5) * self._bytes_per_line
 
         # Total content width with padding
-        self._total_width = total_width = address_width + hex_width + ascii_width + 40  # Add padding
+        self._total_width = total_width = address_width + hex_width + ascii_width + self._char_width * 2 + 40
 
         # Calculate available width accounting for the vertical scrollbar
         available_width = self._hex_widget.width()
@@ -220,7 +274,7 @@ class HexArea(QtWidgets.QWidget):
             addr_chars = max(min_width, len(f"{max_address:o}"))
             return (addr_chars + 2) * self._char_width  # +2 for "0o"
         else:  # Decimal
-            addr_chars = max(min_width, len(str(max_address)))
+            addr_chars = max(min_width + 2, len(str(max_address)))
             return addr_chars * self._char_width
 
     def _draw_header(self, painter: QtGui.QPainter, rect: QtCore.QRect, addr_width: int,
@@ -508,7 +562,7 @@ class HexArea(QtWidgets.QWidget):
         in_ascii_area = False
         ascii_start_x = 0
         if self._show_ascii:
-            ascii_start_x = hex_end_x + 15  # Increased spacing between hex and ASCII
+            ascii_start_x = hex_end_x + (self._bytes_per_line // self._bytes_per_group - 1) * self._char_width + 15
             ascii_end_x = ascii_start_x + int(self._char_width * 1.5) * self._bytes_per_line
             in_ascii_area = pos.x() >= ascii_start_x and pos.x() < ascii_end_x
 
@@ -941,21 +995,176 @@ class HexArea(QtWidgets.QWidget):
                     "Please enter a valid decimal or hexadecimal address"
                 )
 
-# For standalone testing
-if __name__ == "__main__":
-    import sys
-    import random
+DATA_INSPECTOR_TYPES = {
+    "binary": lambda data, pos, little_endian: f"{data[pos]:08b}",
+    "octal": lambda data, pos, little_endian: f"{data[pos]:03o}",
+    "uint8": lambda data, pos, little_endian: data[pos],
+    "int8": lambda data, pos, little_endian: int.from_bytes([data[pos]], byteorder='little' if little_endian else 'big', signed=True),
+    "uint16": lambda data, pos, little_endian: int.from_bytes(data[pos:pos+2], byteorder='little' if little_endian else 'big', signed=False) if pos+1 < len(data) else None,
+    "int16": lambda data, pos, little_endian: int.from_bytes(data[pos:pos+2], byteorder='little' if little_endian else 'big', signed=True) if pos+1 < len(data) else None,
+    "uint24": lambda data, pos, little_endian: int.from_bytes(data[pos:pos+3], byteorder='little' if little_endian else 'big', signed=False) if pos+2 < len(data) else None,
+    "int24": lambda data, pos, little_endian: int.from_bytes(data[pos:pos+3], byteorder='little' if little_endian else 'big', signed=True) if pos+2 < len(data) else None,
+    "uint32": lambda data, pos, little_endian: int.from_bytes(data[pos:pos+4], byteorder='little' if little_endian else 'big', signed=False) if pos+3 < len(data) else None,
+    "int32": lambda data, pos, little_endian: int.from_bytes(data[pos:pos+4], byteorder='little' if little_endian else 'big', signed=True) if pos+3 < len(data) else None,
+    "uint64": lambda data, pos, little_endian: int.from_bytes(data[pos:pos+8], byteorder='little' if little_endian else 'big', signed=False) if pos+7 < len(data) else None,
+    "int64": lambda data, pos, little_endian: int.from_bytes(data[pos:pos+8], byteorder='little' if little_endian else 'big', signed=True) if pos+7 < len(data) else None,
+    "ULEB128": lambda data, pos, little_endian: decode_uleb128(data, pos),
+    "SLEB128": lambda data, pos, little_endian: decode_sleb128(data, pos),
+    "float16": lambda data, pos, little_endian: struct.unpack('<e' if little_endian else '>e', data[pos:pos+2])[0] if pos+1 < len(data) else None,
+    "bfloat16": lambda data, pos, little_endian: struct.unpack('<f', data[pos:pos+2] + b'\x00\x00')[0] if pos+1 < len(data) else None,
+    "float32": lambda data, pos, little_endian: struct.unpack('<f' if little_endian else '>f', data[pos:pos+4])[0] if pos+3 < len(data) else None,
+    "float64": lambda data, pos, little_endian: struct.unpack('<d' if little_endian else '>d', data[pos:pos+8])[0] if pos+7 < len(data) else None,
+    #"GUID": lambda data, pos, little_endian: str(uuid.UUID(bytes_le=bytes(data[pos:pos+16]))) if pos+15 < len(data) else None,
+    "ASCII": lambda data, pos, little_endian: chr(data[pos]) if 32 <= data[pos] <= 126 else '.' if pos < len(data) else None,
+    "UTF-8": lambda data, pos, little_endian: bytes([data[pos]]).decode('utf-8', errors='replace') if pos < len(data) else None,
+    "UTF-16": lambda data, pos, little_endian: bytes(data[pos:pos+2]).decode('utf-16-le' if little_endian else 'utf-16-be', errors='replace') if pos+1 < len(data) else None,
+    "GB18030": lambda data, pos, little_endian: bytes([data[pos]]).decode('gb18030', errors='replace') if pos < len(data) else None,
+    "BIG5": lambda data, pos, little_endian: bytes([data[pos]]).decode('big5', errors='replace') if pos < len(data) else None,
+    "SHIFT-JIS": lambda data, pos, little_endian: bytes([data[pos]]).decode('shift-jis', errors='replace') if pos < len(data) else None,
+}
 
-    app = QtWidgets.QApplication(sys.argv)
+class HexViewer(QtWidgets.QWidget):
+    """Main widget for the Hex Viewer."""
 
-    # Create large random test data
-    test_data = bytearray(random.randint(0, 255) for _ in range(10000))
+    _data_inspector_labels: dict[str, QtWidgets.QLabel] = {}
 
-    # Create the hex viewer
-    hex_viewer = HexArea()
-    hex_viewer.setWindowTitle("Hex Viewer Demo")
-    hex_viewer.resize(1000, 800)
-    hex_viewer.data = test_data
-    hex_viewer.show()
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.area = HexArea(self)
 
-    sys.exit(app.exec())
+        layout = QtWidgets.QVBoxLayout(self)
+
+        self._toolbar = QtWidgets.QToolBar(self)
+
+        # ASCII view toggle
+        self._ascii_action = QtGui.QAction("ASCII View", self)
+        self._ascii_action.setCheckable(True)
+        self._ascii_action.setChecked(self.area.show_ascii)
+        def toggle_ascii_view():
+            self.area.show_ascii = self._ascii_action.isChecked()
+        self._ascii_action.toggled.connect(toggle_ascii_view)
+        self._toolbar.addAction(self._ascii_action)
+
+        self._toolbar.addSeparator()
+
+        # Data Inspector area
+        self._data_inspector_action = QtGui.QAction("Data Inspector", self)
+        self._data_inspector_action.setCheckable(True)
+        self._data_inspector_action.setChecked(True)
+        self._data_inspector_action.toggled.connect(
+            lambda: self._data_inspector.setVisible(self._data_inspector_action.isChecked())
+        )
+        self._toolbar.addAction(self._data_inspector_action)
+
+        self._toolbar.addSeparator()
+
+        # Address base selector
+        self._addr_base_label = QtWidgets.QLabel("Address Base:")
+        self._toolbar.addWidget(self._addr_base_label)
+
+        self._addr_base_combo = QtWidgets.QComboBox()
+        self._addr_base_combo.addItems(["Hexadecimal", "Decimal", "Octal"])
+        self._addr_base_combo.setCurrentIndex(0)
+        def update_addressing_base(index):
+            if index == 0:
+                self.area.addressing_base = 16
+            elif index == 1:
+                self.area.addressing_base = 10
+            else:
+                self.area.addressing_base = 8
+        self._addr_base_combo.currentIndexChanged.connect(update_addressing_base)
+        self._toolbar.addWidget(self._addr_base_combo)
+
+        self._toolbar.addSeparator()
+
+        # Bytes per line selector
+        self._bytes_per_line_label = QtWidgets.QLabel("Bytes per Line:")
+        self._toolbar.addWidget(self._bytes_per_line_label)
+
+        self._bytes_per_line_combo = QtWidgets.QComboBox()
+        self._bytes_per_line_combo.addItems(["8", "16", "32", "64"])
+        self._bytes_per_line_combo.setCurrentIndex(1)
+        def update_bytes_per_line(index):
+            self.area.bytes_per_line = int(self._bytes_per_line_combo.currentText())
+            self.area.update()
+        self._bytes_per_line_combo.currentIndexChanged.connect(update_bytes_per_line)
+        self._toolbar.addWidget(self._bytes_per_line_combo)
+
+        self._status_bar_layout = QtWidgets.QHBoxLayout()
+
+        self._cursor_location = QtWidgets.QLabel("Line: 1, Column: 1")
+        self._status_bar_layout.addWidget(self._cursor_location)
+
+        self._status_bar_layout.addStretch()
+
+        self._total_bytes_label = QtWidgets.QLabel("0 bytes in total")
+        self._status_bar_layout.addWidget(self._total_bytes_label)
+
+        center_layout = QtWidgets.QHBoxLayout()
+
+        self._data_inspector = QtWidgets.QWidget(self)
+        self._data_inspector_layout = QtWidgets.QVBoxLayout(self._data_inspector)
+        self._data_inspector_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
+
+        data_inspector_label = QtWidgets.QLabel("Data Inspector")
+        data_inspector_label.setStyleSheet("font-weight: bold;")
+        self._data_inspector_layout.addWidget(data_inspector_label)
+
+        value_font = QtGui.QFont("Monospace")
+
+        for name in DATA_INSPECTOR_TYPES:
+            name_layout = QtWidgets.QHBoxLayout()
+            name_label = QtWidgets.QLabel(name + ": ")
+            name_layout.addWidget(name_label)
+            value_label = QtWidgets.QLabel()
+            value_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+            value_label.setFont(value_font)
+            name_layout.addWidget(value_label)
+            self._data_inspector_labels[name] = value_label
+            self._data_inspector_layout.addLayout(name_layout)
+
+        self._data_inspector_little_endian = QtWidgets.QCheckBox("Little Endian")
+        self._data_inspector_little_endian.setChecked(True)
+        self._data_inspector_little_endian.checkStateChanged.connect(self._update_data_inspector)
+        self._data_inspector_layout.addWidget(self._data_inspector_little_endian)
+
+        center_layout.addWidget(self.area, stretch=1)
+        center_layout.addSpacing(5)
+        center_layout.addWidget(self._data_inspector)
+
+        layout.addWidget(self._toolbar)
+        layout.addLayout(center_layout, stretch=1)
+        layout.addLayout(self._status_bar_layout)
+
+        self.area.cursorPositionChanged.connect(
+            lambda:(
+                self._cursor_location.setText(f"Line: {self.area.cursor_pos[0]}, Column: {self.area.cursor_pos[1]}"),
+                self._update_data_inspector()
+            )
+        )
+
+    def _update_data_inspector(self):
+        """Update the data inspector labels based on the current cursor position."""
+
+        if not self._data_inspector.isVisible():
+            return
+
+        if len(self.area.data) == 0:
+            for label in self._data_inspector_labels.values():
+                label.setText("")
+            return
+
+        little_endian = self._data_inspector_little_endian.isChecked()
+
+        for name, label in self._data_inspector_labels.items():
+            value = DATA_INSPECTOR_TYPES[name](self.area.data, self.area.cursor_byte_pos, little_endian)
+            if value is not None:
+                label.setText(str(value))
+            else:
+                label.setText("")
+
+    def setData(self, data: bytearray):
+        """Set the data to be displayed in the hex viewer."""
+        self._total_bytes_label.setText(f"{len(data)} bytes in total")
+        self.area.data = data
+        self._update_data_inspector()
