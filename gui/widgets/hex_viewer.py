@@ -254,32 +254,33 @@ class HexArea(QtWidgets.QWidget):
                         addr_rect.right(), header_rect.bottom())
 
         # Draw hex column headers (00-0F)
-        hex_start_x = addr_rect.right() + 10  # Increased spacing
+        hex_start_x = addr_rect.right() + 10
 
         painter.setPen(QtGui.QColor(80, 80, 80))
         col_width = self._char_width * 4  # Increased width for hex columns
+        x_offset = 0
 
         for i in range(self._bytes_per_line):
-            column_text = f"{i:02X}"
-            col_rect = QtCore.QRect(hex_start_x + i * col_width, rect.top(),
-                            col_width, self._char_height + 8)  # Increased height
-
             # Add extra space for group separator
             if i > 0 and i % self._bytes_per_group == 0:
-                col_rect.moveLeft(col_rect.left() + self._char_width)
+                x_offset += self._char_width
+
+            column_text = f"{i:02X}"
+            col_rect = QtCore.QRect(hex_start_x + i * col_width + x_offset, rect.top(),
+                            col_width, self._char_height + 8)
 
             painter.drawText(col_rect, QtCore.Qt.AlignmentFlag.AlignCenter, column_text)
 
         # Draw hex/ASCII separator
         if self._show_ascii:
             painter.setPen(QtGui.QColor(180, 180, 180))
-            ascii_start_x = hex_start_x + hex_width + 5
+            ascii_start_x = hex_start_x + hex_width + x_offset + 5
             painter.drawLine(ascii_start_x - 5, header_rect.top(),
                             ascii_start_x - 5, header_rect.bottom())
 
             # Draw ASCII header
             ascii_header_rect = QtCore.QRect(ascii_start_x, rect.top(),
-                                    ascii_width, self._char_height + 8)  # Increased height
+                                    ascii_width, self._char_height + 8)
             painter.setPen(QtGui.QColor(80, 80, 80))
             painter.drawText(ascii_header_rect, QtCore.Qt.AlignmentFlag.AlignCenter, "ASCII")
 
@@ -291,8 +292,7 @@ class HexArea(QtWidgets.QWidget):
 
         # Calculate positions
         addr_x = rect.left()
-        hex_x = addr_x + addr_width + 10  # Increased spacing between address and hex
-        ascii_x = hex_x + hex_width + 15  # Increased spacing between hex and ASCII
+        hex_x = addr_x + addr_width + 10
 
         row_height = self._char_height
         bytes_per_row = self._bytes_per_line
@@ -331,6 +331,7 @@ class HexArea(QtWidgets.QWidget):
             # Draw bytes for this row
             max_bytes = min(bytes_per_row, len(self._data) - row_addr)
             col_width = self._char_width * 4
+            x_offset = 0
 
             for col in range(max_bytes):
                 byte_addr = row_addr + col
@@ -341,10 +342,10 @@ class HexArea(QtWidgets.QWidget):
 
                 # Add extra space for group separator
                 if col > 0 and col % self._bytes_per_group == 0:
-                    byte_x += self._char_width
+                    x_offset += self._char_width
 
                 byte_rect = QtCore.QRect(
-                    int(byte_x + self._char_width / 2),
+                    int(byte_x + self._char_width / 2 + x_offset),
                     y,
                     col_width - self._char_width,
                     row_height
@@ -368,6 +369,8 @@ class HexArea(QtWidgets.QWidget):
 
                 byte_text = f"{byte_val:02X}"
                 painter.drawText(byte_rect, QtCore.Qt.AlignmentFlag.AlignCenter, byte_text)
+
+            ascii_x = hex_x + hex_width + x_offset + 15
 
             # Draw ASCII representation
             if self._show_ascii:
