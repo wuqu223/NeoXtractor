@@ -196,28 +196,6 @@ class HexArea(QtWidgets.QWidget):
             self._corner_widget.setVisible(False)
             return
 
-        # Calculate how many lines can be displayed
-        self._visible_lines = max(1, self._hex_widget.height() // self._char_height)
-
-        # Calculate total lines needed to display all data
-        self._total_lines = total_lines = (len(self._data) + self._bytes_per_line - 1) // self._bytes_per_line
-
-        # Vertical scrollbar visibility and range
-        if total_lines <= self._visible_lines:
-            # All data fits in view, no need for scrollbar
-            self._v_scrollbar.setVisible(False)
-            self._v_scrollbar.setValue(0)
-        else:
-            # Configure scrollbar for the data
-            self._v_scrollbar.setRange(0, total_lines - self._visible_lines + 1)
-            self._v_scrollbar.setPageStep(self._visible_lines)
-            self._v_scrollbar.setSingleStep(1)
-            self._v_scrollbar.setVisible(True)
-
-            # Ensure current position is valid
-            if self._v_scrollbar.value() > total_lines - self._visible_lines:
-                self._v_scrollbar.setValue(total_lines - self._visible_lines)
-
         # Calculate the width needed for full display
         address_width = self._calculate_address_width()
         hex_width = (self._char_width * 4) * self._bytes_per_line  # Width for hex columns
@@ -247,6 +225,28 @@ class HexArea(QtWidgets.QWidget):
             # Ensure current position is valid
             if self._h_scrollbar.value() > total_width - available_width:
                 self._h_scrollbar.setValue(total_width - available_width)
+
+        # Calculate how many lines can be displayed
+        self._visible_lines = max(1, self._hex_widget.height() // self._char_height)
+
+        # Calculate total lines needed to display all data
+        self._total_lines = total_lines = (len(self._data) + self._bytes_per_line - 1) // self._bytes_per_line + 2
+
+        # Vertical scrollbar visibility and range
+        if total_lines <= self._visible_lines:
+            # All data fits in view, no need for scrollbar
+            self._v_scrollbar.setVisible(False)
+            self._v_scrollbar.setValue(0)
+        else:
+            # Configure scrollbar for the data
+            self._v_scrollbar.setRange(0, total_lines - self._visible_lines)
+            self._v_scrollbar.setPageStep(self._visible_lines)
+            self._v_scrollbar.setSingleStep(1)
+            self._v_scrollbar.setVisible(True)
+
+            # Ensure current position is valid
+            if self._v_scrollbar.value() > total_lines - self._visible_lines:
+                self._v_scrollbar.setValue(total_lines - self._visible_lines)
 
         if self._v_scrollbar.isVisible() and self._h_scrollbar.isVisible():
             self._corner_widget.setFixedSize(self._v_scrollbar.width(), self._h_scrollbar.height())
@@ -472,10 +472,8 @@ class HexArea(QtWidgets.QWidget):
             self._v_scrollbar.setValue(cursor_line)
         elif cursor_line >= self._v_scrollbar.value() + self._visible_lines:
             # Cursor is below visible area, scroll down
-            offset = 1
-            if cursor_line >= self._total_lines - 1:
-                offset += 1
-            self._v_scrollbar.setValue(cursor_line - self._visible_lines + offset)
+            # TODO: Fix the bottom issue
+            self._v_scrollbar.setValue(cursor_line - self._visible_lines + 1)
 
     def setFont(self, font: QtGui.QFont | str):
         super().setFont(font)
@@ -640,8 +638,7 @@ class HexArea(QtWidgets.QWidget):
                 self._v_scrollbar.setValue(max(0, self._v_scrollbar.value() - lines_to_scroll))
             else:
                 # Scroll down
-                max_first_line = max(0, (len(self._data) + self._bytes_per_line - 1) //
-                                   self._bytes_per_line - self._visible_lines + 1)
+                max_first_line = self._total_lines - self._visible_lines
                 self._v_scrollbar.setValue(min(max_first_line, self._v_scrollbar.value() + lines_to_scroll))
 
         self.update()
