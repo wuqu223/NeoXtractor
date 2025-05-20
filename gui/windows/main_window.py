@@ -275,12 +275,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.progress_bar.setFormat("Reading NPK file...")
         self.progress_bar.setRange(0, 0)
 
-        # Make it look disabled but still allow scrolling
-        self.list_widget.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.NoSelection)
-        self.list_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-
-        # Apply disabled style while keeping the widget enabled for scrolling
-        self.list_widget.setStyleSheet("QListView { color: #888; background-color: #f0f0f0; }")
+        self.list_widget.setDisabled(True)
 
         npk_file = NPKFile(path)
 
@@ -327,9 +322,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _loading_complete(self):
         """Handle completion of loading from the signal."""
         # Restore normal selection behavior and style when loading is complete
-        self.list_widget.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.list_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
-        self.list_widget.setStyleSheet("") # Remove the disabled styling
+        self.list_widget.setDisabled(False)
         self.open_file_action.setEnabled(True)
         self.active_config.setEnabled(True)
         self.name_filter_input.setEnabled(True)

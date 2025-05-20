@@ -15,6 +15,8 @@ class NPKFileList(QtWidgets.QListView):
     Custom QListView to display NPK files.
     """
 
+    _disabled = False
+
     preview_entry = QtCore.Signal(int, NPKEntry)
     open_entry = QtCore.Signal(int, NPKEntry)
 
@@ -32,6 +34,23 @@ class NPKFileList(QtWidgets.QListView):
 
         # Connect single-click signal to handler
         self.clicked.connect(self.on_item_clicked)
+    
+    def setDisabled(self, disabled: bool):
+        """
+        Set the disabled state of the list view.
+
+        :param disabled: True to disable, False to enable.
+        """
+        if disabled:
+            self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.NoSelection)
+            self.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+            self.setStyleSheet("QListView { color: #888; background-color: #f0f0f0; }")
+        else:
+            self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+            self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
+            self.setStyleSheet("")
+
+        self._disabled = disabled
 
     def model(self) -> NPKFileModel:
         """
@@ -61,6 +80,9 @@ class NPKFileList(QtWidgets.QListView):
         
         :param index: The model index that was clicked.
         """
+        if self._disabled:
+            return
+
         npk_file = get_npk_file()
 
         if not self.model() or npk_file is None:
@@ -79,6 +101,9 @@ class NPKFileList(QtWidgets.QListView):
         
         :param index: The model index that was double-clicked.
         """
+        if self._disabled:
+            return
+
         npk_file = get_npk_file()
 
         if not self.model() or npk_file is None:
