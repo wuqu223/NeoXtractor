@@ -136,7 +136,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.control_layout.addWidget(self.extract_button_widget)
 
-        self.main_layout.addLayout(self.control_layout, stretch=1)
+        # Container for the control layout to limit its width
+        control_widget = QtWidgets.QWidget()
+        control_widget.setLayout(self.control_layout)
+        control_widget.setMaximumWidth(500)
+        self.main_layout.addWidget(control_widget, stretch=1)
 
         self.preview_widget = PreviewWidget(self)
         self.main_layout.addWidget(self.preview_widget, stretch=2)

@@ -4,11 +4,14 @@ from PySide6 import QtWidgets, QtCore
 
 from core.npk.enums import NPKEntryFileType
 from core.npk.types import NPKEntry
+from core.utils import format_bytes
 from gui.widgets.code_editor import CodeEditor
+from gui.widgets.hex_viewer import HexViewer
 
 SELECT_ENTRY_TEXT = "Select an entry to preview."
-SELECT_PREVIEWER_TEXT = "Unknown file type, select a previewer manually."
+UNKNOWN_FILE_TYPE_TEXT = "Unknown file type. Using Hex Viewer."
 
+PREVIEW_HEX_VIEWER = "Hex Viewer"
 PREVIEW_CODE_VIEWER = "Code Viewer"
 
 class PreviewWidget(QtWidgets.QWidget):
@@ -47,6 +50,10 @@ class PreviewWidget(QtWidgets.QWidget):
 
         self.widget_layout.addLayout(self.control_bar_layout)
 
+        self.hex_viewer = HexViewer()
+        self.previewer_selector.addItem(PREVIEW_HEX_VIEWER, self.hex_viewer)
+        self._previewers.append(self.hex_viewer)
+
         self.code_editor = CodeEditor()
         self.previewer_selector.addItem(PREVIEW_CODE_VIEWER, self.code_editor)
         self._previewers.append(self.code_editor)
@@ -58,6 +65,21 @@ class PreviewWidget(QtWidgets.QWidget):
         self.widget_layout.addWidget(self.message_label)
 
         self.set_control_bar_visible(False)
+    
+    def _set_data_for_previewer(self, previewer: QtWidgets.QWidget, data: NPKEntry | None):
+        """
+        Set the data for the previewer.
+        
+        :param previewer: The previewer to set the data for.
+        :param data: The NPK entry data to set.
+        """
+        if isinstance(previewer, HexViewer):
+            previewer.setData(bytearray(data.data) if data is not None else bytearray())
+        elif isinstance(previewer, CodeEditor):
+            if data is None:
+                previewer.set_content("")
+            else:
+                previewer.set_content(data.data.decode("utf-8", errors="replace"), data.extension)
 
     def set_control_bar_visible(self, visible: bool):
         """
@@ -76,6 +98,8 @@ class PreviewWidget(QtWidgets.QWidget):
         """
         self.message_label.setVisible(False)
         for p in self._previewers:
+            # Memory cleanup
+            self._set_data_for_previewer(p, None)
             p.setVisible(False)
         previewer.setVisible(True)
 
@@ -83,8 +107,7 @@ class PreviewWidget(QtWidgets.QWidget):
             return
 
         # Update the previewer with the current entry data
-        if isinstance(previewer, CodeEditor):
-            self.code_editor.set_content(self._current_entry.data.decode("utf-8", errors="replace"), self._current_entry.extension)
+        self._set_data_for_previewer(previewer, self._current_entry)
 
     def set_file(self, npk_entry: NPKEntry):
         """
@@ -94,7 +117,7 @@ class PreviewWidget(QtWidgets.QWidget):
         """
         self._current_entry = npk_entry
 
-        self.status_label.setText(f"Signature: {hex(npk_entry.file_signature)} | Size: {npk_entry.file_original_length} bytes")
+        self.status_label.setText(f"Signature: {hex(npk_entry.file_signature)} | Size: {format_bytes(npk_entry.file_original_length)}")
 
         self.set_control_bar_visible(True)
 
@@ -102,19 +125,20 @@ class PreviewWidget(QtWidgets.QWidget):
             self.previewer_selector.setCurrentText(PREVIEW_CODE_VIEWER)
             self.select_previewer(self.code_editor)
         else:
-            self.previewer_selector.setCurrentIndex(-1)
-            self.message_label.setText(SELECT_PREVIEWER_TEXT)
+            self.previewer_selector.setCurrentText(PREVIEW_HEX_VIEWER)
+            self.select_previewer(self.hex_viewer)
+            self.message_label.setText(UNKNOWN_FILE_TYPE_TEXT)
             self.message_label.setVisible(True)
-            for previewer in self._previewers:
-                previewer.setVisible(False)
 
     def clear(self):
         """
         Clear the preview.
         """
         for previewer in self._previewers:
+            # Cleanup data in previewer to save memory
+            self._set_data_for_previewer(previewer, None)
             previewer.setVisible(False)
         self.set_control_bar_visible(False)
-        self.message_label.setText("Select a file to preview.")
+        self.message_label.setText(SELECT_ENTRY_TEXT)
         self.message_label.setVisible(True)
         self._current_entry = None

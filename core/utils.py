@@ -38,3 +38,27 @@ def get_filename_in_config(config: Config, index: int, file: NPKFile) -> str:
         return base_name
     name = entry_index.filename if not file.is_entry_loaded(index) else file.entries[index].filename
     return name
+
+def format_bytes(num_bytes: int) -> str:
+    """
+    Format bytes into a human-readable string with appropriate unit.
+    
+    :param num_bytes: Number of bytes to format
+    :return: Formatted string (e.g., "1.23 KB", "45.6 MB")
+    """
+    if num_bytes < 0:
+        return "0 B"
+    
+    units = ["B", "KB", "MB", "GB", "TB", "PB"]
+    size = float(num_bytes)
+    unit_index = 0
+    
+    while size >= 1024.0 and unit_index < len(units) - 1:
+        size /= 1024.0
+        unit_index += 1
+    
+    # Format with 2 decimal places if not bytes
+    if unit_index == 0:
+        return f"{int(size)} {units[unit_index]}"
+    else:
+        return f"{size:.2f} {units[unit_index]}"
