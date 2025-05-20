@@ -32,9 +32,6 @@ class NPKFileList(QtWidgets.QListView):
         # Connect double-click signal to handler
         self.doubleClicked.connect(self.on_item_double_clicked)
 
-        # Connect single-click signal to handler
-        self.clicked.connect(self.on_item_clicked)
-    
     def setDisabled(self, disabled: bool):
         """
         Set the disabled state of the list view.
@@ -73,15 +70,18 @@ class NPKFileList(QtWidgets.QListView):
             self.setModel(None)
         else:
             self.setModel(NPKFileModel(npk_file, self))
+            self.selectionModel().selectionChanged.connect(self.on_selection_changed)
 
-    def on_item_clicked(self, index: QtCore.QModelIndex):
+    def on_selection_changed(self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection):
         """
         Handle single-click on an item in the list.
         
         :param index: The model index that was clicked.
         """
-        if self._disabled:
+        if selected.count() != 1:
             return
+
+        index = selected.indexes()[0]
 
         npk_file = get_npk_file()
 
