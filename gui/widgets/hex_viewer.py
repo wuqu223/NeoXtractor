@@ -587,7 +587,7 @@ class HexArea(QtWidgets.QWidget):
             else:
                 # Scroll down
                 max_first_line = max(0, (len(self._data) + self._bytes_per_line - 1) //
-                                   self._bytes_per_line - self._visible_lines)
+                                   self._bytes_per_line - self._visible_lines + 1)
                 self._v_scrollbar.setValue(min(max_first_line, self._v_scrollbar.value() + lines_to_scroll))
 
         self.update()
