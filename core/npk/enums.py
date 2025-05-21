@@ -45,11 +45,10 @@ class DecryptionType(IntEnum):
         except ValueError:
             return f"UNKNOWN({flag})"
 
-class NPKEntryFileType(StrEnum):
+class NPKEntryFileCategories(StrEnum):
     """Enum defining the file types for NPK entries."""
     MESH = "Mesh"
     TEXTURE = "Texture"
     CHARACTER = "Character"
     SKIN = "Skin"
-    TEXT = "Text"
     OTHER = "Other"

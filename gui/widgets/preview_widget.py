@@ -2,14 +2,13 @@
 
 from PySide6 import QtWidgets, QtCore
 
-from core.npk.enums import NPKEntryFileType
-from core.npk.types import NPKEntry
+from core.npk.types import NPKEntry, NPKEntryDataFlags
 from core.utils import format_bytes
 from gui.widgets.code_editor import CodeEditor
 from gui.widgets.hex_viewer import HexViewer
 
 SELECT_ENTRY_TEXT = "Select an entry to preview."
-UNKNOWN_FILE_TYPE_TEXT = "Unknown file type. Using Hex Viewer."
+UNKNOWN_FILE_TYPE_TEXT = "Unknown file type. Using default viewer."
 
 PREVIEW_HEX_VIEWER = "Hex Viewer"
 PREVIEW_CODE_VIEWER = "Code Viewer"
@@ -65,7 +64,7 @@ class PreviewWidget(QtWidgets.QWidget):
         self.widget_layout.addWidget(self.message_label)
 
         self.set_control_bar_visible(False)
-    
+
     def _set_data_for_previewer(self, previewer: QtWidgets.QWidget, data: NPKEntry | None):
         """
         Set the data for the previewer.
@@ -117,11 +116,14 @@ class PreviewWidget(QtWidgets.QWidget):
         """
         self._current_entry = npk_entry
 
-        self.status_label.setText(f"Signature: {hex(npk_entry.file_signature)} | Size: {format_bytes(npk_entry.file_original_length)}")
+        self.status_label.setText(f"Signature: {hex(npk_entry.file_signature)} | " +
+                                  f"Size: {format_bytes(npk_entry.file_original_length)}")
 
         self.set_control_bar_visible(True)
 
-        if npk_entry.file_type == NPKEntryFileType.TEXT:
+        # TODO: Select proper previewer based on file extensions
+
+        if npk_entry.data_flags & NPKEntryDataFlags.TEXT:
             self.previewer_selector.setCurrentText(PREVIEW_CODE_VIEWER)
             self.select_previewer(self.code_editor)
         else:

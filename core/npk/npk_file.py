@@ -11,7 +11,7 @@ from core.npk.decryption import decrypt_entry
 from core.npk.enums import NPKFileType
 from core.logger import get_logger
 
-from .detection import get_ext, get_file_category
+from .detection import get_ext, get_file_category, is_binary
 from .keys import KeyGenerator
 from .types import NPKEntryDataFlags, NPKIndex, NPKEntry, CompressionType, DecryptionType
 
@@ -264,10 +264,15 @@ class NPKFile:
             entry.data_flags |= NPKEntryDataFlags.NXS3_PACKED
             entry.data = unpack_nxs3(entry.data)
 
-        # Detect file extension if not already set
-        if not entry.extension:
-            entry.extension = get_ext(entry.data)
+        binary = is_binary(entry.data)
 
-        entry.file_type = get_file_category(entry.extension)
+        # Mark the data as text data
+        if not binary:
+            entry.data_flags |= NPKEntryDataFlags.TEXT
 
-        get_logger().debug("Entry %s: %s", entry.filename, entry.file_type)
+        # Detect file extension
+        entry.extension = get_ext(entry.data, entry.data_flags)
+
+        entry.category = get_file_category(entry.extension)
+
+        get_logger().debug("Entry %s: %s", entry.filename, entry.category)

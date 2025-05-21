@@ -6,7 +6,7 @@ from typing import cast
 from PySide6 import QtCore, QtWidgets, QtGui
 
 from core.config import Config
-from core.npk.enums import NPKEntryFileType, NPKFileType
+from core.npk.enums import NPKEntryFileCategories, NPKFileType
 from core.npk.npk_file import NPKFile
 from gui.config_manager import ConfigManager
 from gui.models.npk_file_model import NPKFileModel
@@ -80,14 +80,34 @@ class MainWindow(QtWidgets.QMainWindow):
         self.name_filter_input.textChanged.connect(filter_text_changed)
         self.filter_section.addWidget(self.name_filter_input)
 
+        self.filter_checkbox_section = QtWidgets.QGridLayout()
+
+        self.filter_binary_filter = QtWidgets.QCheckBox("Binary Files")
+        self.filter_binary_filter.setChecked(True)
+        def filter_binary_filter_changed(checked: bool):
+            self.filter.include_binary = checked
+            self.filter.apply_filter()
+        self.filter_binary_filter.toggled.connect(filter_binary_filter_changed)
+        self.filter_checkbox_section.addWidget(self.filter_binary_filter, 0, 0)
+
+        self.filter_text_filter = QtWidgets.QCheckBox("Text Files")
+        self.filter_text_filter.setChecked(True)
+        def filter_text_filter_changed(checked: bool):
+            self.filter.include_text = checked
+            self.filter.apply_filter()
+        self.filter_text_filter.toggled.connect(filter_text_filter_changed)
+        self.filter_checkbox_section.addWidget(self.filter_text_filter, 0, 1)
+
+        self.filter_section.addLayout(self.filter_checkbox_section)
+
         self.file_type_filter_combobox = QtWidgets.QComboBox()
         self.file_type_filter_combobox.addItem("All", None)
-        for i in NPKEntryFileType:
+        for i in NPKEntryFileCategories:
             self.file_type_filter_combobox.addItem(i.value, i)
         self.file_type_filter_combobox.setCurrentIndex(0)
         def filter_type_changed(index: int):
             self.filter.filter_type = self.file_type_filter_combobox.itemData(index)
-            self.mesh_biped_head_filter_checkbox.setVisible(self.filter.filter_type == NPKEntryFileType.MESH)
+            self.mesh_biped_head_filter_checkbox.setVisible(self.filter.filter_type == NPKEntryFileCategories.MESH)
             self.filter.apply_filter()
         self.file_type_filter_combobox.currentIndexChanged.connect(filter_type_changed)
         self.filter_section.addWidget(self.file_type_filter_combobox)

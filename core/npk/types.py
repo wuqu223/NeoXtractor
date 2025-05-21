@@ -3,11 +3,12 @@
 from dataclasses import dataclass
 from enum import IntFlag, auto
 import os
-from .enums import CompressionType, DecryptionType, NPKEntryFileType
+from .enums import CompressionType, DecryptionType, NPKEntryFileCategories
 
 class NPKEntryDataFlags(IntFlag):
     """Flags for NPK entry data."""
     NONE = 0
+    TEXT = auto()
     NXS3_PACKED = auto()
 
 @dataclass
@@ -44,7 +45,7 @@ class NPKEntry(NPKIndex):
         super().__init__()
         self.data: bytes = b""
         self.extension: str = ""
-        self.file_type: NPKEntryFileType = NPKEntryFileType.OTHER
+        self.category: NPKEntryFileCategories = NPKEntryFileCategories.OTHER
 
     @property
     def is_compressed(self) -> bool:
