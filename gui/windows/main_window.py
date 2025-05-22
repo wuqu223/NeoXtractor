@@ -301,11 +301,13 @@ class MainWindow(QtWidgets.QMainWindow):
             if QtWidgets.QMessageBox.warning(
                 self,
                 "Check Decryption Key",
-                "This is an EXPK file. Make sure to set the decryption key",
+                "This is an EXPK file. Make sure to set the decryption key.\n" +
+                "Currently you have no decryption key set.\n\n",
                 buttons=QtWidgets.QMessageBox.StandardButton.Ok | QtWidgets.QMessageBox.StandardButton.Cancel,
                 defaultButton=QtWidgets.QMessageBox.StandardButton.Ok,
                 ) == QtWidgets.QMessageBox.StandardButton.Cancel:
                 self._loading_complete()
+                self.unload_npk()
                 return
 
         self.app.setProperty("npk_file", npk_file)
