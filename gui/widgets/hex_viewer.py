@@ -1107,7 +1107,7 @@ class HexViewer(QtWidgets.QWidget):
         data_inspector_label.setStyleSheet("font-weight: bold;")
         self._data_inspector_layout.addWidget(data_inspector_label)
 
-        value_font = QtGui.QFont("Monospace")
+        value_font = QtGui.QFont("Space Mono")
 
         for name in DATA_INSPECTOR_TYPES:
             name_layout = QtWidgets.QHBoxLayout()
