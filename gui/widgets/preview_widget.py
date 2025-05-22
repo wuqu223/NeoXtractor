@@ -6,12 +6,14 @@ from core.npk.types import NPKEntry, NPKEntryDataFlags
 from core.utils import format_bytes
 from gui.widgets.code_editor import CodeEditor
 from gui.widgets.hex_viewer import HexViewer
+from gui.widgets.texture_viewer import TextureViewer
 
 SELECT_ENTRY_TEXT = "Select an entry to preview."
 UNKNOWN_FILE_TYPE_TEXT = "Unknown file type. Using default viewer."
 
 PREVIEW_HEX_VIEWER = "Hex Viewer"
 PREVIEW_CODE_VIEWER = "Code Viewer"
+PREVIEW_TEXTURE_VIEWER = "Texture Viewer"
 
 class PreviewWidget(QtWidgets.QWidget):
     """
@@ -57,6 +59,10 @@ class PreviewWidget(QtWidgets.QWidget):
         self.previewer_selector.addItem(PREVIEW_CODE_VIEWER, self.code_editor)
         self._previewers.append(self.code_editor)
 
+        self.texture_viewer = TextureViewer()
+        self.previewer_selector.addItem(PREVIEW_TEXTURE_VIEWER, self.texture_viewer)
+        self._previewers.append(self.texture_viewer)
+
         for previewer in self._previewers:
             previewer.setVisible(False)
             self.widget_layout.addWidget(previewer)
@@ -79,6 +85,16 @@ class PreviewWidget(QtWidgets.QWidget):
                 previewer.set_content("")
             else:
                 previewer.set_content(data.data.decode("utf-8", errors="replace"), data.extension)
+        elif isinstance(previewer, TextureViewer):
+            if data is None:
+                previewer.clear()
+            else:
+                try:
+                    previewer.set_texture(data.data, data.extension)
+                except ValueError:
+                    previewer.setVisible(False)
+                    self.message_label.setText(f"Unsupported image format: {data.extension}")
+                    self.message_label.setVisible(True)
 
     def set_control_bar_visible(self, visible: bool):
         """
@@ -114,6 +130,8 @@ class PreviewWidget(QtWidgets.QWidget):
         
         :param npk_entry: The NPK entry to preview.
         """
+        self.clear()
+
         self._current_entry = npk_entry
 
         self.status_label.setText(f"Signature: {hex(npk_entry.file_signature)} | " +
@@ -121,7 +139,14 @@ class PreviewWidget(QtWidgets.QWidget):
 
         self.set_control_bar_visible(True)
 
-        # TODO: Select proper previewer based on file extensions
+        for previewer in self._previewers:
+            if hasattr(previewer, "accepted_extensions"):
+                if npk_entry.extension in getattr(previewer, "accepted_extensions"):
+                    self.select_previewer(previewer)
+                    self.previewer_selector.setCurrentIndex(
+                        self.previewer_selector.findData(previewer)
+                    )
+                    return
 
         if npk_entry.data_flags & NPKEntryDataFlags.TEXT:
             self.previewer_selector.setCurrentText(PREVIEW_CODE_VIEWER)
@@ -129,8 +154,8 @@ class PreviewWidget(QtWidgets.QWidget):
         else:
             self.previewer_selector.setCurrentText(PREVIEW_HEX_VIEWER)
             self.select_previewer(self.hex_viewer)
-            self.message_label.setText(UNKNOWN_FILE_TYPE_TEXT)
-            self.message_label.setVisible(True)
+        self.message_label.setText(UNKNOWN_FILE_TYPE_TEXT)
+        self.message_label.setVisible(True)
 
     def clear(self):
         """
