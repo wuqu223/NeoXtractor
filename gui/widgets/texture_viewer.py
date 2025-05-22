@@ -12,6 +12,8 @@ QT_SUPPORTED_FORMATS = tuple(fmt.toStdString() for fmt in QtGui.QImageReader.sup
 class TextureViewer(QtWidgets.QWidget):
     """A widget that displays a texture."""
 
+    # Viewer attributes
+    name = "Texture Viewer"
     accepted_extensions = QT_SUPPORTED_FORMATS + ("tga", "ico",
                            "tiff", "dds", "pvr", "ktx", "astc", "cbk")
 
@@ -127,7 +129,8 @@ class TextureViewer(QtWidgets.QWidget):
     def resizeEvent(self, event: QtGui.QResizeEvent):
         """Handle resize events."""
         super().resizeEvent(event)
-        self._display_image()
+        if self._texture is not None:
+            self._display_image()
 
     def set_texture(self, data: bytes, extension: str):
         """Set the texture data and extension."""

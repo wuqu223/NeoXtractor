@@ -1023,6 +1023,9 @@ DATA_INSPECTOR_TYPES = {
 class HexViewer(QtWidgets.QWidget):
     """Main widget for the Hex Viewer."""
 
+    # Viewer name
+    name = "Hex Viewer"
+
     _data_inspector_labels: dict[str, QtWidgets.QLabel] = {}
 
     def __init__(self, parent=None):

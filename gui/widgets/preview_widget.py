@@ -4,16 +4,13 @@ from PySide6 import QtWidgets, QtCore
 
 from core.npk.types import NPKEntry, NPKEntryDataFlags
 from core.utils import format_bytes
+from gui.utils.viewer import set_entry_for_viewer
 from gui.widgets.code_editor import CodeEditor
 from gui.widgets.hex_viewer import HexViewer
 from gui.widgets.texture_viewer import TextureViewer
 
 SELECT_ENTRY_TEXT = "Select an entry to preview."
 UNKNOWN_FILE_TYPE_TEXT = "Unknown file type. Using default viewer."
-
-PREVIEW_HEX_VIEWER = "Hex Viewer"
-PREVIEW_CODE_VIEWER = "Code Viewer"
-PREVIEW_TEXTURE_VIEWER = "Texture Viewer"
 
 class PreviewWidget(QtWidgets.QWidget):
     """
@@ -52,16 +49,12 @@ class PreviewWidget(QtWidgets.QWidget):
         self.widget_layout.addLayout(self.control_bar_layout)
 
         self.hex_viewer = HexViewer()
-        self.previewer_selector.addItem(PREVIEW_HEX_VIEWER, self.hex_viewer)
-        self._previewers.append(self.hex_viewer)
+        self._add_previewer(self.hex_viewer)
 
         self.code_editor = CodeEditor()
-        self.previewer_selector.addItem(PREVIEW_CODE_VIEWER, self.code_editor)
-        self._previewers.append(self.code_editor)
+        self._add_previewer(self.code_editor)
 
-        self.texture_viewer = TextureViewer()
-        self.previewer_selector.addItem(PREVIEW_TEXTURE_VIEWER, self.texture_viewer)
-        self._previewers.append(self.texture_viewer)
+        self._add_previewer(TextureViewer())
 
         for previewer in self._previewers:
             previewer.setVisible(False)
@@ -71,30 +64,30 @@ class PreviewWidget(QtWidgets.QWidget):
 
         self.set_control_bar_visible(False)
 
+    def _add_previewer(self, previewer: QtWidgets.QWidget):
+        """
+        Add a previewer to the preview widget.
+        
+        :param previewer: The previewer to add.
+        :param name: The name of the previewer.
+        """
+        self.previewer_selector.addItem(getattr(previewer, "name") if hasattr(previewer, "name") else \
+                                        previewer.__class__.__name__, previewer)
+        self._previewers.append(previewer)
+
     def _set_data_for_previewer(self, previewer: QtWidgets.QWidget, data: NPKEntry | None):
         """
-        Set the data for the previewer.
+        Set the data for the previewer. When errors occur, hide the previewer and show an error message.
         
         :param previewer: The previewer to set the data for.
         :param data: The NPK entry data to set.
         """
-        if isinstance(previewer, HexViewer):
-            previewer.setData(bytearray(data.data) if data is not None else bytearray())
-        elif isinstance(previewer, CodeEditor):
-            if data is None:
-                previewer.set_content("")
-            else:
-                previewer.set_content(data.data.decode("utf-8", errors="replace"), data.extension)
-        elif isinstance(previewer, TextureViewer):
-            if data is None:
-                previewer.clear()
-            else:
-                try:
-                    previewer.set_texture(data.data, data.extension)
-                except ValueError:
-                    previewer.setVisible(False)
-                    self.message_label.setText(f"Unsupported image format: {data.extension}")
-                    self.message_label.setVisible(True)
+        try:
+            set_entry_for_viewer(previewer, data)
+        except ValueError as e:
+            previewer.setVisible(False)
+            self.message_label.setText(e.args[0])
+            self.message_label.setVisible(True)
 
     def set_control_bar_visible(self, visible: bool):
         """
@@ -117,6 +110,9 @@ class PreviewWidget(QtWidgets.QWidget):
             self._set_data_for_previewer(p, None)
             p.setVisible(False)
         previewer.setVisible(True)
+
+        # Set the previewer selector to the selected previewer
+        self.previewer_selector.setCurrentIndex(self.previewer_selector.findData(previewer))
 
         if self._current_entry is None:
             return
@@ -148,12 +144,8 @@ class PreviewWidget(QtWidgets.QWidget):
                     )
                     return
 
-        if npk_entry.data_flags & NPKEntryDataFlags.TEXT:
-            self.previewer_selector.setCurrentText(PREVIEW_CODE_VIEWER)
-            self.select_previewer(self.code_editor)
-        else:
-            self.previewer_selector.setCurrentText(PREVIEW_HEX_VIEWER)
-            self.select_previewer(self.hex_viewer)
+        self.select_previewer(self.code_editor if npk_entry.data_flags & NPKEntryDataFlags.TEXT else \
+                              self.hex_viewer)
         self.message_label.setText(UNKNOWN_FILE_TYPE_TEXT)
         self.message_label.setVisible(True)
 

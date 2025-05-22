@@ -296,6 +296,9 @@ class CodeEditor(QWidget):
         main_layout (QVBoxLayout): The main layout of the widget.
     """
 
+    # Viewer name
+    name = "Code Viewer"
+
     _ext_lang_map: dict[str, str] = {}
 
     def __init__(self, parent=None):
