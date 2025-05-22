@@ -100,17 +100,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.filter_section.addLayout(self.filter_checkbox_section)
 
-        self.file_type_filter_combobox = QtWidgets.QComboBox()
-        self.file_type_filter_combobox.addItem("All", None)
+        self.entry_category_filter_combobox = QtWidgets.QComboBox()
+        self.entry_category_filter_combobox.addItem("All", None)
         for i in NPKEntryFileCategories:
-            self.file_type_filter_combobox.addItem(i.value, i)
-        self.file_type_filter_combobox.setCurrentIndex(0)
+            self.entry_category_filter_combobox.addItem(i.value, i)
+        self.entry_category_filter_combobox.setCurrentIndex(0)
         def filter_type_changed(index: int):
-            self.filter.filter_type = self.file_type_filter_combobox.itemData(index)
+            self.filter.filter_type = self.entry_category_filter_combobox.itemData(index)
             self.mesh_biped_head_filter_checkbox.setVisible(self.filter.filter_type == NPKEntryFileCategories.MESH)
             self.filter.apply_filter()
-        self.file_type_filter_combobox.currentIndexChanged.connect(filter_type_changed)
-        self.filter_section.addWidget(self.file_type_filter_combobox)
+        self.entry_category_filter_combobox.currentIndexChanged.connect(filter_type_changed)
+        self.filter_section.addWidget(self.entry_category_filter_combobox)
 
         self.mesh_biped_head_filter_checkbox = QtWidgets.QCheckBox("Only 'biped head' meshes")
         self.mesh_biped_head_filter_checkbox.setVisible(False)
@@ -288,8 +288,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.open_file_action.setEnabled(False)
         self.active_config.setEnabled(False)
-        self.name_filter_input.setEnabled(False)
-        self.file_type_filter_combobox.setEnabled(False)
         self.progress_bar.setVisible(True)
 
         self.progress_bar.setFormat("Reading NPK file...")
@@ -345,8 +343,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.list_widget.setDisabled(False)
         self.open_file_action.setEnabled(True)
         self.active_config.setEnabled(True)
-        self.name_filter_input.setEnabled(True)
-        self.file_type_filter_combobox.setEnabled(True)
         self.progress_bar.setVisible(False)
         self.extract_button_widget.setVisible(True)
         self.filter.apply_filter()

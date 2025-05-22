@@ -49,6 +49,10 @@ class NPKFileList(QtWidgets.QListView):
 
         self._disabled = disabled
 
+    def disabled(self):
+        """Get the disabled state of the list view."""
+        return self._disabled
+
     def model(self) -> NPKFileModel:
         """
         Get the current model of the list view.

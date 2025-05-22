@@ -26,6 +26,9 @@ class NPKEntryFilter:
         :param npk_entries: List of NPK entries to be filtered.
         :return: Filtered list of NPK entries.
         """
+        if self._list_view.disabled():
+            return
+
         model = self._list_view.model()
         npk_file = get_npk_file()
         if not model or not npk_file:
