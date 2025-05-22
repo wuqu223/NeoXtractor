@@ -1,10 +1,11 @@
 """Provides a preview widget for Main Window."""
 
+from typing import cast
 from PySide6 import QtWidgets, QtCore
 
 from core.npk.types import NPKEntry, NPKEntryDataFlags
 from core.utils import format_bytes
-from gui.utils.viewer import set_entry_for_viewer
+from gui.utils.viewer import find_best_viewer, set_entry_for_viewer
 from gui.widgets.code_editor import CodeEditor
 from gui.widgets.hex_viewer import HexViewer
 from gui.widgets.texture_viewer import TextureViewer
@@ -86,7 +87,7 @@ class PreviewWidget(QtWidgets.QWidget):
             set_entry_for_viewer(previewer, data)
         except ValueError as e:
             previewer.setVisible(False)
-            self.message_label.setText(e.args[0])
+            self.message_label.setText(cast(str, e.args[0]))
             self.message_label.setVisible(True)
 
     def set_control_bar_visible(self, visible: bool):
@@ -135,19 +136,15 @@ class PreviewWidget(QtWidgets.QWidget):
 
         self.set_control_bar_visible(True)
 
+        # Find the best previewer for the given NPK entry
+        best_previewer = find_best_viewer(npk_entry.extension, bool(npk_entry.data_flags & NPKEntryDataFlags.TEXT))
         for previewer in self._previewers:
-            if hasattr(previewer, "accepted_extensions"):
-                if npk_entry.extension in getattr(previewer, "accepted_extensions"):
-                    self.select_previewer(previewer)
-                    self.previewer_selector.setCurrentIndex(
-                        self.previewer_selector.findData(previewer)
-                    )
-                    return
+            if isinstance(previewer, best_previewer):
+                self.select_previewer(previewer)
 
-        self.select_previewer(self.code_editor if npk_entry.data_flags & NPKEntryDataFlags.TEXT else \
-                              self.hex_viewer)
-        self.message_label.setText(UNKNOWN_FILE_TYPE_TEXT)
-        self.message_label.setVisible(True)
+        # TODO: Know when unknown file is encountered
+        #self.message_label.setText(UNKNOWN_FILE_TYPE_TEXT)
+        #self.message_label.setVisible(True)
 
     def clear(self):
         """

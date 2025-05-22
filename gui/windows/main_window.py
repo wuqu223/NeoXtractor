@@ -1,21 +1,27 @@
 """Provides MainWindow class."""
 
 import os
-from typing import cast
+from typing import Any, cast
 
 from PySide6 import QtCore, QtWidgets, QtGui
 
 from core.config import Config
 from core.npk.enums import NPKEntryFileCategories, NPKFileType
 from core.npk.npk_file import NPKFile
+from core.npk.types import NPKEntry, NPKEntryDataFlags
 from gui.config_manager import ConfigManager
 from gui.models.npk_file_model import NPKFileModel
 from gui.npk_entry_filter import NPKEntryFilter
 from gui.utils.config import save_config_manager_to_settings
+from gui.utils.viewer import find_best_viewer
+from gui.widgets.code_editor import CodeEditor
+from gui.widgets.hex_viewer import HexViewer
 from gui.widgets.npk_file_list import NPKFileList
 from gui.widgets.preview_widget import PreviewWidget
+from gui.widgets.texture_viewer import TextureViewer
 from gui.windows.about_window import AboutWindow
 from gui.windows.config_manager_window import ConfigManagerWindow
+from gui.windows.viewer_tab_window import ViewerTabWindow
 
 class MainWindow(QtWidgets.QMainWindow):
     """Main window class."""
@@ -26,6 +32,8 @@ class MainWindow(QtWidgets.QMainWindow):
     loading_complete_signal = QtCore.Signal()
 
     _config_list_refreshing = False
+
+    _viewer_windows: dict[Any, ViewerTabWindow] = {}
 
     def __init__(self):
         super().__init__()
@@ -63,6 +71,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.list_widget = NPKFileList(self)
         self.list_widget.preview_entry.connect(lambda _row, entry: self.preview_widget.set_file(entry))
+        def open_tab_window_for_entry(_row: int, entry: NPKEntry):
+            previewer_type = find_best_viewer(entry.extension, bool(entry.data_flags & NPKEntryDataFlags.TEXT))
+            wnd = self._get_tab_window_for_viewwer(previewer_type)
+            wnd.load_file(entry.data, entry.filename)
+            wnd.show()
+        self.list_widget.open_entry.connect(open_tab_window_for_entry)
 
         self.filter = NPKEntryFilter(self.list_widget)
 
@@ -230,11 +244,33 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.menuBar().addMenu(file_menu())
 
+        def tools_menu() -> QtWidgets.QMenu:
+            menu = QtWidgets.QMenu("Tools")
+
+            menu.addAction("Hex Viewer",
+                lambda: self._get_tab_window_for_viewwer(HexViewer).show()
+            )
+            menu.addAction("Code Viewer",
+                lambda: self._get_tab_window_for_viewwer(CodeEditor).show()
+            )
+            menu.addAction("Texture Viewer",
+                lambda: self._get_tab_window_for_viewwer(TextureViewer).show()
+            )
+
+            return menu
+
+        self.menuBar().addMenu(tools_menu())
+
         self.menuBar().addAction("About",
             lambda: AboutWindow(self).exec()
         )
 
         self.refresh_config_list()
+
+    def _get_tab_window_for_viewwer(self, viewer: Any) -> ViewerTabWindow:
+        if viewer not in self._viewer_windows:
+            self._viewer_windows[viewer] = ViewerTabWindow(viewer, self)
+        return self._viewer_windows[viewer]
 
     def unload_npk(self):
         """Unload the NPK file."""
