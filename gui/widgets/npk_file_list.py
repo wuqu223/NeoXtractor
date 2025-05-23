@@ -74,26 +74,21 @@ class NPKFileList(QtWidgets.QListView):
             self.setModel(None)
         else:
             self.setModel(NPKFileModel(npk_file, self))
-            self.selectionModel().selectionChanged.connect(self.on_selection_changed)
+            self.selectionModel().currentChanged.connect(self.on_current_changed)
 
-    def on_selection_changed(self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection):
+    def on_current_changed(self, current: QtCore.QModelIndex, previous: QtCore.QModelIndex):
         """
         Handle single-click on an item in the list.
         
         :param index: The model index that was clicked.
         """
-        if selected.count() != 1:
-            return
-
-        index = selected.indexes()[0]
-
         npk_file = get_npk_file()
 
         if not self.model() or npk_file is None:
             return
 
         # Get the row index from the model index
-        row_index = index.row()
+        row_index = current.row()
 
         entry = npk_file.read_entry(row_index)
 
