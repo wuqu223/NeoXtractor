@@ -9,6 +9,45 @@ from core.images import convert_image, image_to_png_data
 
 QT_SUPPORTED_FORMATS = tuple(fmt.toStdString() for fmt in QtGui.QImageReader.supportedImageFormats())
 
+class ImageDecodeTaskSignals(QtCore.QObject):
+    """Signals for the image decode task."""
+
+    load_complete = QtCore.Signal(QtGui.QImage)
+    load_failed = QtCore.Signal(Exception)
+
+class ImageDecodeTask(QtCore.QRunnable):
+    """A task to decode an image in a separate thread."""
+
+    signals = ImageDecodeTaskSignals()
+
+    def __init__(self, data: bytes, extension: str):
+        super().__init__()
+
+        self.cancelled = False
+
+        self.data = data
+        self.extension = extension
+
+    @QtCore.Slot()
+    def run(self):
+        if self.extension in QT_SUPPORTED_FORMATS:
+            # Use Qt's image reader for supported formats
+            texture = QtGui.QImage.fromData(self.data)
+        else:
+            # Use custom conversion for unsupported formats
+            texture = QtGui.QImage.fromData(image_to_png_data(
+                cast(Image.Image | ImageFile.ImageFile,convert_image(self.data, self.extension))
+                ))
+
+        if self.cancelled:
+            return
+
+        if texture.isNull():
+            self.signals.load_failed.emit(ValueError("Failed to load image data"))
+            return
+
+        self.signals.load_complete.emit(texture)
+
 class TextureViewer(QtWidgets.QWidget):
     """A widget that displays a texture."""
 
@@ -17,23 +56,35 @@ class TextureViewer(QtWidgets.QWidget):
     accepted_extensions = QT_SUPPORTED_FORMATS + ("tga", "ico",
                            "tiff", "dds", "pvr", "ktx", "astc", "cbk")
 
-    _texture: QtGui.QImage | None = None
-    _processed_texture: QtGui.QImage | None = None
-
     def __init__(self):
         super().__init__()
 
+        self._decode_task: ImageDecodeTask | None = None
+
+        self._texture: QtGui.QImage | None = None
+        self._processed_texture: QtGui.QImage | None = None
+
         main_layout = QtWidgets.QVBoxLayout(self)
+
+        self._message_label = QtWidgets.QLabel("No image loaded")
+        self._message_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self._message_label.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Expanding
+            )
+        main_layout.addWidget(self._message_label)
 
         self._image_label = QtWidgets.QLabel(self)
         self._image_label.setAlignment(QtGui.Qt.AlignmentFlag.AlignCenter)
         self._image_label.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
+        self._image_label.setVisible(False)
 
         size_layout = QtWidgets.QHBoxLayout()
         size_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
         self.size_label = QtWidgets.QLabel(self)
         self.size_label.setAlignment(QtGui.Qt.AlignmentFlag.AlignCenter)
+        self.size_label.setVisible(False)
         size_layout.addWidget(self.size_label)
 
         self.rendered_size_label = QtWidgets.QLabel(self)
@@ -132,27 +183,42 @@ class TextureViewer(QtWidgets.QWidget):
         if self._texture is not None:
             self._display_image()
 
-    def set_texture(self, data: bytes, extension: str):
-        """Set the texture data and extension."""
-        if extension not in self.accepted_extensions:
-            raise ValueError(f"Unsupported image format: {extension}")
+    def _on_load_complete(self, image: QtGui.QImage):
+        self._message_label.setVisible(False)
+        self._image_label.setVisible(True)
+        self.size_label.setVisible(True)
+        self.rendered_size_label.setVisible(True)
 
-        if extension in QT_SUPPORTED_FORMATS:
-            # Use Qt's image reader for supported formats
-            self._texture = QtGui.QImage.fromData(data)
-        else:
-            # Use custom conversion for unsupported formats
-            self._texture = QtGui.QImage.fromData(image_to_png_data(
-                cast(Image.Image | ImageFile.ImageFile,convert_image(data, extension))
-                ))
-
-        if self._texture.isNull():
-            raise ValueError("Failed to load image data")
+        self._texture = image
 
         self._apply_modifiers()
         self._display_image()
 
         self.size_label.setText(f"Size: {self._texture.width()} x {self._texture.height()}")
+
+    def _on_load_failed(self, error: Exception):
+        self._message_label.setText(f"Failed to load image: {error}")
+
+    def set_texture(self, data: bytes, extension: str):
+        """Set the texture data and extension."""
+        if extension not in self.accepted_extensions:
+            raise ValueError(f"Unsupported image format: {extension}")
+
+        if self._decode_task is not None:
+            self._decode_task.cancelled = True
+            self._decode_task = None
+
+        self._message_label.setText("Loading image...")
+        self._message_label.setVisible(True)
+        self._image_label.setVisible(False)
+        self.size_label.setVisible(False)
+        self.rendered_size_label.setVisible(False)
+
+        self._decode_task = ImageDecodeTask(data, extension)
+        self._decode_task.signals.load_complete.connect(self._on_load_complete)
+        self._decode_task.signals.load_failed.connect(self._on_load_failed)
+
+        QtCore.QThreadPool.globalInstance().start(self._decode_task)
 
     def clear(self):
         """Clear the texture."""
