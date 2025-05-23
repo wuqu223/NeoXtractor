@@ -321,6 +321,20 @@ class MainWindow(QtWidgets.QMainWindow):
             self.config = self.config_manager.configs[index]
 
         if previous_config != self.config:
+            if previous_config is not None and self.app.property("npk_file") is not None and \
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "NPK File loaded",
+                    "Changing the config will unload the NPK file.\n" +
+                    "Are you sure you want to continue?",
+                    buttons=QtWidgets.QMessageBox.StandardButton.Ok | QtWidgets.QMessageBox.StandardButton.Cancel,
+                    defaultButton=QtWidgets.QMessageBox.StandardButton.Cancel,
+            ) == QtWidgets.QMessageBox.StandardButton.Cancel:
+                # Restore the previous config selection
+                self.config = previous_config
+                self.active_config.setCurrentIndex(self.active_config.findText(previous_config.name))
+                return
+
             self.unload_npk()
 
             self.app.setProperty("game_config", self.config)
