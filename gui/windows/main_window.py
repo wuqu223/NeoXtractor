@@ -279,8 +279,29 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _get_tab_window_for_viewwer(self, viewer: Any) -> ViewerTabWindow:
         if viewer not in self._viewer_windows:
-            self._viewer_windows[viewer] = ViewerTabWindow(viewer, self)
+            self._viewer_windows[viewer] = ViewerTabWindow(viewer)
         return self._viewer_windows[viewer]
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        force_close = False
+        for viewer_window in self._viewer_windows.values():
+            if force_close:
+                viewer_window.close()
+                continue
+            if viewer_window.isVisible():
+                if QtWidgets.QMessageBox.warning(
+                    self,
+                    "Close Viewers",
+                    "There are still viewer windows open.\n" +
+                    "Are you sure you want to quit?",
+                    buttons=QtWidgets.QMessageBox.StandardButton.Ok | QtWidgets.QMessageBox.StandardButton.Cancel,
+                    defaultButton=QtWidgets.QMessageBox.StandardButton.Cancel,
+                ) == QtWidgets.QMessageBox.StandardButton.Ok:
+                    force_close = True
+                    viewer_window.close()
+                else:
+                    event.ignore()
+                    return
 
     def unload_npk(self):
         """Unload the NPK file."""
