@@ -15,13 +15,14 @@ class NPKFileList(QtWidgets.QListView):
     Custom QListView to display NPK files.
     """
 
-    _disabled = False
-
     preview_entry = QtCore.Signal(int, NPKEntry)
     open_entry = QtCore.Signal(int, NPKEntry)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
+
+        self._disabled = False
+        self._select_after_enabled: QtCore.QModelIndex | None = None
 
         self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.setDragEnabled(False)
@@ -48,6 +49,12 @@ class NPKFileList(QtWidgets.QListView):
             self.setStyleSheet("")
 
         self._disabled = disabled
+
+        if self._select_after_enabled:
+            self.selectionModel().select(self._select_after_enabled,
+                                         QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect)
+            self.on_current_changed(self._select_after_enabled, QtCore.QModelIndex())
+            self._select_after_enabled = None
 
     def disabled(self):
         """Get the disabled state of the list view."""
@@ -82,6 +89,10 @@ class NPKFileList(QtWidgets.QListView):
         
         :param index: The model index that was clicked.
         """
+        if self._disabled:
+            self._select_after_enabled = current
+            return
+
         npk_file = get_npk_file()
 
         if not self.model() or npk_file is None:
