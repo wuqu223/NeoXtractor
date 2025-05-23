@@ -26,6 +26,8 @@ from gui.windows.viewer_tab_window import ViewerTabWindow
 class MainWindow(QtWidgets.QMainWindow):
     """Main window class."""
 
+    _loading_cancelled = False
+
     # Custom signals for thread-safe UI updates
     update_progress_signal = QtCore.Signal(int)
     update_model_signal = QtCore.Signal(int)
@@ -140,6 +142,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.progress_bar = QtWidgets.QProgressBar(self)
         self.progress_bar.setVisible(False)
         self.control_layout.addWidget(self.progress_bar)
+
+        self.cancel_button = QtWidgets.QPushButton("Cancel")
+        self.cancel_button.setStatusTip("Cancel loading the NPK file.")
+        self.cancel_button.setVisible(False)
+        def cancel_loading():
+            self._loading_cancelled = True
+        self.cancel_button.clicked.connect(cancel_loading)
+        self.control_layout.addWidget(self.cancel_button)
 
         def extract_all(visible_only: bool = False):
             model = self.list_widget.model()
@@ -320,6 +330,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.unload_npk()
 
+        self._loading_cancelled = False
+
         self.setWindowTitle(f"NeoXtractor - {os.path.basename(path)}")
 
         self.open_file_action.setEnabled(False)
@@ -356,6 +368,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         def _load_entries():
             for i in range(npk_file.file_count):
+                if self._loading_cancelled:
+                    print("Loading cancelled.")
+                    break
                 npk_file.read_entry(i)
                 self.update_model_signal.emit(i)
                 self.update_progress_signal.emit(i + 1)
@@ -363,6 +378,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.loading_complete_signal.emit()
 
         QtCore.QThreadPool.globalInstance().start(_load_entries)
+
+        self.cancel_button.setVisible(True)
 
     def _update_progress(self, value):
         """Update progress bar value from the signal."""
@@ -382,5 +399,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.open_file_action.setEnabled(True)
         self.active_config.setEnabled(True)
         self.progress_bar.setVisible(False)
+        self.cancel_button.setVisible(False)
         self.extract_button_widget.setVisible(True)
-        self.filter.apply_filter()
+        if self._loading_cancelled:
+            self.unload_npk()
+        else:
+            # This causes all the entries to be read. Making the cancelling not working and stuck the thread.
+            self.filter.apply_filter()
