@@ -1,0 +1,75 @@
+{
+  "name": "C/C++ Header",
+  "formats": {
+    "keyword": {
+      "foreground": "#569CD6",
+      "bold": true
+    },
+    "datatype": {
+      "foreground": "#4EC9B0",
+      "bold": false
+    },
+    "preprocessor": {
+      "foreground": "#C586C0",
+      "italic": true
+    },
+    "comment": {
+      "foreground": "#6A9955",
+      "italic": true
+    },
+    "string": {
+      "foreground": "#CE9178"
+    },
+    "number": {
+      "foreground": "#B5CEA8"
+    },
+    "function": {
+      "foreground": "#DCDCAA"
+    },
+    "operator": {
+      "foreground": "#D4D4D4"
+    }
+  },
+  "rules": [
+    {
+      "pattern": "\\b(if|else|while|for|return|break|continue|switch|case|default|goto|sizeof|typedef|struct|union|enum|extern|static|const|volatile|register|inline|explicit|friend|class|namespace|template|new|delete|try|catch|throw|using|public|protected|private|virtual|override|final|auto|null|nullptr|true|false)\\b",
+      "format": "keyword"
+    },
+    {
+      "pattern": "\\b(void|int|char|float|double|short|long|unsigned|signed|size_t|wchar_t|bool|BOOL|DWORD|LPSTR|LPCSTR|LPTSTR|LPCTSTR|HANDLE|HWND|HINSTANCE|WPARAM|LPARAM|LRESULT)\\b",
+      "format": "datatype"
+    },
+    {
+      "pattern": "#\\s*(include|define|ifdef|ifndef|endif|else|elif|pragma|if|undef)(?:[^\\n]*)",
+      "format": "preprocessor"
+    },
+    {
+      "pattern": "//[^\\n]*",
+      "format": "comment"
+    },
+    {
+      "pattern": "/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/",
+      "format": "comment"
+    },
+    {
+      "pattern": "\"(?:\\\\.|[^\\\\\"])*\"",
+      "format": "string"
+    },
+    {
+      "pattern": "'(?:\\\\.|[^\\\\'])*'",
+      "format": "string"
+    },
+    {
+      "pattern": "\\b[0-9]+\\b|\\b0x[0-9a-fA-F]+\\b",
+      "format": "number"
+    },
+    {
+      "pattern": "\\b[A-Za-z_][A-Za-z0-9_]*\\s*\\(",
+      "format": "function"
+    },
+    {
+      "pattern": "[\\+\\-\\*/%=<>!&|^~\\?\\:]",
+      "format": "operator"
+    }
+  ]
+}
