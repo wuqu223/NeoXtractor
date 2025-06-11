@@ -13,7 +13,7 @@ def is_binary(data: bytes):
         bool: True if the data is binary, False otherwise
     """
     # Normally text files doesn't contain null bytes
-    if b'\x00' in data[:8192]:
+    if b'\x00' in data[:4000]:
         return True
     # Take a sample to check for binary data
     try:
@@ -105,6 +105,8 @@ def _get_binary_ext(data: bytes, flags: NPKEntryDataFlags):
         return 'mp4'
     if data[0x3B: 0x3F] == bytes([0xC5, 0x00, 0x00, 0x80, 0x3F]):
         return 'slpb'
+    if bytes([0x00, 0x00, 0x00, 0x00, 0x00, 0x55, 0x55]) in data:
+        return "animation"
 
     return None
 

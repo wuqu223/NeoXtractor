@@ -9,6 +9,21 @@ from Crypto.Cipher import PKCS1_v1_5
 
 from core.npk.enums import CompressionType
 from core.npk.types import NPKEntry
+from core.rotor import newrotor
+
+def init_rotor():
+    asdf_dn = 'j2h56ogodh3se'
+    asdf_dt = '=dziaq.'
+    asdf_df = '|os=5v7!"-234'
+    asdf_tm = asdf_dn * 4 + (asdf_dt + asdf_dn + asdf_df) * 5 + '!' + '#' + asdf_dt * 7 + asdf_df * 2 + '*' + '&' + "'"
+    rot = newrotor(asdf_tm)
+    return rot
+    
+def _reverse_string(s):
+    l = list(s)
+    l = list(map(lambda x: x ^ 154, l[0:128])) + l[128:]
+    l.reverse()
+    return bytes(l)
 
 def decompress_entry(entry: NPKEntry):
     """
@@ -40,10 +55,14 @@ def decompress_entry(entry: NPKEntry):
 
 def check_nxs3(entry: NPKEntry) -> bool:
     """Check if the data is wrapped in NXS3 format."""
-    if entry.data[0:8] == b"NXS3\x03\x00\x00\x01":
-        return True
-    return False
+    return (entry.data[:8] == b"NXS3\x03\x00\x00\x01")
+    
+def check_rotor(entry: NPKEntry) -> bool:
+    return (entry.data[:2] == bytes([0x1D, 0x04]) or entry.data[:2] == bytes([0x15, 0x23]))
 
+def unpack_rotor(data):
+    return _reverse_string(zlib.decompress(init_rotor().decrypt(data)))
+    
 # todo: check if this works
 def unpack_nxs3(data):
     """
