@@ -2,20 +2,14 @@
   "name": "Plain Text",
   "formats": {
     "default": {
-      "foreground": "black"
+      "foreground": "#000000@.text"
     },
     "url": {
-      "foreground": "#3794FF",
+      "foreground": "#0066cc@variable",
       "underline": true
     },
-    "path": {
-      "foreground": "#DCDCAA"
-    },
     "number": {
-      "foreground": "#B5CEA8"
-    },
-    "email": {
-      "foreground": "#4EC9B0"
+      "foreground": "#800080@number"
     }
   },
   "rules": [
@@ -28,16 +22,8 @@
       "format": "url"
     },
     {
-      "pattern": "\\b(?:[A-Za-z]:\\\\|/)[\\w\\d\\-\\._~:/\\\\]*\\b",
-      "format": "path"
-    },
-    {
       "pattern": "\\b\\d+(?:\\.\\d+)?\\b",
       "format": "number"
-    },
-    {
-      "pattern": "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b",
-      "format": "email"
     }
   ]
 }

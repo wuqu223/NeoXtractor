@@ -1,38 +1,40 @@
 {
   "name": "JSON",
+  "string_patterns": [
+    {
+      "pattern": "\"(?:[^\"\\\\]|\\\\.)*\"",
+      "multiline": false
+    }
+  ],
   "formats": {
     "key": {
-      "foreground": "#9CDCFE"
+      "foreground": "#000080@variable"
     },
     "string": {
-      "foreground": "#CE9178"
+      "foreground": "#008000@string"
     },
     "number": {
-      "foreground": "#B5CEA8"
+      "foreground": "#800080@number"
     },
     "boolean": {
-      "foreground": "#569CD6",
+      "foreground": "#0000ff@keyword",
       "bold": true
     },
     "null": {
-      "foreground": "#569CD6",
+      "foreground": "#808080@comment",
       "italic": true
     },
     "punctuation": {
-      "foreground": "#D4D4D4"
+      "foreground": "#000000@operator"
     }
   },
   "rules": [
     {
-      "pattern": "\"(?:\\\\.|[^\\\\\"])*\"\\s*:",
+      "pattern": "\"[^\"]*\"\\s*:",
       "format": "key"
     },
     {
-      "pattern": "\"(?:\\\\.|[^\\\\\"])*\"(?!\\s*:)",
-      "format": "string"
-    },
-    {
-      "pattern": "\\b-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b",
+      "pattern": "\\b-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b",
       "format": "number"
     },
     {
@@ -44,7 +46,7 @@
       "format": "null"
     },
     {
-      "pattern": "[\\[\\]\\{\\}\\,\\:]",
+      "pattern": "[{}\\[\\],:]",
       "format": "punctuation"
     }
   ]
