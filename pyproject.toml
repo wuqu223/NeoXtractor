@@ -16,6 +16,7 @@ dependencies = [
     "pymeshio>=3.0.1",
     "pyside6>=6.9.0",
     "zstandard>=0.23.0",
+    "pymeshio>=3.0.1",
 ]
 
 [tool.uv]
