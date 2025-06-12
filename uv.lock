@@ -185,6 +185,7 @@ dependencies = [
     { name = "pycryptodome" },
     { name = "pymeshio" },
     { name = "pyside6" },
+    { name = "texture2ddecoder" },
     { name = "zstandard" },
 ]
 
@@ -200,6 +201,7 @@ requires-dist = [
     { name = "pycryptodome", specifier = ">=3.22.0" },
     { name = "pymeshio", specifier = ">=3.0.1" },
     { name = "pyside6", specifier = ">=6.9.0" },
+    { name = "texture2ddecoder", specifier = ">=1.0.5" },
     { name = "zstandard", specifier = ">=0.23.0" },
 ]
 
@@ -386,6 +388,30 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/0d/59/6a91aad272fe89bf2293b7864fb6e926822c93a2f6192611528c6945196d/shiboken6-6.9.0-cp39-abi3-manylinux_2_39_aarch64.whl", hash = "sha256:b61579b90bf9c53ecc174085a69429166dfe57a0b8b894f933d1281af9df6568", size = 202809, upload-time = "2025-04-02T10:58:46.667Z" },
     { url = "https://files.pythonhosted.org/packages/e2/6e/cf00d723ab141132fb6d35ba8faf109cbc0ee83412016343600abb423149/shiboken6-6.9.0-cp39-abi3-win_amd64.whl", hash = "sha256:121ea290ed1afa5ad6abf690b377612693436292b69c61b0f8e10b1f0850f935", size = 1153132, upload-time = "2025-04-02T10:58:50.973Z" },
     { url = "https://files.pythonhosted.org/packages/b5/01/d59babab05786c99ebabdd152864ea3d4c500160979952c620eec68b1ff2/shiboken6-6.9.0-cp39-abi3-win_arm64.whl", hash = "sha256:24f53857458881b54798d7e35704611d07f6b6885bcdf80f13a4c8bb485b8df2", size = 1831261, upload-time = "2025-04-02T10:58:52.789Z" },
+]
+
+[[package]]
+name = "texture2ddecoder"
+version = "1.0.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3f/08/7012aead15dc0e02289615084374f465908568c7b940f0f5ad0eb216b1a4/texture2ddecoder-1.0.5.tar.gz", hash = "sha256:7767e865394ad8e0a0609d275caf3e8c99d03df107dfb961cb90ea21c9295dc2", size = 105164, upload-time = "2025-03-07T11:35:51.714Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/db/d0/ab2e6a4226c1463fef60aad3571dca8b60cee8172f48deaafb2814f80316/texture2ddecoder-1.0.5-cp37-abi3-macosx_10_9_x86_64.whl", hash = "sha256:d037c4071eaeb1b772ccf17dcd1be0ebd1a01a6565f297182346bbafb7acc25e", size = 93163, upload-time = "2025-03-07T11:34:52.136Z" },
+    { url = "https://files.pythonhosted.org/packages/69/3a/700186efe43b2f01a44ecd9d00365202025c05d11ffa70f9ab46f68f5ff7/texture2ddecoder-1.0.5-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:073128f915c5ed54d34230c33709b89a88e11b796e57f9d5c734c640b265551d", size = 87042, upload-time = "2025-03-07T11:34:55.811Z" },
+    { url = "https://files.pythonhosted.org/packages/12/e8/402c4242b4da2e7c180e42f96ddb79f6f3fbf09d4e68d0d0779bd1c54a35/texture2ddecoder-1.0.5-cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:7d21f2866b2bb21f01910b99164bed8a8cc70d2f2be5fd5bf37db1a87a781389", size = 359415, upload-time = "2025-03-07T11:34:57.467Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/94/36a109d3983f287f7c812c7ce78752b81be32a5c1ef3fd4f3685b9fdee54/texture2ddecoder-1.0.5-cp37-abi3-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:958e82c0fe8f831e317304193d83110566736fa7b03698a97aeb8f6f09828fa1", size = 410332, upload-time = "2025-03-07T11:34:59.395Z" },
+    { url = "https://files.pythonhosted.org/packages/15/60/6ceb390bab7a04fd44374418c698a17e2ada850c821a350294c3a47ff47f/texture2ddecoder-1.0.5-cp37-abi3-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:185e317b5459f9f4f2429e471f6300a3a8fe11e858048c4105927d342718f946", size = 445208, upload-time = "2025-03-07T11:35:00.94Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/0d/1f49ad81fd70a68ba84d057002c62495057a08820f658ad4bba9a1cea7e4/texture2ddecoder-1.0.5-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a9dbf2825d74f26d489a4f971e55d57f85397054daef804cfec2e88b5d5247b8", size = 374749, upload-time = "2025-03-07T11:35:02.58Z" },
+    { url = "https://files.pythonhosted.org/packages/37/01/ef42b019a7d637b1483167508ca27a54d3a3e90746faef9b3c2a652e3504/texture2ddecoder-1.0.5-cp37-abi3-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:e449dc9dc7d59bd5fea302b8b80dcef26a31d53a7ff9e59cd7749b5306138f26", size = 361267, upload-time = "2025-03-07T11:35:04.292Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/52/458ff691a1217aa7da991cf680357d2a86fe0aac6572cb42acfcc1545aae/texture2ddecoder-1.0.5-cp37-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:7a851cf54e0918d52e63b248129dab8a0bdc98d0237e4da7a85812ce0da101e7", size = 1303707, upload-time = "2025-03-07T11:35:05.866Z" },
+    { url = "https://files.pythonhosted.org/packages/69/f6/4ba5f070b6ea976135a32f80ed3acc787fc8511af788e58599bfb0b026b8/texture2ddecoder-1.0.5-cp37-abi3-musllinux_1_2_armv7l.whl", hash = "sha256:869c3563bf03eb0af751812d5d42f9b6a33fbd647196e3812060eba89a0b7dcc", size = 1175192, upload-time = "2025-03-07T11:35:07.358Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/b3/8f5cd6e06eb98b6d29d2268d4d1019a5236c51c77e25622c9a1cd5acd1e3/texture2ddecoder-1.0.5-cp37-abi3-musllinux_1_2_i686.whl", hash = "sha256:3d94ae1a87712908286bc5cc9e6ad173a9357aaf33937507cba2ad4305ed8344", size = 1449421, upload-time = "2025-03-07T11:35:08.905Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/78/2b5a27e705b93a408fb0a5580ba06728ff35b337871ac42b0a4138c2cd1c/texture2ddecoder-1.0.5-cp37-abi3-musllinux_1_2_ppc64le.whl", hash = "sha256:19f00acb3a25b285c5b3e5a7bc22adb4d90db401c450695e98463585998a5715", size = 1452732, upload-time = "2025-03-07T11:35:12.129Z" },
+    { url = "https://files.pythonhosted.org/packages/28/c8/b0f9ff91e56cfcbbf3ab6ca4b6d7d86352ec6dac20cfdd1ebc37277a1a37/texture2ddecoder-1.0.5-cp37-abi3-musllinux_1_2_s390x.whl", hash = "sha256:719f0e17b66e3269662ff6bb05167b61df6897ec3555caefc58731d14d0dad39", size = 1590695, upload-time = "2025-03-07T11:35:13.65Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/2a/3803468e58accc4312f9ab39403de43333c79ea123c03790c7cde1d62591/texture2ddecoder-1.0.5-cp37-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:1fd60db331483094a9c7b84e1188222bb545987a11e3161f217f829e1e9c165f", size = 1363889, upload-time = "2025-03-07T11:35:15.45Z" },
+    { url = "https://files.pythonhosted.org/packages/5e/5b/1e3202a7b97622924c9304a4cebd65cebebaf5aca1b17c9c9329a797357b/texture2ddecoder-1.0.5-cp37-abi3-win32.whl", hash = "sha256:49fa46e3f10d226a3ead5a11288f781bdd589ff80e649dec8c68cc04b45384e1", size = 52680, upload-time = "2025-03-07T11:35:17.019Z" },
+    { url = "https://files.pythonhosted.org/packages/54/57/04a442cdb03e94b96e8bcddc237d3ead389d617b2710b6d90423e4349607/texture2ddecoder-1.0.5-cp37-abi3-win_amd64.whl", hash = "sha256:6ee16f7ebb98e227875f3bbd36be3c65b8d84296200b2624e5064f069bb5588f", size = 64636, upload-time = "2025-03-07T11:35:18.211Z" },
+    { url = "https://files.pythonhosted.org/packages/ae/01/0282ce71a0354449293be479d4561d3c39f1a5628f31aea92d8737fd1911/texture2ddecoder-1.0.5-cp37-abi3-win_arm64.whl", hash = "sha256:500e41c12227d5f0e4065ea7047e69fdcbd773a1602ee64f5d34656330bd7c9e", size = 55686, upload-time = "2025-03-07T11:35:19.417Z" },
 ]
 
 [[package]]
