@@ -4,8 +4,6 @@ import subprocess
 import sys
 import atexit
 
-from PyInstaller.utils.hooks import collect_data_files
-
 subprocess.call([sys.executable, 'tools/build_info_tool.py', 'gen'])
 
 def cleanup():
@@ -20,7 +18,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('configs', 'configs'), ('data', 'data'), *collect_data_files('archspec', includes=['json/cpu/*.json'])],
+    datas=[('configs', 'configs'), ('data', 'data')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -36,7 +34,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='neoxtractor',
+    name='NeoxTractor',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
