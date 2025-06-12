@@ -7,8 +7,6 @@ import math
 import texture2ddecoder
 from typing import Literal, cast
 from PIL import Image, ImageFile
-from astc_encoder import ASTCProfile
-import astc_encoder.pil_codec # pylint: disable=unused-import
 from bitstring import ConstBitStream
 
 DDS_HEADER = b"DDS\x20\x7C\0\0\0\x07\x10\0\0"
@@ -108,15 +106,18 @@ def pvr_convert(data: bytes):
     f.pos += meta_data_size * 8
     p_format, bpp = get_format_bits_per_pixel(pixel_format) # 4
 
-    if p_format == b"ASTC":
+    if p_format == b"ASTC": #PVR with ASTC encoding
         x, y = bpp
-        return Image.frombytes('RGBA', (width, height), f.read(f"bytes{_get_astc_file_size(width, height, x, y)}"), 'astc', ASTCProfile.LDR_SRGB, *bpp)
-    elif p_format == b"PVRTC":
+        return Image.frombytes('RGBA', (width, height), texture2ddecoder.decode_astc(f.read(f"bytes"), width, height, x, y), 'raw', ("BGRA"))
+    
+    elif p_format == b"PVRTC": #PVR with PVRTC encoding
         return Image.frombytes("RGBA", (width, height), texture2ddecoder.decode_pvrtc(f.read(f"bytes{width*height*bpp // 8}"), width, height, False), "raw", ("BGRA"))
-    texture_data = f.read(f"bytes:{width*height*bpp // 8}")
+    
+    else: #PVR with DXT1 or DXT5 encoding
+        texture_data = f.read(f"bytes:{width*height*bpp // 8}")
 
     dds_data = DDS_HEADER + int_to_bytes(height) + int_to_bytes(width) + \
-                get_pitch(width, bpp) + QUAD_NULL_BYTES + int_to_bytes(mip_map_count) + \
+                get_pitch(width, bpp) + QUAD_NULL_BYTES + int_to_bytes(1) + \
                 (QUAD_NULL_BYTES * 11) + DDS_PIXFORM_HEADER + p_format + (QUAD_NULL_BYTES * 10)
 
     return _pillow_image_conversion(dds_data + texture_data, "dds")
@@ -148,8 +149,8 @@ def ktx_convert(data: bytes):
     #bytesOfKeyValueData  = _r_uintle32(f)
     f.read("pad160")
     image_size = _r_uintle32(f)
-    image_data = f.read(f"bytes:{image_size}")
-    return Image.frombytes('RGBA', (pixelWidth, pixelHeight), image_data, 'astc', ASTCProfile.LDR_SRGB, 8, 8)
+    image_data = texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 8, 8)
+    return Image.frombytes('RGBA', (pixelWidth, pixelHeight), image_data, 'raw', ("BGRA"))
 
 def astc_convert(data: bytes):
     """Convert ASTC to Image."""
