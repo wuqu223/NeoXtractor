@@ -6,7 +6,7 @@ from typing import Optional, List, Dict
 from arc4 import ARC4
 
 from core.binary_readers import read_uint32, read_uint16, read_uint64
-from core.npk.decompression import check_nxs3, decompress_entry, unpack_nxs3
+from core.npk.decompression import check_nxs3, decompress_entry, unpack_nxs3, check_rotor, unpack_rotor
 from core.npk.decryption import decrypt_entry
 from core.npk.enums import NPKFileType
 from core.logger import get_logger
@@ -244,6 +244,15 @@ class NPKFile:
         # Decompress if needed
         if entry.zip_flag != CompressionType.NONE:
             entry.data = decompress_entry(entry)
+
+        # Check for ROTOR encryptiom
+        
+        if check_rotor(entry):
+            try:
+                entry.data_flags |= NPKEntryDataFlags.ROTOR_PACKED
+                entry.data = unpack_rotor(entry.data)
+            except Exception as e:
+                print(e)
 
         # Check for NXS3 wrapping
         if check_nxs3(entry):
