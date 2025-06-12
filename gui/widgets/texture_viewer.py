@@ -8,7 +8,7 @@ import numpy as np
 from core.images import convert_image, image_to_png_data
 from gui.widgets.tab_window_ui.texture_viewer import setup_texture_viewer_tab_window
 
-QT_SUPPORTED_FORMATS = list(fmt.toStdString() for fmt in QtGui.QImageReader.supportedImageFormats())
+QT_SUPPORTED_FORMATS = list(fmt.toStdString().lower() for fmt in QtGui.QImageReader.supportedImageFormats())
 
 class ImageDecodeTaskSignals(QtCore.QObject):
     """Signals for the image decode task."""
@@ -33,13 +33,13 @@ class ImageDecodeTask(QtCore.QRunnable):
     def run(self):
         if self.extension in QT_SUPPORTED_FORMATS:
             # Use Qt's image reader for supported formats
-            texture = QtGui.QImage.fromData(self.data)
+            texture = QtGui.QImage.fromData(self.data, self.extension)
+            
         else:
+            print(self.extension)
             # Use custom conversion for unsupported formats
             try:
-                texture = QtGui.QImage.fromData(image_to_png_data(
-                    cast(Image.Image | ImageFile.ImageFile,convert_image(self.data, self.extension))
-                    ))
+                texture = QtGui.QImage.fromData(image_to_png_data(cast(Image.Image | ImageFile.ImageFile,convert_image(self.data, self.extension))))
             except Exception as e:
                 self.signals.load_failed.emit(str(e))
                 raise e
@@ -58,8 +58,7 @@ class TextureViewer(QtWidgets.QWidget):
 
     # Viewer attributes
     name = "Texture Viewer"
-    accepted_extensions = QT_SUPPORTED_FORMATS + ["tga", "ico",
-                           "tiff", "dds", "pvr", "ktx", "astc", "cbk"]
+    accepted_extensions = QT_SUPPORTED_FORMATS + ["dds", "pvr", "ktx", "astc", "cbk"]
     setup_tab_window = setup_texture_viewer_tab_window
 
     def __init__(self):
