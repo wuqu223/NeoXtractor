@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "arc4>=0.4.0",
-    "astc-encoder-py>=0.1.11",
     "bitstring>=4.3.1",
     "lz4>=4.4.4",
     "numpy>=2.2.5",
@@ -18,6 +17,3 @@ dependencies = [
     "zstandard>=0.23.0",
     "texture2ddecoder>=1.0.5",
 ]
-
-[tool.uv]
-no-binary-package = ["astc-encoder-py"]
