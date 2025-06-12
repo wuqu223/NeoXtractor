@@ -6,7 +6,7 @@ import io
 import math
 import texture2ddecoder
 from typing import Literal, cast
-from PIL import Image, ImageFile
+from PIL import Image, ImageFile, TgaImageFile
 from astc_encoder import ASTCProfile
 import astc_encoder.pil_codec # pylint: disable=unused-import
 from bitstring import ConstBitStream
@@ -22,7 +22,7 @@ def _r_uintle64(data: ConstBitStream):
 
 #tga, ico, tiff, dds
 def _pillow_image_conversion(data, fmt):
-    return Image.open(io.BytesIO(data),"r", ["png", fmt])
+    return Image.open(io.BytesIO(data), "r", (fmt.upper(), "PNG"))
 
 def image_to_png_data(img: Image.Image | ImageFile.ImageFile) -> bytes:
     """Convert an image to PNG data."""
@@ -30,7 +30,7 @@ def image_to_png_data(img: Image.Image | ImageFile.ImageFile) -> bytes:
     img.save(buf, "PNG")
     return buf.getvalue()
 
-def _get_astc_file_size(width, height, block_x, block_y):
+def _get_astc_file_size(width, height, block_x, block_y):]
     return math.ceil(width/block_y) * math.ceil(height/block_x) * 16
 
 #this code was derived from TeaEffTeu's works and he slightly guided me, thank you very much for sharing!!
@@ -160,7 +160,7 @@ def astc_convert(data: bytes):
 
 def convert_image(data, extension):
     """Identify and convert image data to Image."""
-    if extension in ["tga", "ico", "tiff", "dds"]:
+    if extension == "dds":
         return _pillow_image_conversion(data, extension)
     if extension == "pvr":
         return pvr_convert(data)
