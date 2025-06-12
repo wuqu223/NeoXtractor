@@ -6,7 +6,7 @@ import io
 import math
 import texture2ddecoder
 from typing import Literal, cast
-from PIL import Image, ImageFile, TgaImageFile
+from PIL import Image, ImageFile
 from astc_encoder import ASTCProfile
 import astc_encoder.pil_codec # pylint: disable=unused-import
 from bitstring import ConstBitStream
@@ -30,7 +30,7 @@ def image_to_png_data(img: Image.Image | ImageFile.ImageFile) -> bytes:
     img.save(buf, "PNG")
     return buf.getvalue()
 
-def _get_astc_file_size(width, height, block_x, block_y):]
+def _get_astc_file_size(width, height, block_x, block_y):
     return math.ceil(width/block_y) * math.ceil(height/block_x) * 16
 
 #this code was derived from TeaEffTeu's works and he slightly guided me, thank you very much for sharing!!
