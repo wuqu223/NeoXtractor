@@ -1,6 +1,5 @@
 """NeoXtractor entrypoint"""
 
-import core._patches # pylint: disable=unused-import
 from core.args import arguments, parse_args
 from core.logger import setup_logger
 from gui import run as run_gui
