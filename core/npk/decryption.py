@@ -1,7 +1,7 @@
 """Provides decompression functions."""
 
 from core.npk.enums import DecryptionType
-from core.npk.types import NPKEntry
+from core.npk.class_types import NPKEntry
 from core.logger import get_logger
 
 def decrypt_entry(entry: NPKEntry, key: int | None = None) -> bytes:
@@ -36,7 +36,7 @@ def decrypt_entry(entry: NPKEntry, key: int | None = None) -> bytes:
     if entry.encrypt_flag == DecryptionType.BASIC_XOR:  # Basic XOR
         if key is None or key == 0:
             get_logger().error("KEY is not set for file using 'BASIC XOR' decryption, did you select the correct config?")
-            return None
+            return b"\00"
 
         size = min(entry.file_length, 0x80)
 

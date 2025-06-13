@@ -7,9 +7,9 @@ from PySide6 import QtCore, QtWidgets, QtGui
 
 from core.config import Config
 from core.logger import get_logger
-from core.npk.enums import NPKEntryFileCategories, NPKFileType
+from core.npk.enums import NPKEntryFileCategories
 from core.npk.npk_file import NPKFile
-from core.npk.types import NPKEntry, NPKEntryDataFlags
+from core.npk.class_types import NPKEntry, NPKEntryDataFlags
 from gui.config_manager import ConfigManager
 from gui.models.npk_file_model import NPKFileModel
 from gui.npk_entry_filter import NPKEntryFilter
@@ -404,7 +404,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.list_widget.setDisabled(True)
 
-        npk_file = NPKFile(path, self.config.decryption_key)
+        npk_file = NPKFile(path, self.config.decryption_key) # type: ignore (its set in the config)
 
         self.app.setProperty("npk_file", npk_file)
 
@@ -417,9 +417,9 @@ class MainWindow(QtWidgets.QMainWindow):
         def _load_entries():
             for i in range(npk_file.file_count):
                 if self._loading_cancelled:
-                    get_logger().warn("Loading cancelled")
+                    get_logger().warning("Loading cancelled")
                     break
-                npk_file.read_entry(i)
+                _, self._loading_cancelled = npk_file.read_entry(i)
                 self.update_model_signal.emit(i)
                 self.update_progress_signal.emit(i + 1)
 

@@ -3,7 +3,7 @@
 from .enums import CompressionType, DecryptionType
 from .detection import get_ext
 
-from .types import NPKEntry, NPKIndex
+from .class_types import NPKEntry, NPKIndex
 from .npk_file import NPKFile
 
 __all__ = [

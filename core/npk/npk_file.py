@@ -1,6 +1,7 @@
 """NPK File Reader"""
 
 import io
+
 from typing import Optional, List, Dict
 
 from arc4 import ARC4
@@ -13,7 +14,7 @@ from core.logger import get_logger
 
 from .detection import get_ext, get_file_category, is_binary
 from .keys import KeyGenerator
-from .types import NPKEntryDataFlags, NPKIndex, NPKEntry, CompressionType, DecryptionType
+from .class_types import NPKEntryDataFlags, NPKIndex, NPKEntry, CompressionType, DecryptionType
 
 class NPKFile:
     """Main class for handling NPK files."""
@@ -188,7 +189,7 @@ class NPKFile:
         """
         return index in self.entries
 
-    def read_entry(self, index: int) -> NPKEntry:
+    def read_entry(self, index: int) -> tuple[NPKEntry, bool]:
         """Get an entry by its index.
 
         If the entry has been loaded before, returns the cached entry.
@@ -199,12 +200,15 @@ class NPKFile:
 
         Returns:
             NPKEntry: The loaded entry
+            bool:
         """
         if index in self.entries:
-            return self.entries[index]
+            return (self.entries[index], False)
 
         if not 0 <= index < len(self.indices):
-            raise IndexError(f"Entry index out of range: {index}")
+            get_logger().critical(f"Entry index out of range: {index}")
+            return (NPKEntry(), True)
+
 
         # Create a new entry based on the index
         entry = NPKEntry()
@@ -214,18 +218,20 @@ class NPKFile:
         for attr in vars(idx):
             setattr(entry, attr, getattr(idx, attr))
 
+        haserror = False
+
         with open(self.file_path, 'rb') as file:
             # Load the actual data
-            self._load_entry_data(entry, file)
+            haserror = not self._load_entry_data(entry, file)
 
         # Update filename with extension
         entry.filename = f"{entry.filename}.{entry.extension}"
 
         # Store in the cache
         self.entries[index] = entry
-        return entry
+        return (entry, haserror)
 
-    def _load_entry_data(self, entry: NPKEntry, file: io.BufferedReader) -> None:
+    def _load_entry_data(self, entry: NPKEntry, file: io.BufferedReader) -> bool:
         """Load the data for an entry from the NPK file."""
         # Position file pointer to the file data
         file.seek(entry.file_offset)
@@ -240,30 +246,29 @@ class NPKFile:
 
         # Decrypt if needed
         if entry.encrypt_flag != DecryptionType.NONE:
-            entry.data = decrypt_entry(entry, self.decrypt_key) if not None else pass
-            
+            entry.data = decrypt_entry(entry, self.decrypt_key)
 
         # Decompress if needed
         if entry.zip_flag != CompressionType.NONE:
             try:
                 entry.data = decompress_entry(entry)
-            except:
+            except Exception:
                 if self.decrypt_key is not None or self.decrypt_key != 0:
                     get_logger().error("Error decompressing the file, did you choose the correct key for this NPK?")
                     entry.data_flags |= NPKEntryDataFlags.ENCRYPTED
-                    return entry.data
-                get_logger().critical(f"Error decompressing the file using {entry.zip_flag.get_name()} compression, open a GitHub issue")
-                entry.data_flags |= NPKEntryDataFlags.ERROR
-                return entry.data
+                else:
+                    get_logger().critical(
+                        "Error decompressing the file using %s compression, open a GitHub issue", 
+                        entry.zip_flag.get_name(entry.zip_flag)
+                    )
+                    entry.data_flags |= NPKEntryDataFlags.ERROR
+                return False
 
 
         # Check for ROTOR encryptiom
         if check_rotor(entry):
-            try:
-                entry.data_flags |= NPKEntryDataFlags.ROTOR_PACKED
-                entry.data = unpack_rotor(entry.data)
-            except Exception as e:
-                get_logger().error(e)
+            entry.data_flags |= NPKEntryDataFlags.ROTOR_PACKED
+            entry.data = unpack_rotor(entry.data)
 
         # Check for NXS3 wrapping
         if check_nxs3(entry):
@@ -281,3 +286,4 @@ class NPKFile:
         entry.category = get_file_category(entry.extension)
 
         get_logger().debug("Entry %s: %s", entry.filename, entry.category)
+        return True

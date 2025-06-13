@@ -5,7 +5,7 @@ from typing import cast
 from PySide6 import QtCore, QtWidgets
 
 from core.config import Config
-from core.npk.types import NPKEntry
+from core.npk.class_types import NPKEntry
 from gui.models.npk_file_model import NPKFileModel
 from gui.utils.config import save_config_manager_to_settings
 from gui.utils.npk import get_npk_file
@@ -105,7 +105,7 @@ class NPKFileList(QtWidgets.QListView):
         # Get the row index from the model index
         row_index = current.row()
 
-        entry = npk_file.read_entry(row_index)
+        entry, _ = npk_file.read_entry(row_index)
 
         self.preview_entry.emit(row_index, entry)
 
@@ -126,7 +126,7 @@ class NPKFileList(QtWidgets.QListView):
         # Get the row index from the model index
         row_index = index.row()
 
-        entry = npk_file.read_entry(row_index)
+        entry, _ = npk_file.read_entry(row_index)
 
         self.open_entry.emit(row_index, entry)
 
@@ -179,7 +179,7 @@ class NPKFileList(QtWidgets.QListView):
             return
         for index in indexes:
             row = index.row()
-            entry = npk_file.read_entry(row)
+            entry, _ = npk_file.read_entry(row)
             self.open_entry_with.emit(row, entry, viewer)
 
     def extract_entries(self, indexes: list[QtCore.QModelIndex]):
@@ -199,7 +199,7 @@ class NPKFileList(QtWidgets.QListView):
             filename = index.data(QtCore.Qt.ItemDataRole.DisplayRole)
 
             # Get the entry data
-            entry = npk_file.read_entry(row_index)
+            entry, _ = npk_file.read_entry(row_index)
 
             # Show save file dialog
             file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
@@ -250,7 +250,7 @@ class NPKFileList(QtWidgets.QListView):
                         file_path = os.path.join(dir_path, safe_filename)
 
                         # Get the entry data
-                        entry = npk_file.read_entry(row_index)
+                        entry, _ = npk_file.read_entry(row_index)
 
                         try:
                             with open(file_path, 'wb') as f:

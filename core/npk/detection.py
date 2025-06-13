@@ -1,7 +1,7 @@
 """Utilities for file format detection in NPK files."""
 
 from core.npk.enums import NPKEntryFileCategories
-from core.npk.types import NPKEntryDataFlags
+from core.npk.class_types import NPKEntryDataFlags
 
 def is_binary(data: bytes):
     """Check if the data is binary.

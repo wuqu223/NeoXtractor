@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives.asymmetric import padding as asym_padding
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 from core.npk.enums import CompressionType
-from core.npk.types import NPKEntry
+from core.npk.class_types import NPKEntry
 from core.rotor import newrotor
 
 def init_rotor():
@@ -60,12 +60,15 @@ def check_nxs3(entry: NPKEntry) -> bool:
     return (entry.data[:8] == b"NXS3\x03\x00\x00\x01")
     
 def check_rotor(entry: NPKEntry) -> bool:
+    """Check if the data is ROTOR encrypted."""
     return (entry.data[:2] == bytes([0x1D, 0x04]) or entry.data[:2] == bytes([0x15, 0x23]))
 
 def unpack_rotor(data):
+    """Unpacks the ROTOR decryption with the RSA public key and zlib decompression"""
     return _reverse_string(zlib.decompress(init_rotor().decrypt(data)))
 
 def rsa_public_decrypt(signature: bytes, key: rsa.RSAPublicKey) -> bytes:
+    """Converts a signature to an integer and decrypts it using the RSA public key."""
     public_numbers = key.public_numbers()
     e = public_numbers.e
     n = public_numbers.n
@@ -95,7 +98,6 @@ def rsa_public_decrypt(signature: bytes, key: rsa.RSAPublicKey) -> bytes:
 
     return decrypted[padding_end + 1:]
 
-# todo: check if this works
 def unpack_nxs3(data):
     """
     Decrypts and unpacks data encrypted with a custom algorithm using an RSA public key.
@@ -118,9 +120,9 @@ pY4/jT3aipwPNVTjM6yHbzOLhrnGJh7Ec3CQG/FZu6VKoCqVEtCeh15hjcu6QYtn
 YWIEf8qgkylqsOQ3IIn76udV6m0AWC2jDlmLeRcR04w9NNw7+9t9AgMBAAE=
 -----END RSA PUBLIC KEY-----"""
 
-    KEY = serialization.load_pem_public_key(pem_key, backend=default_backend())
+    rsa_key = serialization.load_pem_public_key(pem_key, backend=default_backend())
     
-    wrapped_key = rsa_public_decrypt(data[20:20+128], KEY)[:4]
+    wrapped_key = rsa_public_decrypt(data[20:20+128], rsa_key)[:4] # type: ignore (it will always be RSAPublicKey)
 
     if wrapped_key is None:
         raise ValueError("Decryption of the encrypted key failed.")

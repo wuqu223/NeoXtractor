@@ -3,7 +3,7 @@
 from typing import cast
 from PySide6 import QtWidgets, QtCore
 
-from core.npk.types import NPKEntry, NPKEntryDataFlags
+from core.npk.class_types import NPKEntry, NPKEntryDataFlags
 from core.utils import format_bytes
 from gui.utils.viewer import ALL_VIEWERS, find_best_viewer, get_viewer_display_name, set_entry_for_viewer
 

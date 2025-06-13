@@ -1,7 +1,7 @@
 """Provides a filter for NPK entries in the NPK file list."""
 
 from core.npk.enums import NPKEntryFileCategories
-from core.npk.types import NPKEntryDataFlags
+from core.npk.class_types import NPKEntryDataFlags
 from gui.utils.npk import get_npk_file, ransack_agent
 from gui.widgets.npk_file_list import NPKFileList
 
@@ -35,7 +35,7 @@ class NPKEntryFilter:
             return
 
         for row in range(model.rowCount()):
-            npk_entry = npk_file.read_entry(row)
+            npk_entry, _ = npk_file.read_entry(row)
             filename_lower = model.get_filename(model.index(row)).lower()
 
             if self.include_text == self.include_binary == False:

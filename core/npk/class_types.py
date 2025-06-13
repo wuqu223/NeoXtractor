@@ -12,6 +12,7 @@ class NPKEntryDataFlags(IntFlag):
     NXS3_PACKED = auto()
     ROTOR_PACKED = auto()
     ENCRYPTED = auto()
+    ERROR = auto()
 
 @dataclass
 class NPKIndex:

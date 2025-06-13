@@ -3,7 +3,7 @@
 from typing import Type
 from PySide6 import QtWidgets
 
-from core.npk.types import NPKEntry
+from core.npk.class_types import NPKEntry
 from gui.widgets.code_editor import CodeEditor
 from gui.widgets.hex_viewer import HexViewer
 from gui.widgets.mesh_viewer.viewer_widget import MeshViewer
