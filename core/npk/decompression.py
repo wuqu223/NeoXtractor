@@ -4,8 +4,10 @@ import zlib
 import lz4.block
 import zstandard
 
-from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_v1_5
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import padding as asym_padding
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 from core.npk.enums import CompressionType
 from core.npk.types import NPKEntry
@@ -62,7 +64,37 @@ def check_rotor(entry: NPKEntry) -> bool:
 
 def unpack_rotor(data):
     return _reverse_string(zlib.decompress(init_rotor().decrypt(data)))
-    
+
+def rsa_public_decrypt(signature: bytes, key: rsa.RSAPublicKey) -> bytes:
+    public_numbers = key.public_numbers()
+    e = public_numbers.e
+    n = public_numbers.n
+
+    k = (n.bit_length() + 7) // 8  # key length in bytes
+    if len(signature) != k:
+        raise ValueError("Signature length does not match key size")
+
+    # Convert signature to integer
+    sig_int = int.from_bytes(signature, byteorder='big')
+
+    # RSA public operation: m = sig^e mod n
+    m_int = pow(sig_int, e, n)
+
+    # Convert back to bytes
+    decrypted = m_int.to_bytes(k, byteorder='big')
+
+    # Remove PKCS#1 v1.5 padding
+    if decrypted[0] != 0x00 or decrypted[1] != 0x01:
+        raise ValueError("Incorrect padding")
+
+    # Padding is 0xFF ... 0x00, then the message
+    try:
+        padding_end = decrypted.index(0x00, 2)
+    except ValueError:
+        raise ValueError("Padding end not found")
+
+    return decrypted[padding_end + 1:]
+
 # todo: check if this works
 def unpack_nxs3(data):
     """
@@ -80,28 +112,18 @@ def unpack_nxs3(data):
     """
 
     # Parse the RSA public key
-    pem_key = """-----BEGIN RSA PUBLIC KEY-----
+    pem_key = b"""-----BEGIN RSA PUBLIC KEY-----
 MIGJAoGBAOZAaZe2qB7dpT9Y8WfZIdDv+ooS1HsFEDW2hFnnvcuFJ4vIuPgKhISm
 pY4/jT3aipwPNVTjM6yHbzOLhrnGJh7Ec3CQG/FZu6VKoCqVEtCeh15hjcu6QYtn
 YWIEf8qgkylqsOQ3IIn76udV6m0AWC2jDlmLeRcR04w9NNw7+9t9AgMBAAE=
 -----END RSA PUBLIC KEY-----"""
 
-    key = RSA.import_key(pem_key)
-
-    # Extract the encrypted data (starts at offset 20)
-    encrypted_key_data = data[20:20+128]
-
-    # Create a cipher object for decryption
-    cipher = PKCS1_v1_5.new(key)
-
-    # Decrypt the signature
-    wrapped_key = cipher.decrypt(encrypted_key_data, None)
+    KEY = serialization.load_pem_public_key(pem_key, backend=default_backend())
+    
+    wrapped_key = rsa_public_decrypt(data[20:20+128], KEY)[:4]
 
     if wrapped_key is None:
         raise ValueError("Decryption of the encrypted key failed.")
-
-    # We only need the first 4 bytes
-    wrapped_key = wrapped_key[:4]
 
     # Convert to int
     ephemeral_key = int.from_bytes(wrapped_key, "little")

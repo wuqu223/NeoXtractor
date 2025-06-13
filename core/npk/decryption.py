@@ -2,6 +2,7 @@
 
 from core.npk.enums import DecryptionType
 from core.npk.types import NPKEntry
+from core.logger import get_logger
 
 def decrypt_entry(entry: NPKEntry, key: int | None = None) -> bytes:
     """
@@ -33,8 +34,9 @@ def decrypt_entry(entry: NPKEntry, key: int | None = None) -> bytes:
     data = bytearray(entry.data)
 
     if entry.encrypt_flag == DecryptionType.BASIC_XOR:  # Basic XOR
-        if key is None:
-            raise ValueError("Decryption key is required for this entry")
+        if key is None or key == 0:
+            get_logger().error("KEY is not set for file using 'BASIC XOR' decryption, did you select the correct config?")
+            return None
 
         size = min(entry.file_length, 0x80)
 

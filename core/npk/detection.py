@@ -49,7 +49,8 @@ def _get_binary_ext(data: bytes, flags: NPKEntryDataFlags):
         return 'blast'
     if data[:4] == bytes([0xE3, 0x00, 0x00, 0x00]) or \
          data[:4] == bytes([0x63, 0x00, 0x00, 0x00]) or \
-         data[:4] == bytes([0x4C, 0x0F, 0x00, 0x00]):
+         data[:4] == bytes([0x4C, 0x0F, 0x00, 0x00]) or \
+         data[:4] == bytes([0x27, 0xE3, 0x00, 0x01]):
         return 'pyc'
     if data[:12] == b'CocosStudio-UI':
         return 'coc'

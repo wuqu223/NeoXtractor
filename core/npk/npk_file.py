@@ -230,6 +230,7 @@ class NPKFile:
         # Position file pointer to the file data
         file.seek(entry.file_offset)
 
+
         # Read the file data
         entry.data = file.read(entry.file_length)
 
@@ -239,20 +240,30 @@ class NPKFile:
 
         # Decrypt if needed
         if entry.encrypt_flag != DecryptionType.NONE:
-            entry.data = decrypt_entry(entry, self.decrypt_key)
+            entry.data = decrypt_entry(entry, self.decrypt_key) if not None else pass
+            
 
         # Decompress if needed
         if entry.zip_flag != CompressionType.NONE:
-            entry.data = decompress_entry(entry)
+            try:
+                entry.data = decompress_entry(entry)
+            except:
+                if self.decrypt_key is not None or self.decrypt_key != 0:
+                    get_logger().error("Error decompressing the file, did you choose the correct key for this NPK?")
+                    entry.data_flags |= NPKEntryDataFlags.ENCRYPTED
+                    return entry.data
+                get_logger().critical(f"Error decompressing the file using {entry.zip_flag.get_name()} compression, open a GitHub issue")
+                entry.data_flags |= NPKEntryDataFlags.ERROR
+                return entry.data
+
 
         # Check for ROTOR encryptiom
-        
         if check_rotor(entry):
             try:
                 entry.data_flags |= NPKEntryDataFlags.ROTOR_PACKED
                 entry.data = unpack_rotor(entry.data)
             except Exception as e:
-                print(e)
+                get_logger().error(e)
 
         # Check for NXS3 wrapping
         if check_nxs3(entry):
@@ -260,7 +271,6 @@ class NPKFile:
             entry.data = unpack_nxs3(entry.data)
 
         binary = is_binary(entry.data)
-
         # Mark the data as text data
         if not binary:
             entry.data_flags |= NPKEntryDataFlags.TEXT

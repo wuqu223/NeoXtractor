@@ -404,20 +404,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.list_widget.setDisabled(True)
 
-        npk_file = NPKFile(path)
-
-        if npk_file.file_type == NPKFileType.EXPK and cast(Config, self.config).decryption_key is None:
-            if QtWidgets.QMessageBox.warning(
-                self,
-                "Check Decryption Key",
-                "This is an EXPK file. Make sure to set the decryption key.\n" +
-                "Currently you have no decryption key set.\n\n",
-                buttons=QtWidgets.QMessageBox.StandardButton.Ok | QtWidgets.QMessageBox.StandardButton.Cancel,
-                defaultButton=QtWidgets.QMessageBox.StandardButton.Ok,
-                ) == QtWidgets.QMessageBox.StandardButton.Cancel:
-                self._loading_complete()
-                self.unload_npk()
-                return
+        npk_file = NPKFile(path, self.config.decryption_key)
 
         self.app.setProperty("npk_file", npk_file)
 
@@ -430,7 +417,7 @@ class MainWindow(QtWidgets.QMainWindow):
         def _load_entries():
             for i in range(npk_file.file_count):
                 if self._loading_cancelled:
-                    print("Loading cancelled.")
+                    get_logger().warn("Loading cancelled")
                     break
                 npk_file.read_entry(i)
                 self.update_model_signal.emit(i)

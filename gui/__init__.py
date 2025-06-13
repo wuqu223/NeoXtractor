@@ -3,7 +3,7 @@
 import os
 import sys
 
-from PySide6 import QtWidgets
+from PySide6 import QtWidgets, QtCore
 from core.utils import get_application_path
 from core.logger import get_logger
 from gui.config_manager import ConfigManager
@@ -55,10 +55,10 @@ def run():
         save_config_manager_to_settings(config_manager, settings_manager)
     else:
         load_config_manager_from_settings(settings_manager, config_manager)
-
+    
     get_logger().debug("Showing main window.")
     main_window = MainWindow()
     main_window.resize(1000, 800)
     main_window.show()
-
+    
     app.exec()
