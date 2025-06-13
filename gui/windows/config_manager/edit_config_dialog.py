@@ -35,7 +35,7 @@ class EditConfigDialog(QDialog):
 
         # Decryption key field
         self.key_edit = QSpinBox()
-        self.key_edit.setMinimum(0)
+        self.key_edit.setMinimum(-999999)
         self.key_edit.setMaximum(999999)
         if config.decryption_key is None:
             self.key_edit.setValue(0)

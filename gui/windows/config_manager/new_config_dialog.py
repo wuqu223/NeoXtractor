@@ -30,7 +30,7 @@ class NewConfigDialog(QDialog):
 
         # Decryption key field
         self.key_edit = QSpinBox()
-        self.key_edit.setMinimum(0)
+        self.key_edit.setMinimum(-999999)
         self.key_edit.setMaximum(999999)
         self.key_edit.setValue(0)  # Default value
         self.form_layout.addRow("Decryption Key (Use 0 for no key):", self.key_edit)
