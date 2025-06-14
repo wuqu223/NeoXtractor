@@ -189,7 +189,7 @@ class NPKFile:
         """
         return index in self.entries
 
-    def read_entry(self, index: int) -> tuple[NPKEntry, bool]:
+    def read_entry(self, index: int) -> NPKEntry:
         """Get an entry by its index.
 
         If the entry has been loaded before, returns the cached entry.
@@ -203,35 +203,37 @@ class NPKFile:
             bool:
         """
         if index in self.entries:
-            return (self.entries[index], False)
-
-        if not 0 <= index < len(self.indices):
-            get_logger().critical(f"Entry index out of range: {index}")
-            return (NPKEntry(), True)
+            return self.entries[index]
 
 
         # Create a new entry based on the index
         entry = NPKEntry()
+
+        # Check if the index is valid
+        if not 0 <= index < len(self.indices):
+            get_logger().critical(f"Entry index out of range: {index}")
+            entry.data_flags |= NPKEntryDataFlags.ERROR
+            return entry
+
         idx = self.indices[index]
 
         # Copy index attributes to entry
         for attr in vars(idx):
             setattr(entry, attr, getattr(idx, attr))
 
-        haserror = False
 
         with open(self.file_path, 'rb') as file:
             # Load the actual data
-            haserror = not self._load_entry_data(entry, file)
+            self._load_entry_data(entry, file)
 
         # Update filename with extension
         entry.filename = f"{entry.filename}.{entry.extension}"
 
         # Store in the cache
         self.entries[index] = entry
-        return (entry, haserror)
+        return entry
 
-    def _load_entry_data(self, entry: NPKEntry, file: io.BufferedReader) -> bool:
+    def _load_entry_data(self, entry: NPKEntry, file: io.BufferedReader):
         """Load the data for an entry from the NPK file."""
         # Position file pointer to the file data
         file.seek(entry.file_offset)
@@ -256,13 +258,16 @@ class NPKFile:
                 if self.decrypt_key is not None or self.decrypt_key != 0:
                     get_logger().error("Error decompressing the file, did you choose the correct key for this NPK?")
                     entry.data_flags |= NPKEntryDataFlags.ENCRYPTED
+                    entry.extension = "decomp_error"
+                    return None
                 else:
                     get_logger().critical(
                         "Error decompressing the file using %s compression, open a GitHub issue", 
                         entry.zip_flag.get_name(entry.zip_flag)
                     )
                     entry.data_flags |= NPKEntryDataFlags.ERROR
-                return False
+                    entry.extension = "error"
+                    return None
 
 
         # Check for ROTOR encryptiom
@@ -286,4 +291,3 @@ class NPKFile:
         entry.category = get_file_category(entry.extension)
 
         get_logger().debug("Entry %s: %s", entry.filename, entry.category)
-        return True

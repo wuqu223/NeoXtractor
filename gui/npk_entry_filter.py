@@ -35,7 +35,7 @@ class NPKEntryFilter:
             return
 
         for row in range(model.rowCount()):
-            npk_entry, _ = npk_file.read_entry(row)
+            npk_entry = npk_file.read_entry(row)
             filename_lower = model.get_filename(model.index(row)).lower()
 
             if self.include_text == self.include_binary == False:

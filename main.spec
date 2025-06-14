@@ -34,7 +34,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='NeoxTractor',
+    name='neoxtractor',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

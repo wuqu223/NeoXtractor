@@ -416,10 +416,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         def _load_entries():
             for i in range(npk_file.file_count):
-                if self._loading_cancelled:
-                    get_logger().warning("Loading cancelled")
+                x = npk_file.read_entry(i)
+                if x.data_flags & NPKEntryDataFlags.ERROR:
+                    get_logger().warning("Loading entry %d failed", i)
                     break
-                _, self._loading_cancelled = npk_file.read_entry(i)
                 self.update_model_signal.emit(i)
                 self.update_progress_signal.emit(i + 1)
 
