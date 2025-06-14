@@ -30,6 +30,15 @@ class CompressionType(IntEnum):
         except ValueError:
             return f"UNKNOWN({flag})"
 
+    @classmethod
+    def _missing_(cls, value):
+        if not isinstance(value, int):
+            raise ValueError(f"Expected an integer value, got {type(value).__name__}")
+        obj = int.__new__(cls, int(value))
+        obj._name_ = f"UNKNOWN({value})"
+        obj._value_ = int(value)
+        return obj
+
 class DecryptionType(IntEnum):
     """Enum defining the file flag encryption types."""
     NONE = 0
@@ -44,6 +53,15 @@ class DecryptionType(IntEnum):
             return cls(flag).name
         except ValueError:
             return f"UNKNOWN({flag})"
+
+    @classmethod
+    def _missing_(cls, value):
+        if not isinstance(value, int):
+            raise ValueError(f"Expected an integer value, got {type(value).__name__}")
+        obj = int.__new__(cls, int(value))
+        obj._name_ = f"UNKNOWN({value})"
+        obj._value_ = int(value)
+        return obj
 
 class NPKEntryFileCategories(StrEnum):
     """Enum defining the file types for NPK entries."""
