@@ -8,6 +8,30 @@ from PySide6 import QtCore, QtWidgets
 from core.logger import get_logger
 from core.utils import get_application_path
 
+SYSTEM_COLORS = {
+    'palette': {
+        'background': '#ffffff',
+        'surface': '#f8f9fa',
+        'surface_variant': '#e9ecef',
+        'primary': '#1976d2',
+        'primary_variant': '#1565c0',
+        'secondary': '#424242',
+        'accent': '#ff5722',
+        'text': '#212121',
+        'text_secondary': '#757575',
+        'text_disabled': '#bdbdbd',
+        'border': '#e0e0e0',
+        'border_focus': '#1976d2',
+        'hover': '#f5f5f5',
+        'selected': '#e3f2fd',
+        'pressed': '#bbdefb',
+        'disabled': '#f5f5f5',
+        'error': '#d32f2f',
+        'warning': '#f57c00',
+        'success': '#388e3c',
+        'info': '#1976d2',
+    }
+}
 
 class ThemeManager(QtCore.QObject):
     """Central theme manager for the application."""
@@ -26,8 +50,14 @@ class ThemeManager(QtCore.QObject):
         # Cache for loaded themes
         self._theme_cache: Dict[str, Dict[str, Any]] = {}
 
+        self._flattened_system_colors = self._flatten_colors(SYSTEM_COLORS)
+
         # Load theme definitions
+        self._load_system_theme_override()
         self._load_theme_definitions()
+
+        # Apply system theme in any cases (settings is not loaded at this point)
+        self._apply_system_theme()
 
     def get_current_theme(self) -> str | None:
         """Get the currently active theme."""
@@ -53,6 +83,34 @@ class ThemeManager(QtCore.QObject):
 
         self.theme_changed.emit(theme_name)
 
+    def _load_system_theme_override(self):
+        def_file = os.path.join(self._themes_path, "system", "definition.json")
+        if not os.path.exists(def_file):
+            self._logger.debug("No system theme definition found.")
+            self._overrided_system_theme_colors = None
+        else:
+            with open(def_file, 'r', encoding='utf-8') as f:
+                definition = json.load(f)
+
+            self._overrided_system_theme_colors = self._flatten_colors(definition)
+
+            self._logger.debug("Loaded system theme definition from %s", def_file)
+
+        style_file = os.path.join(self._themes_path, "system", "style.qss")
+        if not os.path.exists(style_file):
+            self._logger.debug("No system theme stylesheet found.")
+            self._overrided_system_theme_stylesheet = ""
+        else:
+            with open(style_file, 'r', encoding='utf-8') as f:
+                stylesheet = f.read()
+                self._overrided_system_theme_stylesheet = self._generate_stylesheet_from_template(
+                    stylesheet,
+                    SYSTEM_COLORS if self._overrided_system_theme_colors is None else \
+                        self._overrided_system_theme_colors
+                    )
+
+            self._logger.debug("Loaded system theme stylesheet from %s", style_file)
+
     def _load_theme_definitions(self) -> None:
         """Load theme definitions from theme files."""
         if not os.path.exists(self._themes_path):
@@ -62,6 +120,8 @@ class ThemeManager(QtCore.QObject):
         # Discover themes by scanning the themes directory
         try:
             for item in os.listdir(self._themes_path):
+                if item == "system":
+                    continue # Skip the system theme directory
                 theme_dir = os.path.join(self._themes_path, item)
                 if os.path.isdir(theme_dir):
                     try:
@@ -109,7 +169,7 @@ class ThemeManager(QtCore.QObject):
     def _apply_system_theme(self) -> None:
         """Apply system theme by resetting to default style."""
         if self._app and isinstance(self._app, QtWidgets.QApplication):
-            self._app.setStyleSheet("")
+            self._app.setStyleSheet(self._overrided_system_theme_stylesheet)
             # Let Qt use the system's default style
 
     def _apply_custom_theme(self, theme: str) -> None:
@@ -132,25 +192,30 @@ class ThemeManager(QtCore.QObject):
         stylesheet = self._generate_stylesheet_from_template(style_template, colors)
         self._app.setStyleSheet(stylesheet)
 
-    def _generate_stylesheet_from_template(self, template: str, colors: Dict[str, Any]) -> str:
+    def _flatten_colors(self, definition: Dict[str, Any]) -> Dict[str, str]:
+        """Flatten the color structure for easier access."""
+        flattened = {}
+
+        if 'palette' in definition:
+            flattened.update(definition['palette'])
+
+        if 'custom' in definition:
+            for category, category_colors in definition['custom'].items():
+                if isinstance(category_colors, dict):
+                    for key, value in category_colors.items():
+                        flattened[f"{category}_{key}"] = value
+
+        # Also add the raw colors if they're already flattened
+        if all(isinstance(v, str) for v in definition.values()):
+            flattened.update(definition)
+
+        return flattened
+
+    def _generate_stylesheet_from_template(self, template: str, definition: Dict[str, Any]) -> str:
         """Generate Qt stylesheet from template and colors."""
         try:
             # Flatten the color structure for template substitution
-            flattened_colors = {}
-
-            if 'palette' in colors:
-                flattened_colors.update(colors['palette'])
-
-            # Add custom colors with prefixed keys for specific use cases
-            if 'custom' in colors:
-                for category, category_colors in colors['custom'].items():
-                    if isinstance(category_colors, dict):
-                        for key, value in category_colors.items():
-                            flattened_colors[f"{category}_{key}"] = value
-
-            # Also add the raw colors if they're already flattened
-            if all(isinstance(v, str) for v in colors.values()):
-                flattened_colors.update(colors)
+            flattened_colors = self._flatten_colors(definition)
 
             # Replace @variable syntax with actual color values
             # Sort by length (descending) to replace longer variable names first
@@ -168,36 +233,6 @@ class ThemeManager(QtCore.QObject):
         except Exception as e:
             self._logger.error("Error generating stylesheet: %s", e)
             return ""
-
-    def _get_fallback_color(self, missing_key: str) -> str:
-        """Get a reasonable fallback color for missing theme keys."""
-        # Common fallbacks based on key name patterns
-        fallback_map = {
-            'background': '#ffffff',
-            'surface': '#f8f9fa',
-            'primary': '#1976d2',
-            'secondary': '#424242',
-            'text': '#212121',
-            'border': '#e0e0e0',
-            'hover': '#f5f5f5',
-            'selected': '#e3f2fd',
-            'error': '#d32f2f',
-            'warning': '#f57c00',
-            'success': '#388e3c',
-            'info': '#1976d2'
-        }
-
-        # Try exact match first
-        if missing_key in fallback_map:
-            return fallback_map[missing_key]
-
-        # Try partial matches
-        for key, color in fallback_map.items():
-            if key in missing_key.lower():
-                return color
-
-        # Default fallback
-        return '#000000'
 
     def get_color(self, color_path: str, default: str | None = None) -> str | None:
         """Get a color value from the current theme.
@@ -231,30 +266,10 @@ class ThemeManager(QtCore.QObject):
 
     def _get_system_color(self, color_path: str, default: str | None = None) -> str | None:
         """Get hardcoded color values for system theme."""
-        system_colors = {
-            # Palette colors with dot notation
-            'palette.background': '#ffffff',
-            'palette.surface': '#f8f9fa',
-            'palette.surface_variant': '#e9ecef',
-            'palette.primary': '#1976d2',
-            'palette.primary_variant': '#1565c0',
-            'palette.secondary': '#424242',
-            'palette.accent': '#ff5722',
-            'palette.text': '#212121',
-            'palette.text_secondary': '#757575',
-            'palette.text_disabled': '#bdbdbd',
-            'palette.border': '#e0e0e0',
-            'palette.border_focus': '#1976d2',
-            'palette.hover': '#f5f5f5',
-            'palette.selected': '#e3f2fd',
-            'palette.pressed': '#bbdefb',
-            'palette.disabled': '#f5f5f5',
-            'palette.error': '#d32f2f',
-            'palette.warning': '#f57c00',
-            'palette.success': '#388e3c',
-            'palette.info': '#1976d2',
-        }
-        return system_colors.get(color_path, default)
+        if self._overrided_system_theme_colors and color_path in self._overrided_system_theme_colors:
+            # Use the system theme colors if available
+            return self._overrided_system_theme_colors.get(color_path)
+        return self._flattened_system_colors.get(color_path, default)
 
     def get_available_themes(self) -> Dict[str, Dict[str, str]]:
         """Get information about all available themes.
