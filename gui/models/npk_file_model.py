@@ -4,6 +4,7 @@ from typing import Any, cast
 from PySide6 import QtCore, QtWidgets
 
 from core.config import Config
+from core.npk.class_types import NPKEntryDataFlags
 from core.npk.npk_file import NPKFile
 from core.utils import get_filename_in_config
 
@@ -19,6 +20,8 @@ class NPKFileModel(QtCore.QAbstractListModel):
 
         if isinstance(parent, QtWidgets.QWidget):
             self._loading_icon = parent.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_BrowserReload)
+            self._encrypted_icon = parent.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_MessageBoxWarning)
+            self._errored_icon = parent.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_MessageBoxCritical)
             self._file_icon = parent.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_FileIcon)
 
         self._npk_file = npk_file
@@ -28,14 +31,35 @@ class NPKFileModel(QtCore.QAbstractListModel):
     def rowCount(self, parent: QtCore.QModelIndex | QtCore.QPersistentModelIndex = QtCore.QModelIndex()) -> int:
         return self._npk_file.file_count
 
-    def data(self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole) -> Any:
+    def data(self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,\
+             role: int = QtCore.Qt.ItemDataRole.DisplayRole) -> Any:
         if not index.isValid():
             return None
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
-            return self.get_filename(index)
+            filename = self.get_filename(index)
+            if not self._npk_file.is_entry_loaded(index.row()):
+                return filename
+
+            # Entry is loaded at this point, get it from cache.
+            entry = self._npk_file.read_entry(index.row())
+
+            if entry.data_flags & NPKEntryDataFlags.ERROR:
+                return f"{filename} (Error)"
+            if entry.data_flags & NPKEntryDataFlags.ENCRYPTED:
+                return f"{filename} (Encrypted)"
+
+            return filename
         if role == QtCore.Qt.ItemDataRole.DecorationRole:
             if not self._npk_file.is_entry_loaded(index.row()):
                 return self._loading_icon
+
+            # Entry is loaded at this point, get it from cache.
+            entry = self._npk_file.read_entry(index.row())
+
+            if entry.data_flags & NPKEntryDataFlags.ERROR:
+                return self._errored_icon
+            if entry.data_flags & NPKEntryDataFlags.ENCRYPTED:
+                return self._encrypted_icon
 
             return self._file_icon
         if role == QtCore.Qt.ItemDataRole.UserRole:

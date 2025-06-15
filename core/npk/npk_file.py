@@ -205,13 +205,12 @@ class NPKFile:
         if index in self.entries:
             return self.entries[index]
 
-
         # Create a new entry based on the index
         entry = NPKEntry()
 
         # Check if the index is valid
         if not 0 <= index < len(self.indices):
-            get_logger().critical(f"Entry index out of range: {index}")
+            get_logger().critical("Entry index out of range: %d", index)
             entry.data_flags |= NPKEntryDataFlags.ERROR
             return entry
 
@@ -220,7 +219,6 @@ class NPKFile:
         # Copy index attributes to entry
         for attr in vars(idx):
             setattr(entry, attr, getattr(idx, attr))
-
 
         with open(self.file_path, 'rb') as file:
             # Load the actual data
@@ -237,7 +235,6 @@ class NPKFile:
         """Load the data for an entry from the NPK file."""
         # Position file pointer to the file data
         file.seek(entry.file_offset)
-
 
         # Read the file data
         entry.data = file.read(entry.file_length)
@@ -258,17 +255,14 @@ class NPKFile:
                 if self.decrypt_key is not None or self.decrypt_key != 0:
                     get_logger().error("Error decompressing the file, did you choose the correct key for this NPK?")
                     entry.data_flags |= NPKEntryDataFlags.ENCRYPTED
-                    entry.extension = "decomp_error"
-                    return None
+                    return
                 else:
                     get_logger().critical(
                         "Error decompressing the file using %s compression, open a GitHub issue", 
                         entry.zip_flag.get_name(entry.zip_flag)
                     )
                     entry.data_flags |= NPKEntryDataFlags.ERROR
-                    entry.extension = "error"
-                    return None
-
+                    return
 
         # Check for ROTOR encryptiom
         if check_rotor(entry):
