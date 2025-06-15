@@ -404,7 +404,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.list_widget.setDisabled(True)
 
-        npk_file = NPKFile(path, self.config.decryption_key) # type: ignore (its set in the config)
+        npk_file = NPKFile(path, self.config.read_options) # type: ignore (config will always be Config, never None)
 
         self.app.setProperty("npk_file", npk_file)
 
@@ -416,10 +416,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         def _load_entries():
             for i in range(npk_file.file_count):
+                if self._loading_cancelled:
+                    break
                 npk_file.read_entry(i)
                 self.update_model_signal.emit(i)
                 self.update_progress_signal.emit(i + 1)
-
             self.loading_complete_signal.emit()
 
         QtCore.QThreadPool.globalInstance().start(_load_entries)

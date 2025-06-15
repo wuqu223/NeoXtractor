@@ -69,6 +69,12 @@ def _get_binary_ext(data: bytes, flags: NPKEntryDataFlags):
     if data[:4] == b'NFXO':
         return 'nfx'
     if data[:4] == bytes([0xC1, 0x59, 0x41, 0x0D]):
+        if b"Material" in data:
+            return 'mtg'
+        if b"GisFiles" in data:
+            return 'gim'
+        if b"Anim" in data:
+            return 'ags'
         return 'unknown1'
     if data[:8] == b'CompBlks':
         return 'cbk'

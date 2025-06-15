@@ -19,7 +19,7 @@ from .class_types import NPKEntryDataFlags, NPKIndex, NPKEntry, CompressionType,
 class NPKFile:
     """Main class for handling NPK files."""
 
-    def __init__(self, file_path: str, options: NPKReadOptions = NPKReadOptions()):
+    def __init__(self, file_path: str, options: NPKReadOptions):
         """Initialize the NPK file handler.
 
         Args:
@@ -86,9 +86,9 @@ class NPKFile:
         self.index_offset = read_uint32(file)
 
         get_logger().info("NPK entry count: %d", self.file_count)
-        get_logger().debug("NPK unknown var: %d", var1)
-        get_logger().info("NPK encryption mode: %s", DecryptionType.get_name(self.encrypt_mode))
-        get_logger().info("NPK hash mode: %s", CompressionType.get_name(self.hash_mode))
+        get_logger().info("NPK unknown var: %d", var1)
+        get_logger().info("NPK encryption mode: %s", self.encrypt_mode)
+        get_logger().info("NPK hash mode: %s", self.hash_mode)
         get_logger().info("NPK index offset: 0x%X", self.index_offset)
 
         # Determine index entry size
