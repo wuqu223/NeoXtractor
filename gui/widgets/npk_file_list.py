@@ -196,7 +196,7 @@ class NPKFileList(QtWidgets.QListView):
             # For single file, show file save dialog with filename pre-filled
             index = indexes[0]
             row_index = index.row()
-            filename = index.data(QtCore.Qt.ItemDataRole.DisplayRole)
+            filename = self.model().get_filename(index)
 
             # Get the entry data
             entry = npk_file.read_entry(row_index)
@@ -240,7 +240,7 @@ class NPKFileList(QtWidgets.QListView):
 
                     for index in indexes:
                         row_index = index.row()
-                        filename = index.data(QtCore.Qt.ItemDataRole.DisplayRole)
+                        filename = self.model().get_filename(index)
 
                         # Create safe filename
                         safe_filename = os.path.basename(filename)
@@ -288,7 +288,7 @@ class NPKFileList(QtWidgets.QListView):
         new_name, ok = QtWidgets.QInputDialog.getText(
             self,
             "Rename File",
-            f"Enter new name for {index.data(QtCore.Qt.ItemDataRole.DisplayRole)}:",
+            f"Enter new name for {self.model().get_filename(index)}:",
             QtWidgets.QLineEdit.EchoMode.Normal,
             ""
         )
