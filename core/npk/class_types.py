@@ -15,6 +15,14 @@ class NPKEntryDataFlags(IntFlag):
     ERROR = auto()
 
 @dataclass
+class NPKReadOptions:
+    """Options for reading NPK files."""
+
+    decryption_key: int | None = None
+    aes_key: bytes | None = None
+    info_size: int | None = None
+
+@dataclass
 class NPKIndex:
     """Represents an index entry in an NPK file."""
 

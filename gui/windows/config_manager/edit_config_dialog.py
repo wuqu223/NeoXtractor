@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout,
                               QPushButton, QHBoxLayout, QLabel)
 
 from core.config import Config
+from core.npk.class_types import NPKReadOptions
 
 class EditConfigDialog(QDialog):
     """Dialog for editing an existing game configuration."""
@@ -33,14 +34,24 @@ class EditConfigDialog(QDialog):
         self.name_edit.setText(config.name)
         self.form_layout.addRow("Config Name:", self.name_edit)
 
+        # Info size field
+        self.info_size_edit = QSpinBox()
+        self.info_size_edit.setMinimum(0)
+        self.info_size_edit.setMaximum(999999)
+        if config.read_options is None or config.read_options.info_size is None:
+            self.info_size_edit.setValue(0)
+        else:
+            self.info_size_edit.setValue(config.read_options.info_size)
+        self.form_layout.addRow("Info Size (0 for auto determine):", self.info_size_edit)
+
         # Decryption key field
         self.key_edit = QSpinBox()
         self.key_edit.setMinimum(-999999)
         self.key_edit.setMaximum(999999)
-        if config.decryption_key is None:
+        if config.read_options is None or config.read_options.decryption_key is None:
             self.key_edit.setValue(0)
         else:
-            self.key_edit.setValue(config.decryption_key)
+            self.key_edit.setValue(config.read_options.decryption_key)
         self.form_layout.addRow("Decryption Key (Use 0 for no key):", self.key_edit)
 
         # Entry signature name map section
@@ -126,21 +137,9 @@ class EditConfigDialog(QDialog):
         Returns:
             Config: A new config instance with the edited values
         """
-        # Create a new config instance
-        new_config = Config()
 
-        # Set basic fields
-        new_config.name = self.name_edit.text().strip()
-
-        decryption_key = self.key_edit.value()
-        if decryption_key == 0:
-            new_config.decryption_key = None
-        else:
-            new_config.decryption_key = decryption_key
-
-        # Set entry signature name map
-        new_config.entry_signature_name_map = {}
-
+        # Build entry signature name map
+        entry_signature_name_map = {}
         for row in range(self.map_table.rowCount()):
             signature_item = self.map_table.item(row, 0)
             name_item = self.map_table.item(row, 1)
@@ -151,6 +150,16 @@ class EditConfigDialog(QDialog):
 
                 # Only add non-empty entries
                 if signature and name:
-                    new_config.entry_signature_name_map[signature] = name
+                    entry_signature_name_map[signature] = name
+
+        # Create a new config instance
+        new_config = Config(
+            name=self.name_edit.text().strip(),
+            read_options=NPKReadOptions(
+                decryption_key=None if self.key_edit.value() == 0 else self.key_edit.value(),
+                info_size=None if self.info_size_edit.value() == 0 else self.info_size_edit.value(),
+            ),
+            entry_signature_name_map=entry_signature_name_map,
+        )
 
         return new_config

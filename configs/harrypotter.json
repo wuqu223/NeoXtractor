@@ -1,4 +1,6 @@
 {
     "name": "Harry Potter: Magic Awakened",
-    "decryption_key": -250
+    "read_options": {
+        "decryption_key": -250
+    }
 }

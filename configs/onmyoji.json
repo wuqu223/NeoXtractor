@@ -1,4 +1,6 @@
 {
     "name": "Onmyoji",
-    "decryption_key": 150
+    "read_options": {
+        "decryption_key": 150
+    }
 }

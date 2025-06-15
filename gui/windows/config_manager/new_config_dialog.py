@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout,
                               QSpinBox)
 
 from core.config import Config
+from core.npk.class_types import NPKReadOptions
 
 class NewConfigDialog(QDialog):
     """Dialog for creating a new game configuration."""
@@ -27,6 +28,13 @@ class NewConfigDialog(QDialog):
         # Config name field
         self.name_edit = QLineEdit()
         self.form_layout.addRow("Config Name:", self.name_edit)
+
+        # Info size field
+        self.info_size_edit = QSpinBox()
+        self.info_size_edit.setMinimum(0)
+        self.info_size_edit.setMaximum(999999)
+        self.info_size_edit.setValue(0) # Default value
+        self.form_layout.addRow("Info Size (0 for auto determine):", self.info_size_edit)
 
         # Decryption key field
         self.key_edit = QSpinBox()
@@ -59,12 +67,11 @@ class NewConfigDialog(QDialog):
         Returns:
             Config: The newly created config
         """
-        config = Config()
-        config.name = self.name_edit.text()
-
-        decryption_key = self.key_edit.value()
-        if decryption_key == 0:
-            config.decryption_key = None
-        else:
-            config.decryption_key = decryption_key
+        config = Config(
+            name=self.name_edit.text(),
+            read_options=NPKReadOptions(
+                decryption_key=None if self.key_edit.value() == 0 else self.key_edit.value(),
+                info_size=None if self.info_size_edit.value() == 0 else self.info_size_edit.value(),
+            )
+        )
         return config

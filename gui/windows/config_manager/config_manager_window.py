@@ -1,5 +1,6 @@
 """Config Manager Window for managing game configurations."""
 
+from dataclasses import asdict
 import os
 import json
 from typing import cast
@@ -276,7 +277,7 @@ class ConfigManagerWindow(QDialog):
             try:
                 with open(file_path, "w", encoding="utf-8") as config_file:
                     # Create a dictionary representing the config
-                    json.dump(config.to_dict(), config_file, indent=4)
+                    json.dump(asdict(config), config_file, indent=4)
 
                 QMessageBox.information(self, "Success", f"Exported config to: {file_path}")
             except Exception as e:
@@ -295,7 +296,7 @@ class ConfigManagerWindow(QDialog):
                 for config in selected_configs:
                     file_path = os.path.join(dir_path, f"{config.name}.json")
                     with open(file_path, "w", encoding="utf-8") as config_file:
-                        json.dump(config.to_dict(), config_file, indent=4)
+                        json.dump(asdict(config), config_file, indent=4)
                     successful_exports += 1
 
                 QMessageBox.information(
