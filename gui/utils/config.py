@@ -1,5 +1,6 @@
 """Utility functions for GUI application."""
 
+from dataclasses import asdict
 from typing import Any
 from core.config import Config
 from gui.config_manager import ConfigManager
@@ -15,7 +16,7 @@ def config_list_from_manager(manager: ConfigManager) -> list[dict[str, Any]]:
     Returns:
         list[dict[str, Any]]: A list of dictionaries representing the configs.
     """
-    return [cfg.to_dict() for cfg in manager.configs]
+    return [asdict(cfg) for cfg in manager.configs]
 
 def configs_from_config_dicts(dicts: list[dict[str, Any]]) -> list[Config]:
     """
@@ -28,7 +29,7 @@ def configs_from_config_dicts(dicts: list[dict[str, Any]]) -> list[Config]:
     Returns:
         list[Config]: A list of Config objects created from the input dictionaries.
     """
-    return [Config.from_dict(config) for config in dicts]
+    return [Config(**config) for config in dicts]
 
 def save_config_manager_to_settings(config: ConfigManager, settings: SettingsManager):
     """

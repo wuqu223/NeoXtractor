@@ -2,7 +2,7 @@
 
 import io
 
-from typing import Optional, List, Dict
+from typing import List, Dict
 
 from arc4 import ARC4
 
@@ -14,12 +14,12 @@ from core.logger import get_logger
 
 from .detection import get_ext, get_file_category, is_binary
 from .keys import KeyGenerator
-from .class_types import NPKEntryDataFlags, NPKIndex, NPKEntry, CompressionType, DecryptionType
+from .class_types import NPKEntryDataFlags, NPKIndex, NPKEntry, CompressionType, DecryptionType, NPKReadOptions
 
 class NPKFile:
     """Main class for handling NPK files."""
 
-    def __init__(self, file_path: str, decrypt_key: Optional[int] = None):
+    def __init__(self, file_path: str, options: NPKReadOptions = NPKReadOptions()):
         """Initialize the NPK file handler.
 
         Args:
@@ -36,9 +36,8 @@ class NPKFile:
         self.encrypt_mode: int = 0
         self.info_size: int = 0
 
-        # Optional parameters
-        self.decrypt_key: Optional[int] = decrypt_key
-        self.aes_key: Optional[bytes] = None
+        # Options when reading the NPK file
+        self.options = options
 
         # NXFN file information
         self.nxfn_files = None
@@ -93,7 +92,7 @@ class NPKFile:
         get_logger().info("NPK index offset: 0x%X", self.index_offset)
 
         # Determine index entry size
-        self.info_size = self._determine_info_size(file)
+        self.info_size = self._determine_info_size(file) if self.options.info_size is None else self.options.info_size
 
         get_logger().debug("NPK index entry size: %d", self.info_size)
 
@@ -245,14 +244,14 @@ class NPKFile:
 
         # Decrypt if needed
         if entry.encrypt_flag != DecryptionType.NONE:
-            entry.data = decrypt_entry(entry, self.decrypt_key)
+            entry.data = decrypt_entry(entry, self.options.decryption_key)
 
         # Decompress if needed
         if entry.zip_flag != CompressionType.NONE:
             try:
                 entry.data = decompress_entry(entry)
             except Exception:
-                if self.decrypt_key is not None or self.decrypt_key != 0:
+                if self.options.decryption_key is not None or self.options.decryption_key != 0:
                     get_logger().error("Error decompressing the file, did you choose the correct key for this NPK?")
                     entry.data_flags |= NPKEntryDataFlags.ENCRYPTED
                     return

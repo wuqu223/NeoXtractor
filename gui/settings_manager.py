@@ -5,6 +5,7 @@ import os
 from typing import Any
 
 from core.logger import get_logger
+from gui.settings_migration import CURRENT_SCHEMA_VERSION, run_migration
 
 class SettingsManager:
     """
@@ -44,7 +45,12 @@ class SettingsManager:
         try:
             if os.path.exists(self._path):
                 with open(self._path, 'r', encoding='utf-8') as f:
-                    self.settings = json.load(f)
+                    json_dict = json.load(f)
+                migrated = run_migration(json_dict)
+                self.settings = json_dict
+                if migrated:
+                    get_logger().info("Settings migrated to the latest schema version.")
+                    self.save_config()  # Save migrated settings
             else:
                 self.settings = {}
             return True
@@ -57,7 +63,9 @@ class SettingsManager:
         """Save current settings to the config file."""
         try:
             with open(self._path, 'w', encoding='utf-8') as f:
-                json.dump(self.settings, f, indent=4)
+                json_dict = {**self.settings}  # Create a copy to avoid modifying the original
+                json_dict["schema_version"] = CURRENT_SCHEMA_VERSION
+                json.dump(json_dict, f, indent=4)
             return True
         except (FileNotFoundError, PermissionError, OSError) as e:
             get_logger().error("Error saving config: %s", e)
