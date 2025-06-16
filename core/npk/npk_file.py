@@ -19,7 +19,7 @@ from .class_types import NPKEntryDataFlags, NPKIndex, NPKEntry, CompressionType,
 class NPKFile:
     """Main class for handling NPK files."""
 
-    def __init__(self, file_path: str, options: NPKReadOptions):
+    def __init__(self, file_path: str, options: NPKReadOptions = NPKReadOptions()):
         """Initialize the NPK file handler.
 
         Args:

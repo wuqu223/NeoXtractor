@@ -9,7 +9,7 @@ from core.config import Config
 from core.logger import get_logger
 from core.npk.enums import NPKEntryFileCategories
 from core.npk.npk_file import NPKFile
-from core.npk.class_types import NPKEntry, NPKEntryDataFlags
+from core.npk.class_types import NPKEntry, NPKEntryDataFlags, NPKReadOptions
 from gui.config_manager import ConfigManager
 from gui.models.npk_file_model import NPKFileModel
 from gui.npk_entry_filter import NPKEntryFilter
@@ -389,7 +389,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def load_npk(self, path: str):
         """Load an NPK file and populate the list widget."""
 
-        self.unload_npk()
+        if self.app.property("npk_file") is not None:
+            self.unload_npk()
 
         self._loading_cancelled = False
 
@@ -404,7 +405,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.list_widget.setDisabled(True)
 
-        npk_file = NPKFile(path, self.config.read_options) # type: ignore (config will always be Config, never None)
+        read_options = self.config.read_options if self.config else None
+        if read_options is None:
+            # No read options set, use default
+            read_options = NPKReadOptions()
+
+        npk_file = NPKFile(path, read_options)
 
         self.app.setProperty("npk_file", npk_file)
 
