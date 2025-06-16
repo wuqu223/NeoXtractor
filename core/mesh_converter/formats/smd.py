@@ -1,3 +1,5 @@
+"""Source Model Data (SMD) Format Converter"""
+
 from core.mesh_loader.parsers import MeshData
 
 NAME = "Source Model Data (SMD) Format"

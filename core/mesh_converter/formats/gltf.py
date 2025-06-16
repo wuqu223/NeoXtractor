@@ -1,3 +1,5 @@
+"""glTF 2.0 Format Converter"""
+
 import json
 import struct
 import base64

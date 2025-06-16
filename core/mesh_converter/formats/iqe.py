@@ -1,3 +1,5 @@
+"""Inter-Quake Export (IQE) Format Converter"""
+
 import numpy as np
 
 from core.mesh_loader.parsers import MeshData

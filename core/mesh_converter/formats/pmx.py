@@ -1,4 +1,7 @@
+"""PMX Format Converter"""
+
 import io
+from typing import cast
 
 from pymeshio import pmx
 import pymeshio.pmx.writer
@@ -9,7 +12,7 @@ from core.mesh_loader.parsers import MeshData
 NAME = "Polygon Model eXtended (PMX) Format"
 EXTENSION = ".pmx"
 
-def convert(mesh: MeshData, scale_factor = 100.0) -> bytes:
+def convert(mesh: MeshData) -> bytes:
     """
     Convert mesh to PMX format.
     
@@ -93,17 +96,13 @@ def convert(mesh: MeshData, scale_factor = 100.0) -> bytes:
 
     # Add vertices with scaling for PMX integer format
     # PMX uses integer coordinates, so we need to scale up small meshes
-    
+
     for i, position in enumerate(mesh.position):
         x, y, z = position
         nx, ny, nz = mesh.normal[i] if mesh.has_normals else (0.0, 0.0, 1.0)
         u, v = mesh.uv[i] if mesh.has_uvs else (0.0, 0.0)
 
-        # Scale up position coordinates
-        scaled_x = round(x * scale_factor)
-        scaled_y = round(y * scale_factor)
-        scaled_z = round(z * scale_factor)
-
+        # Remove scaling and rounding, use cast(int, x) for Vector creation
         if mesh.has_bones and i < len(mesh.vertex_bone):
             # Map old bone indices to new ones
             vertex_joint_index = []
@@ -124,18 +123,18 @@ def convert(mesh: MeshData, scale_factor = 100.0) -> bytes:
             vertex_weights = vertex_weights[:4]
 
             vertex = pmx.Vertex(
-                common.Vector3(scaled_x, scaled_y, scaled_z),
-                common.Vector3(round(nx), round(ny), round(nz)),
-                common.Vector2(round(u * 1000), round(v * 1000)),  # Scale UV coordinates too
+                common.Vector3(cast(int, x), cast(int, y), cast(int, z)),
+                common.Vector3(cast(int, nx), cast(int, ny), cast(int, nz)),
+                common.Vector2(cast(int, u), cast(int, v)),
                 pmx.Bdef4(*vertex_joint_index, *vertex_weights),
                 0.0
             )
         else:
             # No bone data - assign to root bone
             vertex = pmx.Vertex(
-                common.Vector3(scaled_x, scaled_y, scaled_z),
-                common.Vector3(round(nx), round(ny), round(nz)),
-                common.Vector2(round(u * 1000), round(v * 1000)),  # Scale UV coordinates too
+                common.Vector3(cast(int, x), cast(int, y), cast(int, z)),
+                common.Vector3(cast(int, nx), cast(int, ny), cast(int, nz)),
+                common.Vector2(cast(int, u), cast(int, v)),
                 pmx.Bdef1(0),
                 0.0
             )

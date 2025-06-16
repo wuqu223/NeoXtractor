@@ -1,3 +1,5 @@
+"""Object File Format (OBJ) Converter"""
+
 from core.mesh_loader.parsers import MeshData
 
 NAME = "Wavefront OBJ Format"
