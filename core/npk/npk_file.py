@@ -97,7 +97,8 @@ class NPKFile:
         get_logger().debug("NPK index entry size: %d", self.info_size)
 
         if self.hash_mode == 2:
-            get_logger().warning("HASHING MODE 2 DETECTED, COMPATIBILITY IS NOT GURANTEED")
+            file.seek(self.index_offset + (self.file_count * self.info_size))
+            self.nxfn_files = [x for x in (file.read()).split(b'\x00') if x != b'']
         elif self.hash_mode == 3:
             self.arc_key = ARC4(b'61ea476e-8201-11e5-864b-fcaa147137b7')
         elif self.encrypt_mode == 256:
@@ -111,7 +112,7 @@ class NPKFile:
 
     def _determine_info_size(self, file: io.BufferedReader) -> int:
         """Determine the size of each index entry."""
-        if self.encrypt_mode == 256:
+        if self.encrypt_mode == 256 or self.hash_mode == 2:
             return 0x1C  # 28 bytes
 
         current_pos = file.tell()
@@ -133,6 +134,7 @@ class NPKFile:
             index_data = self.key_generator.decrypt(index_data)
         if self.hash_mode == 3:
             index_data = self.arc_key.decrypt(index_data)
+
 
         with io.BytesIO(index_data) as buf:
             for i in range(self.file_count):
@@ -223,8 +225,8 @@ class NPKFile:
             # Load the actual data
             self._load_entry_data(entry, file)
 
-        # Update filename with extension
-        entry.filename = f"{entry.filename}.{entry.extension}"
+        # Update filename with extension (or omits it if its already defined by NXFN)
+        entry.filename = entry.filename if self.hash_mode == 2 or self.encrypt_mode == 256 else f"{entry.filename}.{entry.extension}"
 
         # Store in the cache
         self.entries[index] = entry
