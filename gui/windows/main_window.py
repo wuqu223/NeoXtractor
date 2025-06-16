@@ -327,6 +327,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def unload_npk(self):
         """Unload the NPK file."""
+
+        if self.app.property("npk_file") is None:
+            return
+
         self.setWindowTitle("NeoXtractor")
         self.app.setProperty("npk_file", None)
         self.list_widget.refresh_npk_file()
@@ -389,8 +393,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def load_npk(self, path: str):
         """Load an NPK file and populate the list widget."""
 
-        if self.app.property("npk_file") is not None:
-            self.unload_npk()
+        self.unload_npk()
 
         self._loading_cancelled = False
 
