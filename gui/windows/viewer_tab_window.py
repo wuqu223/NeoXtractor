@@ -68,17 +68,18 @@ class ViewerTabWindow(QtWidgets.QMainWindow):
                      not getattr(self._viewer_factory, "allow_unsupported_extensions")):
                     extensions = getattr(self._viewer_factory, "accepted_extensions")
                     file_filter = f"Supported Files (*.{' *.'.join(extensions)})"
-                file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+                file_paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
                     self,
                     "Open File",
                     "",
                     file_filter
                 )
-                if file_path:
-                    with open(file_path, "rb") as file:
-                        data = file.read()
-                        filename = os.path.basename(file_path)
-                        self.load_file(data, filename)
+                for file_path in file_paths:
+                    if file_path:
+                        with open(file_path, "rb") as file:
+                            data = file.read()
+                            filename = os.path.basename(file_path)
+                            self.load_file(data, filename)
             open_file_action.triggered.connect(open_file_dialog)
 
             close_all_action = menu.addAction("Close All")
