@@ -4,11 +4,12 @@
 
 import io
 import math
-import texture2ddecoder
-from .ETCImagePlugin import *
 from typing import Literal, cast
+import texture2ddecoder
 from PIL import Image, ImageFile
 from bitstring import ConstBitStream
+
+
 
 DDS_HEADER = b"DDS\x20\x7C\0\0\0\x07\x10\0\0"
 DDS_PIXFORM_HEADER = b"\x20\0\0\0\x04\0\0\0"
@@ -128,13 +129,45 @@ def pvr_convert(data: bytes):
 def ktx_convert(data: bytes):
     """Convert KTX to Image."""
     ## Useless code currently reserve in case different types of encodings are used in KTX images...
-    
-    def use_glInternal_format(format, image_size, pixelWidth, pixelHeight):
-        match format:
-            case 37815:
-                return Image.frombytes('RGBA', (pixelWidth, pixelHeight), texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 8, 8), 'raw', ("BGRA"))
-        return Image.frombytes('RGBA',(pixelWidth, pixelHeight), f.read(f"bytes:{image_size}"), "ETC")
     f = ConstBitStream(io.BytesIO(data))
+    def get_format(format, image_size, pixelWidth, pixelHeight):
+        match format:
+            case 0x93B0:
+                return texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 4, 4)
+            case 0x93B1:
+                return texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 5, 4)
+            case 0x93B2:
+                return texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 5, 5)
+            case 0x93B3:
+                return texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 6, 5)
+            case 0x93B4:
+                return texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 6, 6)
+            case 0x93B5:
+                return texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 8, 5)
+            case 0x93B6:
+                return texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 8, 6)
+            case 0x93B7:
+                return texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 8, 8)
+            case 0x93B8:
+                return texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 10, 5)
+            case 0x93B9:
+                return texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 10, 6)
+            case 0x93BA:
+                return texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 10, 8)
+            case 0x93BB:
+                return texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 10, 10)
+            case 0x93BC:
+                return texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 12, 10)
+            case 0x93BD:
+                return texture2ddecoder.decode_astc(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight, 12, 12)
+            case 0x9274:
+            	return texture2ddecoder.decode_etc2(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight)
+            case 0x9276:
+            	return texture2ddecoder.decode_etc2a1(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight)
+            case 0x9278:
+            	return texture2ddecoder.decode_etc2a8(f.read(f"bytes:{image_size}"), pixelWidth, pixelHeight)
+        
+    
     #identifier = f.read("bytes:12")
     #endianness = _r_uintle32(f)
     #glType = _r_uintle32(f)
@@ -149,10 +182,11 @@ def ktx_convert(data: bytes):
     #numberOfArrayElements = _r_uintle32(f)
     #numberOfFaces = _r_uintle32(f)
     #numberOfMipmapLevels = _r_uintle32(f)
-    #bytesOfKeyValueData  = _r_uintle32(f)
-    f.read("pad160")
+    f.read("pad128")
+    bytesOfKeyValueData  = _r_uintle32(f)
+    f.read(f"pad{bytesOfKeyValueData*8}")
     image_size = _r_uintle32(f)
-    return use_glInternal_format(glInternalFormat, image_size, pixelWidth, pixelHeight)
+    return Image.frombytes('RGBA', (pixelWidth, pixelHeight), get_format(glInternalFormat, image_size, pixelWidth, pixelHeight), 'raw', ("BGRA"))
 
 def astc_convert(data: bytes):
     """Convert ASTC to Image."""
