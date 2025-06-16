@@ -11,3 +11,5 @@
 
 # User Preferences
 settings.json
+*.bnk
+*.npk
