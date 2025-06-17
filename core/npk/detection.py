@@ -272,7 +272,7 @@ def get_file_category(extension):
 
     # Textures
     if extension in ["bmp", "gif", "jpg", "jpeg", "png", "pbm", "pgm", "ppm", "xbm",
-                     "xpm", "tga", "ico", "tiff", "dds", "pvr", "astc", "ktx", "cbk"]:
+                     "xpm", "tga", "ico", "tiff", "dds", "pvr", "astc", "ktx", "ktx_low", "cbk"]:
         return NPKEntryFileCategories.TEXTURE
 
     # 3D Models
