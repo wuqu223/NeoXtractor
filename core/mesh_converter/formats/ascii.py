@@ -1,6 +1,6 @@
 """ASCII Mesh Format Converter"""
 
-from core.mesh_loader.parsers import MeshData
+from core.mesh_loader import MeshData
 
 NAME = "ASCII Mesh Format"
 EXTENSION = ".ascii"

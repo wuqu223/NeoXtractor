@@ -8,7 +8,7 @@ import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from core.mesh_loader.loader import MeshLoader
-from core.mesh_loader.parsers import MeshData
+from core.mesh_loader import MeshData
 from core.utils import get_application_path
 from gui.renderers.mesh_renderer import MeshRenderer, ProcessedMeshData
 from gui.renderers.point_renderer import PointRenderer
@@ -35,7 +35,7 @@ INSTRUCTIONS = [
 GRID_COLOR = [0.3, 0.3, 0.3]
 GRID_VERTEX_DATA = [
     float(coord)
-    for grid_line in grid(5, 10)
+    for grid_line in cast(np.ndarray, grid(5, 10))
     for grid_vertex in grid_line
     for coord in [*grid_vertex, *GRID_COLOR]
 ]
@@ -210,7 +210,8 @@ class MeshRenderWidget(ManagedRhiWidget, CameraController):
 
         if self._rhi is None or \
             self._mvp_ubuf is None or \
-            self._grid_pipeline is None:
+            self._grid_pipeline is None or \
+            self._grid_vbuf is None:
             return
 
         viewport_height = self.renderTarget().pixelSize().height()

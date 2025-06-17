@@ -8,7 +8,7 @@ from typing import cast
 import numpy as np
 from PySide6 import QtGui, QtWidgets
 
-from core.mesh_loader.parsers import MeshData
+from core.mesh_loader import MeshData
 from core.utils import get_application_path
 from gui.renderers.point_renderer import PointRenderer
 from gui.utils.rendering import is_d3d, static_uniform_buffer_type

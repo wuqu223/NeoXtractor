@@ -2,20 +2,17 @@
 Main mesh loader class that provides adaptive parsing functionality.
 """
 
-import io
 from typing import Union, Optional, List
 from pathlib import Path
 
 from core.logger import get_logger
-
-from .parsers import (
-    MeshData,
-    BaseMeshParser,
-    StandardMeshParser,
-    SimplifiedMeshParser,
-    RobustMeshParser,
-    AdaptiveMeshParser
+from core.mesh_loader.parsers import (
+    MeshParser1,
+    MeshParser2,
+    MeshParser3,
+    MeshParser4
 )
+from core.mesh_loader.types import BaseMeshParser, MeshData
 
 class MeshLoader:
     """
@@ -37,10 +34,10 @@ class MeshLoader:
     def _initialize_parsers(self) -> List[BaseMeshParser]:
         """Initialize the list of available parsers in order of preference."""
         return [
-            StandardMeshParser(),
-            SimplifiedMeshParser(),
-            RobustMeshParser(),
-            AdaptiveMeshParser()
+            MeshParser1(),
+            MeshParser2(),
+            MeshParser3(),
+            MeshParser4()
         ]
 
     def load_from_bytes(self, data: bytes) -> Optional[MeshData]:
@@ -61,8 +58,7 @@ class MeshLoader:
             try:
                 get_logger().debug("Attempting %s (bytes)", parser_name)
 
-                with io.BytesIO(data) as f:
-                    model = parser.parse(data, f)
+                model = parser.parse(data)
 
                 get_logger().info("Successfully parsed using %s (bytes)", parser_name)
                 return model
@@ -107,8 +103,7 @@ class MeshLoader:
                 try:
                     get_logger().debug("Attempting %s (file path)", parser_name)
 
-                    with open(file_path, 'rb') as f:
-                        model = parser.parse(file_content, f)
+                    model = parser.parse(file_content)
 
                     get_logger().info("Successfully parsed using %s (file path)", parser_name)
                     return model

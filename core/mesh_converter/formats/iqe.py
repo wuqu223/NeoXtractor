@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from core.mesh_loader.parsers import MeshData
+from core.mesh_loader import MeshData
 
 NAME = "Inter-Quake Export (IQE) Format"
 EXTENSION = ".iqe"

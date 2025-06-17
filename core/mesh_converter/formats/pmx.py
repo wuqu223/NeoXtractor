@@ -7,7 +7,7 @@ from pymeshio import pmx
 import pymeshio.pmx.writer
 import pymeshio.common as common
 
-from core.mesh_loader.parsers import MeshData
+from core.mesh_loader import MeshData
 
 NAME = "Polygon Model eXtended (PMX) Format"
 EXTENSION = ".pmx"

@@ -4,7 +4,7 @@ import json
 import struct
 import base64
 
-from core.mesh_loader.parsers import MeshData
+from core.mesh_loader import MeshData
 
 NAME = "glTF 2.0 Format"
 EXTENSION = ".gltf"

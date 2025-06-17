@@ -5,25 +5,17 @@ A modular mesh loading system for parsing .mesh files using multiple parsing str
 Supports adaptive parsing with fallback mechanisms for robust file handling.
 """
 
-from .parsers import (
-    MeshData,
-    StandardMeshParser,
-    SimplifiedMeshParser,
-    RobustMeshParser,
-    AdaptiveMeshParser
-)
+from . import parsers
 from .exceptions import MeshParsingError
+from .types import MeshData
 
 # Import the loader components after defining parsers
 from .loader import MeshLoader
 
 __all__ = [
+    'parsers',
     'MeshLoader',
     'MeshData',
-    'StandardMeshParser',
-    'SimplifiedMeshParser', 
-    'RobustMeshParser',
-    'AdaptiveMeshParser',
     'MeshParsingError'
 ]
 

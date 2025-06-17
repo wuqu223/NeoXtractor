@@ -1,6 +1,6 @@
 """Mesh conversion utilities."""
 
-from core.mesh_loader.parsers import MeshData
+from core.mesh_loader import MeshData
 
 from .formats import (
     ascii as mesh_ascii,
