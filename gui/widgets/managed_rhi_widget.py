@@ -17,6 +17,14 @@ class ManagedRhiWidget(QtWidgets.QRhiWidget):
             # If no QApplication instance exists, we cannot proceed.
             return
 
+        managed_rhi_widgets = application.property("managed_rhi_widgets")
+        if managed_rhi_widgets is None:
+            # If no managed RHI widgets list exists, create one.
+            managed_rhi_widgets = []
+
+        managed_rhi_widgets.append(self)
+        application.setProperty("managed_rhi_widgets", managed_rhi_widgets)
+
         settings_manager: SettingsManager = application.property("settings_manager")
         if settings_manager is None:
             # If no settings manager is available, we cannot proceed.
