@@ -12,6 +12,10 @@ class MeshData:
     This dataclass provides a consistent interface for mesh data across all parsers,
     ensuring type safety and clear documentation of the expected data structure.
     """
+
+    # Metadata
+    version: int
+
     # Core mesh geometry
     position: list[tuple[float, float, float]] = field(default_factory=list)
     normal: list[tuple[float, float, float]] = field(default_factory=list)
@@ -121,6 +125,9 @@ class BaseMeshParser(ABC):
         """
         # Create MeshData with unified field mapping
         mesh_data = MeshData(
+            # Metadata
+            version=model.get('mesh_version', 0),
+
             # Core mesh data
             position=model.get('position', []),
             normal=model.get('normal', []),
