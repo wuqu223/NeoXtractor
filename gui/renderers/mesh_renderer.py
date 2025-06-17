@@ -519,38 +519,44 @@ class MeshRenderer:
             Bone and normal rendering require their respective pipelines and vertex buffers to be initialized.
         """
 
-        if self._mesh_data is not None and self._mesh_pipeline is not None and self._mesh_wireframe_pipeline:
-            viewport = QtGui.QRhiViewport(0, 0, self._rhi_widget.renderTarget().pixelSize().width(),
-                                                    self._rhi_widget.renderTarget().pixelSize().height())
+        if self._mesh_data is None or \
+            self._mesh_pipeline is None or \
+            self._mesh_wireframe_pipeline is None or \
+            self._mesh_vbuf is None or \
+            self._normals_vbuf is None:
+            return
 
-            if self.wireframe_mode:
-                cb.setGraphicsPipeline(self._mesh_wireframe_pipeline)
-            else:
-                cb.setGraphicsPipeline(self._mesh_pipeline)
-            cb.setViewport(viewport)
-            cb.setShaderResources()
-            if self.wireframe_mode:
-                cb.setVertexInput(0, [(self._mesh_vbuf, 0)], self._mesh_wireframe_ibuf, 0,
-                                  QtGui.QRhiCommandBuffer.IndexFormat.IndexUInt32)
-                cb.drawIndexed(self._mesh_data.wireframe_indices.size)
-            else:
-                cb.setVertexInput(0, [(self._mesh_vbuf, 0)], self._mesh_ibuf, 0,
-                                QtGui.QRhiCommandBuffer.IndexFormat.IndexUInt32)
-                cb.drawIndexed(self._mesh_data.indices.size)
+        viewport = QtGui.QRhiViewport(0, 0, self._rhi_widget.renderTarget().pixelSize().width(),
+                                                self._rhi_widget.renderTarget().pixelSize().height())
 
-            if self.draw_bones:
-                if self._bone_lines_vbuf and self._vertex_line_pipeline is not None:
-                    cb.setGraphicsPipeline(self._vertex_line_pipeline)
-                    cb.setViewport(viewport)
-                    cb.setShaderResources()
-                    cb.setVertexInput(0, [(self._bone_lines_vbuf, 0)])
-                    cb.draw(len(self._mesh_data.bone_lines))
+        if self.wireframe_mode:
+            cb.setGraphicsPipeline(self._mesh_wireframe_pipeline)
+        else:
+            cb.setGraphicsPipeline(self._mesh_pipeline)
+        cb.setViewport(viewport)
+        cb.setShaderResources()
+        if self.wireframe_mode:
+            cb.setVertexInput(0, [(self._mesh_vbuf, 0)], self._mesh_wireframe_ibuf, 0,
+                              QtGui.QRhiCommandBuffer.IndexFormat.IndexUInt32)
+            cb.drawIndexed(self._mesh_data.wireframe_indices.size)
+        else:
+            cb.setVertexInput(0, [(self._mesh_vbuf, 0)], self._mesh_ibuf, 0,
+                            QtGui.QRhiCommandBuffer.IndexFormat.IndexUInt32)
+            cb.drawIndexed(self._mesh_data.indices.size)
 
-                self._bone_points_renderer.render(cb)
-
-            if self.draw_normals and self._vertex_line_pipeline is not None:
+        if self.draw_bones:
+            if self._bone_lines_vbuf and self._vertex_line_pipeline is not None:
                 cb.setGraphicsPipeline(self._vertex_line_pipeline)
                 cb.setViewport(viewport)
                 cb.setShaderResources()
-                cb.setVertexInput(0, [(self._normals_vbuf, 0)])
-                cb.draw(len(self._mesh_data.normal_lines))
+                cb.setVertexInput(0, [(self._bone_lines_vbuf, 0)])
+                cb.draw(len(self._mesh_data.bone_lines))
+
+            self._bone_points_renderer.render(cb)
+
+        if self.draw_normals and self._vertex_line_pipeline is not None:
+            cb.setGraphicsPipeline(self._vertex_line_pipeline)
+            cb.setViewport(viewport)
+            cb.setShaderResources()
+            cb.setVertexInput(0, [(self._normals_vbuf, 0)])
+            cb.draw(len(self._mesh_data.normal_lines))
