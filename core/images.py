@@ -11,10 +11,6 @@ from bitstring import ConstBitStream
 
 from core.binary_readers import read_uintle32, read_uintle64
 
-DDS_HEADER = b"DDS\x20\x7C\0\0\0\x07\x10\0\0"
-DDS_PIXFORM_HEADER = b"\x20\0\0\0\x04\0\0\0"
-QUAD_NULL_BYTES = b"\0\0\0\0"
-
 #tga, ico, tiff, dds
 def _pillow_image_conversion(data, fmt):
     return Image.open(io.BytesIO(data), "r", (fmt.upper(), "PNG"))
