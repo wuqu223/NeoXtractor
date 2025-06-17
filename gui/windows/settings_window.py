@@ -8,6 +8,7 @@ from PySide6 import QtGui, QtWidgets
 from gui.settings_manager import SettingsManager
 from gui.theme import ThemeManager
 from gui.widgets.color_triangle_widget import ColorTriangleWidget
+from gui.widgets.managed_rhi_widget import ManagedRhiWidget
 if TYPE_CHECKING:
     from gui.windows.main_window import MainWindow
 
@@ -194,10 +195,10 @@ class SettingsWindow(QtWidgets.QDialog):
             theme_index = self.theme_combobox.findData(current_theme)
             if theme_index != -1:
                 self.theme_combobox.setCurrentIndex(theme_index)
-        
+
         # Trigger theme description update
         self.theme_combobox.currentIndexChanged.emit(self.theme_combobox.currentIndex())
-        
+
         # Load graphics settings
         backend = self._settings_manager.get("graphics.backend", QtWidgets.QRhiWidget.Api.Null.value)
         index = self.backend_combobox.findData(QtWidgets.QRhiWidget.Api(backend))
@@ -248,9 +249,9 @@ class SettingsWindow(QtWidgets.QDialog):
 
         # Apply MSAA to all QRhiWidgets
         msaa = self._settings_manager.get("graphics.msaa", 1)
-        tab_windows = main_window.get_tab_windows()
-        rhi_widgets = main_window.findChildren(QtWidgets.QRhiWidget)
-        for tab_window in tab_windows:
-            rhi_widgets.extend(tab_window.findChildren(QtWidgets.QRhiWidget))
+        rhi_widgets: list[ManagedRhiWidget] = main_window.app.property("managed_rhi_widgets")
+        if rhi_widgets is None:
+            # If no managed RHI widgets list exists, we cannot proceed.
+            return
         for rhi_widget in rhi_widgets:
             rhi_widget.setSampleCount(msaa)
