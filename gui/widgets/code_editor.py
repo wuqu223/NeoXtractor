@@ -270,7 +270,7 @@ class CodeHighlighter(QSyntaxHighlighter):
                 match = match_iterator.next()
 
                 # Use capture group if specified, otherwise use entire match
-                if capture_group > 0 and capture_group <= match.lastCapturedIndex():
+                if 0 < capture_group <= match.lastCapturedIndex():
                     match_start = match.capturedStart(capture_group)
                     match_length = match.capturedLength(capture_group)
                 else:

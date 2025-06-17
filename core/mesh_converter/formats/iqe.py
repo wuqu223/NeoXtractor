@@ -145,10 +145,9 @@ def convert(mesh: MeshData) -> bytes:
                     if i < len(mesh.vertex_bone):
                         for j in range(min(4, len(mesh.vertex_bone[i]))):
                             v = mesh.vertex_bone[i][j]
-                            if v == 255 or v == 65535:  # Invalid bone index
+                            if v in (255, 65535):  # Invalid bone index
                                 break
-                            if v in old2new:
-                                v = old2new[v]
+                            v = old2new.get(v, v)  # Map old bone index to new index
                             w = mesh.vertex_weight[i][j] if i < len(mesh.vertex_weight) and \
                                 j < len(mesh.vertex_weight[i]) else 0.0
                             iqe_lines.append(f' {v} {w}')
@@ -195,10 +194,9 @@ def convert(mesh: MeshData) -> bytes:
                 iqe_lines.append('vb')
                 for j in range(min(4, len(bone_indices))):
                     v = bone_indices[j]
-                    if v == 255 or v == 65535:  # Invalid bone index
+                    if v in (255, 65535):  # Invalid bone index
                         break
-                    if v in old2new:
-                        v = old2new[v]
+                    v = old2new.get(v, v)  # Map old bone index to new index
                     w = mesh.vertex_weight[i][j] if i < len(mesh.vertex_weight) and \
                         j < len(mesh.vertex_weight[i]) else 0.0
                     iqe_lines.append(f' {v} {w}')

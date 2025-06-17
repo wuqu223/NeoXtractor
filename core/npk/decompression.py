@@ -1,26 +1,27 @@
 """Provides decompression functions."""
 
+from typing import cast
 import zlib
 import lz4.block
 import zstandard
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import padding as asym_padding
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 from core.npk.enums import CompressionType
 from core.npk.class_types import NPKEntry
-from core.rotor import newrotor
+from core.rotor import Rotor
 
 def init_rotor():
+    """Initializes the rotor instance."""
     asdf_dn = 'j2h56ogodh3se'
     asdf_dt = '=dziaq.'
     asdf_df = '|os=5v7!"-234'
     asdf_tm = asdf_dn * 4 + (asdf_dt + asdf_dn + asdf_df) * 5 + '!' + '#' + asdf_dt * 7 + asdf_df * 2 + '*' + '&' + "'"
-    rot = newrotor(asdf_tm)
+    rot = Rotor(asdf_tm)
     return rot
-    
+
 def _reverse_string(s):
     l = list(s)
     l = list(map(lambda x: x ^ 154, l[0:128])) + l[128:]
@@ -57,8 +58,8 @@ def decompress_entry(entry: NPKEntry):
 
 def check_nxs3(entry: NPKEntry) -> bool:
     """Check if the data is wrapped in NXS3 format."""
-    return (entry.data[:8] == b"NXS3\x03\x00\x00\x01")
-    
+    return entry.data[:8] == b"NXS3\x03\x00\x00\x01"
+
 def check_rotor(entry: NPKEntry) -> bool:
     """Check if the data is ROTOR encrypted."""
     return (entry.data[:2] == bytes([0x1D, 0x04]) or entry.data[:2] == bytes([0x15, 0x23]))
@@ -93,8 +94,8 @@ def rsa_public_decrypt(signature: bytes, key: rsa.RSAPublicKey) -> bytes:
     # Padding is 0xFF ... 0x00, then the message
     try:
         padding_end = decrypted.index(0x00, 2)
-    except ValueError:
-        raise ValueError("Padding end not found")
+    except ValueError as e:
+        raise ValueError("Padding end not found") from e
 
     return decrypted[padding_end + 1:]
 
@@ -120,9 +121,9 @@ pY4/jT3aipwPNVTjM6yHbzOLhrnGJh7Ec3CQG/FZu6VKoCqVEtCeh15hjcu6QYtn
 YWIEf8qgkylqsOQ3IIn76udV6m0AWC2jDlmLeRcR04w9NNw7+9t9AgMBAAE=
 -----END RSA PUBLIC KEY-----"""
 
-    rsa_key = serialization.load_pem_public_key(pem_key, backend=default_backend())
-    
-    wrapped_key = rsa_public_decrypt(data[20:20+128], rsa_key)[:4] # type: ignore (it will always be RSAPublicKey)
+    rsa_key = cast(rsa.RSAPublicKey, serialization.load_pem_public_key(pem_key, backend=default_backend()))
+
+    wrapped_key = rsa_public_decrypt(data[20:20+128], rsa_key)[:4]
 
     if wrapped_key is None:
         raise ValueError("Decryption of the encrypted key failed.")

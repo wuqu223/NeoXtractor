@@ -11,13 +11,11 @@ project_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
 if __name__ != "__main__":
     raise ImportError("This script is not meant to be imported.")
 
-cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-
-if cmd == "gen":
+def _generate():
     try:
         # Get current commit hash
         commit_hash = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], 
+            ["git", "rev-parse", "HEAD"],
             stderr=subprocess.DEVNULL
         ).decode("utf-8").strip()
 
@@ -60,6 +58,11 @@ BUILD_INFO = """)
             "commit_hash": commit_hash,
             "branch": branch
         }, indent=2).replace("null", "None"))
+
+cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+
+if cmd == "gen":
+    _generate()
 elif cmd == "del":
     os.remove(os.path.join(project_dir, "build", "_build_info.py"))
 else:

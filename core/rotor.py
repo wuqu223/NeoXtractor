@@ -1,8 +1,36 @@
-class newrotor(object):
+"""Provides Rotor class."""
+
+class Rotor(object):
+    """
+    Rotor implements a simple rotor-based symmetric encryption and decryption algorithm.
+    Attributes:
+        n_rotors (int): Number of rotors to use in the algorithm.
+        key (str): The key used to initialize the rotor positions and permutations.
+        rotors (tuple or None): Stores the rotor permutations and positions.
+        positions (list): Tracks the current positions for encryption and decryption.
+    Methods:
+        __init__(key, n_rotors=6):
+            Initializes the Rotor with a given key and number of rotors.
+        setkey(key):
+            Sets the key for the rotor algorithm and resets internal state.
+        encrypt(buf):
+            Encrypts the given bytes-like object `buf` and returns the encrypted bytes.
+        decrypt(buf):
+            Decrypts the given bytes-like object `buf` and returns the decrypted bytes.
+        cryptmore(buf, do_decrypt):
+            Core method for encrypting or decrypting the buffer `buf`.
+            If `do_decrypt` is True, performs decryption; otherwise, encryption.
+        get_rotors(do_decrypt):
+            Retrieves or initializes the rotor permutations and positions for encryption or decryption.
+        random_func(key):
+            Returns a pseudorandom function seeded with the provided key,
+            used for rotor permutation and position generation.
+    """
 
     #starts the rotor
     def __init__(self, key, n_rotors=6):
         self.n_rotors = n_rotors
+
         self.setkey(key)
 
     #sets the key for the rotor algorithm

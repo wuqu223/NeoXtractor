@@ -226,7 +226,8 @@ class NPKFile:
             self._load_entry_data(entry, file)
 
         # Update filename with extension (or omits it if its already defined by NXFN)
-        entry.filename = entry.filename if self.hash_mode == 2 or self.encrypt_mode == 256 else f"{entry.filename}.{entry.extension}"
+        entry.filename = entry.filename if self.hash_mode == 2 or self.encrypt_mode == 256 else \
+            f"{entry.filename}.{entry.extension}"
 
         # Store in the cache
         self.entries[index] = entry
@@ -256,14 +257,13 @@ class NPKFile:
                 if self.options.decryption_key is not None or self.options.decryption_key != 0:
                     get_logger().error("Error decompressing the file, did you choose the correct key for this NPK?")
                     entry.data_flags |= NPKEntryDataFlags.ENCRYPTED
-                    return
                 else:
                     get_logger().critical(
                         "Error decompressing the file using %s compression, open a GitHub issue", 
                         entry.zip_flag.get_name(entry.zip_flag)
                     )
                     entry.data_flags |= NPKEntryDataFlags.ERROR
-                    return
+                return
 
         # Check for ROTOR encryptiom
         if check_rotor(entry):

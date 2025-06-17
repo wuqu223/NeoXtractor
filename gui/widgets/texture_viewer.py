@@ -32,13 +32,15 @@ class ImageDecodeTask(QtCore.QRunnable):
     @QtCore.Slot()
     def run(self):
         if self.extension in QT_SUPPORTED_FORMATS:
-            # Use Qt's image reader for supported formats
-            texture = QtGui.QImage.fromData(self.data, self.extension)
-            
+            # Use Qt's image reader for supported formats, PySide6 expects bytes for the format, while str is usable
+            texture = QtGui.QImage.fromData(self.data, cast(bytes, self.extension))
+
         else:
             # Use custom conversion for unsupported formats
             try:
-                texture = QtGui.QImage.fromData(image_to_png_data(cast(Image.Image | ImageFile.ImageFile,convert_image(self.data, self.extension))))
+                texture = QtGui.QImage.fromData(image_to_png_data(
+                    cast(Image.Image | ImageFile.ImageFile,convert_image(self.data, self.extension)))
+                    )
             except Exception as e:
                 self.signals.load_failed.emit(str(e))
                 raise e
@@ -57,7 +59,7 @@ class TextureViewer(QtWidgets.QWidget):
 
     # Viewer attributes
     name = "Texture Viewer"
-    accepted_extensions = QT_SUPPORTED_FORMATS + ["dds", "pvr", "ktx", "astc", "cbk"]
+    accepted_extensions = QT_SUPPORTED_FORMATS + ["dds", "pvr", "ktx", "ktx_low", "astc", "cbk"]
     setup_tab_window = setup_texture_viewer_tab_window
 
     def __init__(self):

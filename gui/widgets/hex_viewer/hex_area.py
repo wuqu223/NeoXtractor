@@ -1,5 +1,6 @@
 """Provides HexArea widget."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from PySide6 import QtWidgets, QtCore, QtGui
 
@@ -236,12 +237,12 @@ class HexArea(QtWidgets.QWidget):
         if self._addressing_base == 16:  # Hex
             addr_chars = max(min_width, len(f"{max_address:X}"))
             return (addr_chars + 2) * self._char_width  # +2 for "0x"
-        elif self._addressing_base == 8:  # Octal
+        if self._addressing_base == 8:  # Octal
             addr_chars = max(min_width, len(f"{max_address:o}"))
             return (addr_chars + 2) * self._char_width  # +2 for "0o"
-        else:  # Decimal
-            addr_chars = max(min_width + 2, len(str(max_address)))
-            return addr_chars * self._char_width
+        # Decimal
+        addr_chars = max(min_width + 2, len(str(max_address)))
+        return addr_chars * self._char_width
 
     def _draw_header(self, painter: QtGui.QPainter, rect: QtCore.QRect, addr_width: int,
                     hex_width: int, ascii_width: int):
@@ -444,7 +445,7 @@ class HexArea(QtWidgets.QWidget):
             # TODO: Fix the bottom issue
             self._v_scrollbar.setValue(cursor_line - self._visible_lines + 1)
 
-    def setFont(self, font: QtGui.QFont | str):
+    def setFont(self, font: QtGui.QFont | str | Sequence[str]):
         super().setFont(font)
         self._measure_font_metrics()
 

@@ -1,6 +1,6 @@
 """Dialog for creating a new game configuration."""
 
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, 
+from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout,
                               QLineEdit, QDialogButtonBox,
                               QSpinBox)
 

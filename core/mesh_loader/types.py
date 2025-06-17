@@ -1,3 +1,5 @@
+"""Types for Mesh Loader"""
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
@@ -157,7 +159,7 @@ class BaseMeshParser(ABC):
         # Ensure consistent bone naming
         if mesh_data.bone_name:
             mesh_data.bone_name = [
-                name.replace('\0', '').replace(' ', '_').strip() 
+                name.replace('\0', '').replace(' ', '_').strip()
                 for name in mesh_data.bone_name
             ]
 

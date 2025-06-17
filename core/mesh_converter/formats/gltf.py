@@ -319,7 +319,7 @@ def convert(mesh: MeshData) -> bytes:
     if mesh.has_bones:
         bone_names = mesh.bone_name
         bone_hierarchy = mesh.bone_parent
-        
+
         # Create bone nodes with proper hierarchy
         for i, bone_name in enumerate(bone_names):
             node = {

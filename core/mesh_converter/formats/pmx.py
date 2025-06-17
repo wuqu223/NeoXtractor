@@ -3,9 +3,8 @@
 import io
 from typing import cast
 
-from pymeshio import pmx
+from pymeshio import pmx, common
 import pymeshio.pmx.writer
-import pymeshio.common as common
 
 from core.mesh_loader import MeshData
 

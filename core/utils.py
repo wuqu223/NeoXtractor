@@ -48,15 +48,15 @@ def format_bytes(num_bytes: int) -> str:
     """
     if num_bytes < 0:
         return "0 B"
-    
+
     units = ["B", "KB", "MB", "GB", "TB", "PB"]
     size = float(num_bytes)
     unit_index = 0
-    
+
     while size >= 1024.0 and unit_index < len(units) - 1:
         size /= 1024.0
         unit_index += 1
-    
+
     # Format with 2 decimal places if not bytes
     if unit_index == 0:
         return f"{int(size)} {units[unit_index]}"

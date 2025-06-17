@@ -111,7 +111,7 @@ class ColorTriangleWidget(ManagedRhiWidget):
         self._view_proj.translate(0, 0, -4)
 
     def render(self, cb: QtGui.QRhiCommandBuffer):
-        if self._rhi is None or self._view_proj is None or self._ubuf is None or self._pipeline is None:
+        if self._rhi is None or self._view_proj is None or self._vbuf is None or self._ubuf is None or self._pipeline is None:
             return
 
         self._text_renderer.render_text("Preview", (10, 10))
