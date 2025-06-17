@@ -18,5 +18,3 @@ __all__ = [
     'MeshData',
     'MeshParsingError'
 ]
-
-__version__ = '1.0.0'

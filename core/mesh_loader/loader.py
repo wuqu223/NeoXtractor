@@ -85,36 +85,16 @@ class MeshLoader:
             get_logger().error("File not found: %s", file_path)
             return None
 
-        get_logger().debug("Starting adaptive parsing from file: %s", file_path)
+        get_logger().debug("Parsing mesh from file: %s", file_path)
 
         try:
-            # Read file content
             with open(file_path, 'rb') as f:
                 file_content = f.read()
 
-            # First try parsing as bytes
-            result = self.load_from_bytes(file_content)
-            if result is not None:
-                return result
-
-            # Try parsing with file path (for parsers that need file access)
-            for parser in self._parsers:
-                parser_name = parser.__class__.__name__
-                try:
-                    get_logger().debug("Attempting %s (file path)", parser_name)
-
-                    model = parser.parse(file_content)
-
-                    get_logger().info("Successfully parsed using %s (file path)", parser_name)
-                    return model
-
-                except Exception as e:
-                    get_logger().warning("%s (file path) failed: %s", parser_name, e)
-
-        except Exception as e:
+            return self.load_from_bytes(file_content)
+        except (FileNotFoundError, IOError) as e:
             get_logger().error("Error reading file %s: %s", file_path, e)
 
-        get_logger().error("All parsing methods failed")
         return None
 
     def get_parser_info(self) -> List[str]:
