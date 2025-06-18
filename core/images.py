@@ -35,6 +35,8 @@ def _decode_correct_format(fmt, data, width, height, block_x = 4, block_y = 4):
             data = texture2ddecoder.decode_bc1(data, width, height)
         case "DXT5":
             data = texture2ddecoder.decode_bc3(data, width, height)
+        case "ETC1":
+            data = texture2ddecoder.decode_etc1(data, width, height)
         case "ETC2":
             data = texture2ddecoder.decode_etc2(data, width, height)
         case "ETC2A1":
@@ -125,6 +127,8 @@ def ktx_convert(data: bytes):
 
     image_data = f.read(f"bytes{image_size}")
     match glInternalFormat:
+        case 0x8d64:
+            return _decode_correct_format("ETC1", image_data, width, height)
         case 0x9274:
             return _decode_correct_format("ETC2", image_data, width, height)
         case 0x9276:
