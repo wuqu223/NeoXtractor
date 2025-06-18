@@ -39,6 +39,7 @@ class MeshParser1(BaseMeshParser):
                 f.read(2)
                 f.read(count * 4)
             bone_count = read_uint16(f)
+            self._validate_bone_count(bone_count)
             for _ in range(bone_count):
                 parent_node = read_uint16(f)
                 if parent_node == 65535:
@@ -86,10 +87,16 @@ class MeshParser1(BaseMeshParser):
             _flag = read_uint8(f)
             color_len = read_uint8(f)
 
+            self._validate_vertex_count(mesh_vertex_count)
+            self._validate_face_count(mesh_face_count)
+
             model['mesh'].append((mesh_vertex_count, mesh_face_count, _flag, color_len))
 
         vertex_count = read_uint32(f)
         face_count = read_uint32(f)
+
+        self._validate_vertex_count(vertex_count)
+        self._validate_face_count(face_count)
 
         model['position'] = []
         # vertex position
