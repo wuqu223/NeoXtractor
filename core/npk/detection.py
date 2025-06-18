@@ -279,4 +279,7 @@ def get_file_category(extension):
     if extension in ["mesh"]:
         return NPKEntryFileCategories.MESH
 
+    if extension in ["bnk"]:
+        return NPKEntryFileCategories.BANK
+
     return NPKEntryFileCategories.OTHER

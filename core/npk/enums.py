@@ -68,5 +68,6 @@ class NPKEntryFileCategories(StrEnum):
     MESH = "Mesh"
     TEXTURE = "Texture"
     CHARACTER = "Character"
+    BANK = "Bank"
     SKIN = "Skin"
     OTHER = "Other"
