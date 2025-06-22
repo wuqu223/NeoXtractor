@@ -60,7 +60,7 @@ class Camera:
         self.aspect_ratio = 1
         self.perspective = True
         self.min_dist = 5
-        self.max_dist = 1500
+        self.max_dist = 400000 #<aexadev> increased, it could interfere with auto zoom
 
     @property
     def dist(self):
@@ -111,18 +111,19 @@ class Camera:
 
     def proj(self):
         """Return projection matrix"""
+        far_clip = 500000.0  #<aex>farclip increased since 1 unit size is 0.065555 in NeoX
         proj = QMatrix4x4()
         if self.perspective:
-            proj.perspective(self.fov_y, self.aspect_ratio, 0.1, 1000.0)
+            proj.perspective(self.fov_y, self.aspect_ratio, 0.1, far_clip)
         else:
             length = math.tan(math.radians(self.fov_y / 2)) * abs(self.dist)
             if self.aspect_ratio >= 1:
                 proj.ortho(-length * self.aspect_ratio, length * self.aspect_ratio,
-                          -length, length, 0.1, 1000.0)
+                          -length, length, 0.1, far_clip)
             else:
                 proj.ortho(-length, length,
                           -length / self.aspect_ratio, length / self.aspect_ratio,
-                          0.1, 1000.0)
+                          0.1, far_clip)
         return proj
 
     def view_proj(self):
@@ -131,7 +132,7 @@ class Camera:
 
     def dolly(self, amount):
         """Zoom in/out by adjusting distance"""
-        self.dist += amount
+        self.dist *= amount
         self.dist = max(self.min_dist, min(self.dist, self.max_dist))
 
     def orbit(self, dx, dy):
@@ -139,22 +140,28 @@ class Camera:
         self.perspective = True
         self.yaw -= dx * 0.5
         self.pitch = max(-89.0, min(89.0, self.pitch - dy * 0.5))
+        
+    #<aexadev> made panning constant no matter widget size
+    def pan(self,
+            dx_pix: float,
+            dy_pix: float,
+            vp_w: int,
+            vp_h: int):
 
-    def pan(self, dx, dy):
-        """Pan camera in screen space"""
-        pan_speed = 0.01 * self.dist  # Scale pan speed by distance
-        dv = QVector4D(dx * -pan_speed, dy * pan_speed, 0.0, 0.0)
+        fov_rad   = math.radians(self.fov_y)
+        per_pix_y = 2.0 * self.dist * math.tan(fov_rad * 0.5) / vp_h
+        per_pix_x = per_pix_y * self.aspect_ratio
 
-        # Transform by inverse rotation
-        rot_inv = self.rot().inverted()[0]
-        transformed = rot_inv.map(dv)
+        right_amount = -dx_pix * per_pix_x
+        up_amount    =  dy_pix * per_pix_y
 
-        self._pos = QVector4D(
-            self._pos.x() + transformed.x(),
-            self._pos.y() + transformed.y(),
-            self._pos.z() + transformed.z(),
-            1.0
-        )
+        rot_inv = self.rot().inverted()[0]    
+        right   = rot_inv.map(QVector4D(1, 0, 0, 0))
+        up      = rot_inv.map(QVector4D(0, 1, 0, 0))
+
+        offset  = right * right_amount + up * up_amount
+
+        self._pos += offset
 
     def orthogonal(self, direct: OrthogonalDirection, opposite = False):
         """Set camera to orthogonal view"""
@@ -178,6 +185,7 @@ class Camera:
         self.dist = math.sqrt((self._pos.x() - focus_point.x())**2 +
                             (self._pos.y() - focus_point.y())**2 +
                             (self._pos.z() - focus_point.z())**2)
+        
 
     def set_aspect_ratio(self, width, height):
         """Set camera aspect ratio"""
