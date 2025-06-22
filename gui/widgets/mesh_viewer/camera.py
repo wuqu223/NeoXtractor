@@ -60,7 +60,7 @@ class Camera:
         self.aspect_ratio = 1
         self.perspective = True
         self.min_dist = 5
-        self.max_dist = 400000 #<aexadev> increased, it could interfere with auto zoom
+        self.max_dist = 400000 
 
     @property
     def dist(self):
@@ -111,7 +111,7 @@ class Camera:
 
     def proj(self):
         """Return projection matrix"""
-        far_clip = 500000.0  #<aex>farclip increased since 1 unit size is 0.065555 in NeoX
+        far_clip = 500000.0  #<aex>1 unit size is 0.065555 in NeoX
         proj = QMatrix4x4()
         if self.perspective:
             proj.perspective(self.fov_y, self.aspect_ratio, 0.1, far_clip)
@@ -141,7 +141,7 @@ class Camera:
         self.yaw -= dx * 0.5
         self.pitch = max(-89.0, min(89.0, self.pitch - dy * 0.5))
         
-    #<aexadev> made panning constant no matter widget size
+    
     def pan(self,
             dx_pix: float,
             dy_pix: float,
