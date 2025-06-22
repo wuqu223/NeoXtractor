@@ -35,7 +35,7 @@ INSTRUCTIONS = [
 GRID_COLOR = [0.3, 0.3, 0.3]
 GRID_VERTEX_DATA = [
     float(coord)
-    for grid_line in cast(np.ndarray, grid(5, 10))
+    for grid_line in cast(np.ndarray, grid(360, 10))#<aex> increased grid size
     for grid_vertex in grid_line
     for coord in [*grid_vertex, *GRID_COLOR]
 ]
@@ -233,7 +233,7 @@ class MeshRenderWidget(ManagedRhiWidget, CameraController):
             mesh_info = [
                 ("Version", self._mesh_renderer.mesh_data.raw_data.version),
                 ("Bones", self._mesh_renderer.mesh_data.bone_count),
-                ("Vertexes", self._mesh_renderer.mesh_data.vertex_count),
+                ("Vertices", self._mesh_renderer.mesh_data.vertex_count),#<aex>corrected major spelling mistake
                 ("Triangles", self._mesh_renderer.mesh_data.triangle_count)
             ]
 
@@ -302,7 +302,7 @@ class MeshRenderWidget(ManagedRhiWidget, CameraController):
             self.camera.dist = max(self.camera.min_dist, min(ideal_distance, self.camera.max_dist))
         else:
             self.camera.focus()
-        self.camera.orthogonal(OrthogonalDirection.FRONT)
+        #self.camera.orthogonal(OrthogonalDirection.FRONT) #<aex> this makes viewing experience hell, keep the original user camera viewpos
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
         super()._camera_mouse_pressed_event(event)
@@ -362,7 +362,9 @@ class MeshRenderWidget(ManagedRhiWidget, CameraController):
         self.unload_mesh()
 
         if isinstance(data, MeshData):
-            self._mesh_renderer.mesh_data = ProcessedMeshData(data)
+            processed = ProcessedMeshData(data)
+            self._camera_model_size(processed.size)      #<aexadev> passed mdlsize
+            self._mesh_renderer.mesh_data = processed
         else:
             loader = MeshLoader()
             dat = loader.load_from_bytes(data)
