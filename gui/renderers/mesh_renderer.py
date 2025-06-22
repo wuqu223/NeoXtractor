@@ -58,13 +58,13 @@ class ProcessedMeshData:
 
         #<aexadev>Axis aligned bounding box to determine model size
         self.aabb_min = pos.min(axis=0)
-        self.aabb_max = pos.max(axis=0)         
+        self.aabb_max = pos.max(axis=0)
 
         self.center   = (self.aabb_min + self.aabb_max) * 0.5
-        self.extents  = self.aabb_max - self.aabb_min          
+        self.extents  = self.aabb_max - self.aabb_min
 
-        self.radius   = np.linalg.norm(self.extents) * 0.5     
-        self.size     = self.extents.max()  
+        self.radius   = np.linalg.norm(self.extents) * 0.5
+        self.size     = self.extents.max()
 
         # Calculate center and size
         #self.center = (np.max(pos, axis=0) + np.min(pos, axis=0)) / 2

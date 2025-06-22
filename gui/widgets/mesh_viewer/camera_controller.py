@@ -12,8 +12,7 @@ class CameraController:
     def __init__(self):
         self.camera = Camera()
 
-        self.zoom_speed = 2.5
-        self._mdl_sz = 1
+        self.movement_factor = 1
 
         self._last_mouse_pos = QtCore.QPointF(0, 0)
 
@@ -34,7 +33,6 @@ class CameraController:
         if not any(self._mouse_pressed_buttons.values()):
             self._last_mouse_pos = QtCore.QPointF(0, 0)
 
-   
     def _camera_mouse_moved_event(self, event: QtGui.QMouseEvent):
         if not any(self._mouse_pressed_buttons.values()):
             return
@@ -50,19 +48,15 @@ class CameraController:
             self.camera.orbit(dx, dy)
 
         elif self._mouse_pressed_buttons[QtCore.Qt.MouseButton.RightButton]:
-            vp = self.renderTarget().pixelSize()           
-            self.camera.pan(dx, dy, vp.width(), vp.height())
+            self.camera.pan(dx, dy)
 
-    
-    
     def _camera_wheel_event(self, event: QtGui.QWheelEvent):
         notches = event.angleDelta().y() / 120.0
         if notches == 0:
             return
-        zm_stp = 1.1                
+        zm_stp = 1.1
         factor = zm_stp ** (-notches)
         self.camera.dolly(factor)
-
 
     def _camera_key_pressed_event(self, event: QtGui.QKeyEvent):
         self._keyboard_pressed_keys[event.key()] = True
@@ -74,11 +68,6 @@ class CameraController:
     def _camera_key_released_event(self, event: QtGui.QKeyEvent):
         if event.key() in self._keyboard_pressed_keys:
             del self._keyboard_pressed_keys[event.key()]
-        
-   
-    def _camera_model_size(self, size:float):
-        self._mdl_sz = max(size, 1e-6)
-        
 
     def _camera_update(self):
         if not self._keyboard_pressed_keys:
@@ -86,7 +75,7 @@ class CameraController:
 
         forward = 0
         right = 0
-        
+
         sprinting = self._keyboard_pressed_keys.get(QtCore.Qt.Key.Key_Shift, False)
 
         if self._keyboard_pressed_keys.get(QtCore.Qt.Key.Key_W, False):
@@ -98,6 +87,6 @@ class CameraController:
         if self._keyboard_pressed_keys.get(QtCore.Qt.Key.Key_D, False):
             right += 1
 
-        speed = 0.1*self._mdl_sz if not sprinting else 0.2*self._mdl_sz 
+        speed = 0.1 * self.movement_factor if not sprinting else 0.2 * self.movement_factor
 
         self.camera.move(QtGui.QVector4D(right * speed, 0, -forward * speed, 0))

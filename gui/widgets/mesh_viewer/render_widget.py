@@ -15,7 +15,6 @@ from gui.renderers.point_renderer import PointRenderer
 from gui.renderers.text_renderer import TextRenderer
 from gui.utils.rendering import grid
 from gui.widgets.managed_rhi_widget import ManagedRhiWidget
-from gui.widgets.mesh_viewer.camera import OrthogonalDirection
 
 from .camera_controller import CameraController
 
@@ -302,7 +301,8 @@ class MeshRenderWidget(ManagedRhiWidget, CameraController):
             self.camera.dist = max(self.camera.min_dist, min(ideal_distance, self.camera.max_dist))
         else:
             self.camera.focus()
-        #self.camera.orthogonal(OrthogonalDirection.FRONT) #<aex> this makes viewing experience hell, keep the original user camera viewpos
+        #self.camera.orthogonal(OrthogonalDirection.FRONT)
+        #<aex> this makes viewing experience hell, keep the original user camera viewpos
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
         super()._camera_mouse_pressed_event(event)
@@ -363,7 +363,7 @@ class MeshRenderWidget(ManagedRhiWidget, CameraController):
 
         if isinstance(data, MeshData):
             processed = ProcessedMeshData(data)
-            self._camera_model_size(processed.size)      
+            self.movement_factor = processed.size
             self._mesh_renderer.mesh_data = processed
         else:
             loader = MeshLoader()

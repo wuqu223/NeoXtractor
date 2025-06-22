@@ -57,10 +57,11 @@ class Camera:
         self.roll = 0.0
         self._dist = 5
         self.fov_y = 45
+        self._vp_size = (1, 1)
         self.aspect_ratio = 1
         self.perspective = True
         self.min_dist = 5
-        self.max_dist = 400000 
+        self.max_dist = 400000
 
     @property
     def dist(self):
@@ -140,22 +141,17 @@ class Camera:
         self.perspective = True
         self.yaw -= dx * 0.5
         self.pitch = max(-89.0, min(89.0, self.pitch - dy * 0.5))
-        
-    
-    def pan(self,
-            dx_pix: float,
-            dy_pix: float,
-            vp_w: int,
-            vp_h: int):
 
+    def pan(self, dx_pix: float, dy_pix: float):
+        """Pan camera by moving in screen space"""
         fov_rad   = math.radians(self.fov_y)
-        per_pix_y = 2.0 * self.dist * math.tan(fov_rad * 0.5) / vp_h
+        per_pix_y = 2.0 * self.dist * math.tan(fov_rad * 0.5) / self._vp_size[1]
         per_pix_x = per_pix_y * self.aspect_ratio
 
         right_amount = -dx_pix * per_pix_x
         up_amount    =  dy_pix * per_pix_y
 
-        rot_inv = self.rot().inverted()[0]    
+        rot_inv = self.rot().inverted()[0]
         right   = rot_inv.map(QVector4D(1, 0, 0, 0))
         up      = rot_inv.map(QVector4D(0, 1, 0, 0))
 
@@ -185,8 +181,8 @@ class Camera:
         self.dist = math.sqrt((self._pos.x() - focus_point.x())**2 +
                             (self._pos.y() - focus_point.y())**2 +
                             (self._pos.z() - focus_point.z())**2)
-        
 
     def set_aspect_ratio(self, width, height):
         """Set camera aspect ratio"""
-        self.aspect_ratio = width / height if height != 0 else 1.0
+        self._vp_size = (width, height)
+        self.aspect_ratio = width / height
