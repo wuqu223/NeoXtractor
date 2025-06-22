@@ -56,9 +56,19 @@ class ProcessedMeshData:
 
         self.normal_lines = normal_line_vertices
 
+        #<aexadev>Axis aligned bounding box to determine model size
+        self.aabb_min = pos.min(axis=0)
+        self.aabb_max = pos.max(axis=0)         
+
+        self.center   = (self.aabb_min + self.aabb_max) * 0.5
+        self.extents  = self.aabb_max - self.aabb_min          
+
+        self.radius   = np.linalg.norm(self.extents) * 0.5     
+        self.size     = self.extents.max()  
+
         # Calculate center and size
-        self.center = (np.max(pos, axis=0) + np.min(pos, axis=0)) / 2
-        self.size = np.max(np.linalg.norm(pos - self.center, axis=1))
+        #self.center = (np.max(pos, axis=0) + np.min(pos, axis=0)) / 2
+        #self.size = np.max(np.linalg.norm(pos - self.center, axis=1))
 
         # Calculate each bone's position and connections
         bone_positions = []
