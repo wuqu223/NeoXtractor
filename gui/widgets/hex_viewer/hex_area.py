@@ -394,7 +394,7 @@ class HexArea(QtWidgets.QWidget):
                 byte_text = f"{byte_val:02X}"
                 painter.drawText(byte_rect, QtCore.Qt.AlignmentFlag.AlignCenter, byte_text)
 
-            ascii_x = hex_x + hex_width + x_offset + 15
+            ascii_x = hex_x + hex_width + (self._bytes_per_line // self._bytes_per_group - 1) * self._char_width + 15
 
             # Draw ASCII representation
             if self._show_ascii:
