@@ -35,7 +35,7 @@ INSTRUCTIONS = [
 GRID_COLOR = [0.3, 0.3, 0.3]
 GRID_VERTEX_DATA = [
     float(coord)
-    for grid_line in cast(np.ndarray, grid(360, 10))#<aex> increased grid size
+    for grid_line in cast(np.ndarray, grid(360, 10))
     for grid_vertex in grid_line
     for coord in [*grid_vertex, *GRID_COLOR]
 ]
@@ -233,7 +233,7 @@ class MeshRenderWidget(ManagedRhiWidget, CameraController):
             mesh_info = [
                 ("Version", self._mesh_renderer.mesh_data.raw_data.version),
                 ("Bones", self._mesh_renderer.mesh_data.bone_count),
-                ("Vertices", self._mesh_renderer.mesh_data.vertex_count),#<aex>corrected major spelling mistake
+                ("Vertices", self._mesh_renderer.mesh_data.vertex_count),
                 ("Triangles", self._mesh_renderer.mesh_data.triangle_count)
             ]
 
@@ -363,7 +363,7 @@ class MeshRenderWidget(ManagedRhiWidget, CameraController):
 
         if isinstance(data, MeshData):
             processed = ProcessedMeshData(data)
-            self._camera_model_size(processed.size)      #<aexadev> passed mdlsize
+            self._camera_model_size(processed.size)      
             self._mesh_renderer.mesh_data = processed
         else:
             loader = MeshLoader()
