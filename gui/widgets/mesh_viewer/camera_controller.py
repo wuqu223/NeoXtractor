@@ -34,7 +34,7 @@ class CameraController:
         if not any(self._mouse_pressed_buttons.values()):
             self._last_mouse_pos = QtCore.QPointF(0, 0)
 
-    #<aexadev> made constant pan with render size
+   
     def _camera_mouse_moved_event(self, event: QtGui.QMouseEvent):
         if not any(self._mouse_pressed_buttons.values()):
             return
@@ -54,7 +54,7 @@ class CameraController:
             self.camera.pan(dx, dy, vp.width(), vp.height())
 
     
-    #<aexadev>updated to take account of model size
+    
     def _camera_wheel_event(self, event: QtGui.QWheelEvent):
         notches = event.angleDelta().y() / 120.0
         if notches == 0:
@@ -75,7 +75,7 @@ class CameraController:
         if event.key() in self._keyboard_pressed_keys:
             del self._keyboard_pressed_keys[event.key()]
         
-    #<aexadev>needs to be updated in order to normalize zoom based on model size
+   
     def _camera_model_size(self, size:float):
         self._mdl_sz = max(size, 1e-6)
         
@@ -98,6 +98,6 @@ class CameraController:
         if self._keyboard_pressed_keys.get(QtCore.Qt.Key.Key_D, False):
             right += 1
 
-        speed = 0.1*self._mdl_sz if not sprinting else 0.2*self._mdl_sz #<aexadev> normalized movement based on model size
+        speed = 0.1*self._mdl_sz if not sprinting else 0.2*self._mdl_sz 
 
         self.camera.move(QtGui.QVector4D(right * speed, 0, -forward * speed, 0))
