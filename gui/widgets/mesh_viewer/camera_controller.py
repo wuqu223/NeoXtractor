@@ -13,6 +13,7 @@ class CameraController:
         self.camera = Camera()
 
         self.zoom_speed = 2.5
+        self._mdl_sz = 1
 
         self._last_mouse_pos = QtCore.QPointF(0, 0)
 
@@ -33,22 +34,35 @@ class CameraController:
         if not any(self._mouse_pressed_buttons.values()):
             self._last_mouse_pos = QtCore.QPointF(0, 0)
 
+    #<aexadev> made constant pan with render size
     def _camera_mouse_moved_event(self, event: QtGui.QMouseEvent):
         if not any(self._mouse_pressed_buttons.values()):
             return
 
         current_pos = event.position()
-        delta = current_pos - self._last_mouse_pos
+        delta       = current_pos - self._last_mouse_pos
         self._last_mouse_pos = current_pos
 
-        if self._mouse_pressed_buttons[QtCore.Qt.MouseButton.LeftButton]:
-            self.camera.orbit(delta.x(), delta.y())
-        elif self._mouse_pressed_buttons[QtCore.Qt.MouseButton.RightButton]:
-            self.camera.pan(delta.x(), delta.y())
+        dx = delta.x()
+        dy = delta.y()
 
+        if self._mouse_pressed_buttons[QtCore.Qt.MouseButton.LeftButton]:
+            self.camera.orbit(dx, dy)
+
+        elif self._mouse_pressed_buttons[QtCore.Qt.MouseButton.RightButton]:
+            vp = self.renderTarget().pixelSize()           
+            self.camera.pan(dx, dy, vp.width(), vp.height())
+
+    
+    #<aexadev>updated to take account of model size
     def _camera_wheel_event(self, event: QtGui.QWheelEvent):
-        delta = event.angleDelta().y() / 100.0
-        self.camera.dolly(-delta * self.zoom_speed)
+        notches = event.angleDelta().y() / 120.0
+        if notches == 0:
+            return
+        zm_stp = 1.1                
+        factor = zm_stp ** (-notches)
+        self.camera.dolly(factor)
+
 
     def _camera_key_pressed_event(self, event: QtGui.QKeyEvent):
         self._keyboard_pressed_keys[event.key()] = True
@@ -60,6 +74,11 @@ class CameraController:
     def _camera_key_released_event(self, event: QtGui.QKeyEvent):
         if event.key() in self._keyboard_pressed_keys:
             del self._keyboard_pressed_keys[event.key()]
+        
+    #<aexadev>needs to be updated in order to normalize zoom based on model size
+    def _camera_model_size(self, size:float):
+        self._mdl_sz = max(size, 1e-6)
+        
 
     def _camera_update(self):
         if not self._keyboard_pressed_keys:
@@ -67,6 +86,7 @@ class CameraController:
 
         forward = 0
         right = 0
+        
         sprinting = self._keyboard_pressed_keys.get(QtCore.Qt.Key.Key_Shift, False)
 
         if self._keyboard_pressed_keys.get(QtCore.Qt.Key.Key_W, False):
@@ -78,6 +98,6 @@ class CameraController:
         if self._keyboard_pressed_keys.get(QtCore.Qt.Key.Key_D, False):
             right += 1
 
-        speed = 0.1 if not sprinting else 0.2
+        speed = 0.1*self._mdl_sz if not sprinting else 0.2*self._mdl_sz #<aexadev> normalized movement based on model size
 
         self.camera.move(QtGui.QVector4D(right * speed, 0, -forward * speed, 0))
