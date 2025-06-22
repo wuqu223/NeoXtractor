@@ -222,7 +222,9 @@ class HexArea(QtWidgets.QWidget):
     def _measure_font_metrics(self):
         """Measure font metrics for the current font."""
         self._font_metrics = QtGui.QFontMetrics(self.font())
-        self._char_width = self._font_metrics.horizontalAdvance("0")
+        # Find the widest character among 0-9, A-F, and 'Address' letters
+        chars = "0123456789ABCDEFdres"
+        self._char_width = max(self._font_metrics.horizontalAdvance(c) for c in chars)
         self._char_height = self._font_metrics.height()
 
     def _calculate_address_width(self) -> int:
