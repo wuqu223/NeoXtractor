@@ -47,7 +47,6 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          export CIBUILDWHEEL=1 # Make astc-encoder-py build for all instruction sets
           uv sync --locked
           uv pip install pyinstaller
 
