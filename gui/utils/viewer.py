@@ -8,8 +8,9 @@ from gui.widgets.code_editor import CodeEditor
 from gui.widgets.hex_viewer import HexViewer
 from gui.widgets.mesh_viewer.viewer_widget import MeshViewer
 from gui.widgets.texture_viewer import TextureViewer
+from gui.widgets.bnk_viewer import BnkViewer
 
-ALL_VIEWERS = (HexViewer, CodeEditor, TextureViewer, MeshViewer)
+ALL_VIEWERS = (HexViewer, CodeEditor, TextureViewer, MeshViewer, BnkViewer)
 
 def find_best_viewer(extension: str, is_text = False) -> Type[QtWidgets.QWidget]:
     """
@@ -58,6 +59,11 @@ def set_data_for_viewer(viewer: QtWidgets.QWidget, data: bytes | None, extension
             viewer.unload_mesh()
         else:
             viewer.load_mesh(data)
+    elif isinstance(viewer, BnkViewer):
+        if data is None:
+            viewer.clear_all()
+        else:
+            viewer.read_bnk(data, extension)
 
 def set_entry_for_viewer(viewer: QtWidgets.QWidget, data: NPKEntry | None):
     """
