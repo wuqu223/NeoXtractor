@@ -131,7 +131,7 @@ def ktx_convert(data: bytes):
 
     image_data = f.read(f"bytes{image_size}")
     match glInternalFormat:
-        case 0x8d64:
+        case 0x8D64:
             return _decode_correct_format("ETC1", image_data, width, height)
         case 0x9274:
             return _decode_correct_format("ETC2", image_data, width, height)
