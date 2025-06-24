@@ -116,7 +116,7 @@ class BnkViewer(QtWidgets.QWidget):
             content = self.container.get_file_content(item.text())
             if content is not None:
                 open(QtWidgets.QFileDialog.getSaveFileName(self, "Save WEM File", item.text() + ".wem", "WEM Files (*.wem)")[0], "wb").write(content)
-                self.msg_box.setText(f"File '{item.text()}'.wem saved successfully.")
+                self.msg_box.setText(f"File '{item.text()}.wem' saved successfully.")
             else:
                 QtWidgets.QMessageBox.critical(self, "Not found", "File content not found.")
 
