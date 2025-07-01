@@ -41,8 +41,8 @@ class CameraController:
         delta       = current_pos - self._last_mouse_pos
         self._last_mouse_pos = current_pos
 
-        dx = delta.x()*-1
-        dy = delta.y()*-1
+        dx = -delta.x()
+        dy = -delta.y()
 
         if self._mouse_pressed_buttons[QtCore.Qt.MouseButton.LeftButton]:
             self.camera.orbit(dx, dy)
