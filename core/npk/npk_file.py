@@ -1,7 +1,6 @@
 """NPK File Reader"""
 
 import io
-from bitstring import ConstBitStream
 
 from typing import List, Dict
 
