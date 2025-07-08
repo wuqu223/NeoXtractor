@@ -109,10 +109,8 @@ class ViewerTabWindow(QtWidgets.QMainWindow):
         
         :param index: The index of the tab to load data for.
         """
-        if self.tab_widget.count() == 0:
-            return
         viewer = self.tab_widget.widget(index)
-        if not hasattr(viewer, "_lazy_load_data"):
+        if not viewer or not hasattr(viewer, "_lazy_load_data"):
             return
         data, filename = getattr(viewer, "_lazy_load_data")
         setattr(viewer, "_lazy_load_data", None) # Clear lazy load data
@@ -125,6 +123,14 @@ class ViewerTabWindow(QtWidgets.QMainWindow):
                 str(e)
             )
             self.tab_widget.removeTab(index)
+
+    def ensure_data_loaded(self, index: int):
+        """
+        Ensure that the data for the viewer at the specified index is loaded.
+        
+        :param index: The index of the tab to ensure data is loaded for.
+        """
+        self._load_lazy_data(index)
 
     def load_file(self, data: bytes, filename: str, take_focus = True, lazy_load = False):
         """

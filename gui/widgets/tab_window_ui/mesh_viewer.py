@@ -84,6 +84,7 @@ def _save_all_as_format(window: 'ViewerTabWindow', target_format):
         return
 
     for i in range(window.tab_widget.count()):
+        window.ensure_data_loaded(i)
         viewer = cast('MeshViewer', window.tab_widget.widget(i))
         if viewer is None or viewer.render_widget.mesh_data is None:
             continue

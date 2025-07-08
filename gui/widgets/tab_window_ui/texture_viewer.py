@@ -92,6 +92,7 @@ def _save_all_as_format(window: 'ViewerTabWindow', target_format: str):
     if not save_directory:
         return
     for i in range(file_count):
+        window.ensure_data_loaded(i)
         viewer = cast('TextureViewer', window.tab_widget.widget(i))
         if viewer is None or viewer.texture is None:
             continue
