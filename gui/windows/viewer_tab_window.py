@@ -63,11 +63,12 @@ class ViewerTabWindow(QtWidgets.QMainWindow):
             open_file_action.setShortcut("Ctrl+O")
             def open_file_dialog():
                 file_filter = "All Files (*)"
-                if hasattr(self._viewer_factory, "accepted_extensions") and \
-                    (not hasattr(self._viewer_factory, "allow_unsupported_extensions") or \
-                     not getattr(self._viewer_factory, "allow_unsupported_extensions")):
+                if hasattr(self._viewer_factory, "accepted_extensions"):
                     extensions = getattr(self._viewer_factory, "accepted_extensions")
                     file_filter = f"Supported Files (*.{' *.'.join(extensions)})"
+                    if (hasattr(self._viewer_factory, "allow_unsupported_extensions") and \
+                         getattr(self._viewer_factory, "allow_unsupported_extensions")):
+                        file_filter += " ;; All Files (*)"
                 file_paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
                     self,
                     "Open File",
