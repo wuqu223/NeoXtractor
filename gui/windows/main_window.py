@@ -74,11 +74,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.list_widget = NPKFileList(self)
         self.list_widget.preview_entry.connect(lambda _row, entry: self.preview_widget.set_file(entry))
-        def open_tab_window_for_entry(_row: int, entry: NPKEntry, viewer: type | None = None):
+        def open_tab_window_for_entry(_row: int, entry: NPKEntry, viewer: type | None = None, batch_index: int = 0):
             if viewer is None:
                 viewer = find_best_viewer(entry.extension, bool(entry.data_flags & NPKEntryDataFlags.TEXT))
             wnd = self._get_tab_window_for_viewer(viewer)
-            wnd.load_file(entry.data, entry.filename)
+            wnd.load_file(entry.data, entry.filename, batch_index == 0)
             wnd.show()
         self.list_widget.open_entry.connect(open_tab_window_for_entry)
         self.list_widget.open_entry_with.connect(open_tab_window_for_entry)

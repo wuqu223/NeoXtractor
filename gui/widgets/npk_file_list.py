@@ -18,7 +18,7 @@ class NPKFileList(QtWidgets.QListView):
 
     preview_entry = QtCore.Signal(int, NPKEntry)
     open_entry = QtCore.Signal(int, NPKEntry)
-    open_entry_with = QtCore.Signal(int, NPKEntry, type)
+    open_entry_with = QtCore.Signal(int, NPKEntry, type, int)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
@@ -177,10 +177,10 @@ class NPKFileList(QtWidgets.QListView):
         npk_file = get_npk_file()
         if npk_file is None:
             return
-        for index in indexes:
+        for i, index in enumerate(indexes):
             row = index.row()
             entry = npk_file.read_entry(row)
-            self.open_entry_with.emit(row, entry, viewer)
+            self.open_entry_with.emit(row, entry, viewer, i)
 
     def extract_entries(self, indexes: list[QtCore.QModelIndex]):
         """
