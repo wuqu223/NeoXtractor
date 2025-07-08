@@ -50,7 +50,8 @@ class ViewerTabWindow(QtWidgets.QMainWindow):
             )
         )
         self.tab_widget.currentChanged.connect(
-            lambda index: self.setWindowTitle(f"{self.tab_widget.tabText(index)} - {self._viewer_name}")
+            lambda index: (self.setWindowTitle(f"{self.tab_widget.tabText(index)} - {self._viewer_name}"),
+                           self._load_lazy_data(index))
         )
         self.central_layout.addWidget(self.no_tab_label)
         self.central_layout.addWidget(self.tab_widget)
@@ -80,7 +81,7 @@ class ViewerTabWindow(QtWidgets.QMainWindow):
                         with open(file_path, "rb") as file:
                             data = file.read()
                             filename = os.path.basename(file_path)
-                            self.load_file(data, filename, i == 0)
+                            self.load_file(data, filename, i == 0, i != 0)
             open_file_action.triggered.connect(open_file_dialog)
 
             close_all_action = menu.addAction("Close All")
@@ -102,14 +103,19 @@ class ViewerTabWindow(QtWidgets.QMainWindow):
         if hasattr(self._viewer_factory, "setup_tab_window"):
             getattr(self._viewer_factory, "setup_tab_window")(self)
 
-    def load_file(self, data: bytes, filename: str, take_focus = True):
+    def _load_lazy_data(self, index: int):
         """
-        Load a file.
+        Load data for the viewer at the specified index if it has not been loaded yet.
         
-        :param data: The file data to load.
-        :param extension: The file extension.
+        :param index: The index of the tab to load data for.
         """
-        viewer = self._viewer_factory()
+        if self.tab_widget.count() == 0:
+            return
+        viewer = self.tab_widget.widget(index)
+        if not hasattr(viewer, "_lazy_load_data"):
+            return
+        data, filename = getattr(viewer, "_lazy_load_data")
+        setattr(viewer, "_lazy_load_data", None) # Clear lazy load data
         try:
             set_data_for_viewer(viewer, data, os.path.splitext(filename)[1][1:])
         except ValueError as e:
@@ -118,7 +124,28 @@ class ViewerTabWindow(QtWidgets.QMainWindow):
                 "Error",
                 str(e)
             )
-            return
+            self.tab_widget.removeTab(index)
+
+    def load_file(self, data: bytes, filename: str, take_focus = True, lazy_load = False):
+        """
+        Load a file.
+        
+        :param data: The file data to load.
+        :param extension: The file extension.
+        """
+        viewer = self._viewer_factory()
+        if lazy_load:
+            setattr(viewer, "_lazy_load_data", (data, filename))
+        else:
+            try:
+                set_data_for_viewer(viewer, data, os.path.splitext(filename)[1][1:])
+            except ValueError as e:
+                QtWidgets.QMessageBox.critical(
+                    self,
+                    "Error",
+                    str(e)
+                )
+                return
         idx = self.tab_widget.addTab(viewer, filename)
         if take_focus:
             self.tab_widget.setCurrentIndex(idx)
