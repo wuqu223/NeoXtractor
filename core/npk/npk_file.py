@@ -254,7 +254,7 @@ class NPKFile:
             try:
                 entry.data = decompress_entry(entry)
             except Exception:
-                if self.options.decryption_key is not None or self.options.decryption_key != 0:
+                if entry.encrypt_flag == DecryptionType.BASIC_XOR:
                     get_logger().error("Error decompressing the file, did you choose the correct key for this NPK?")
                     entry.data_flags |= NPKEntryDataFlags.ENCRYPTED
                 else:
