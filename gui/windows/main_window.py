@@ -78,7 +78,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if viewer is None:
                 viewer = find_best_viewer(entry.extension, bool(entry.data_flags & NPKEntryDataFlags.TEXT))
             wnd = self._get_tab_window_for_viewer(viewer)
-            wnd.load_file(entry.data, entry.filename, batch_index == 0, batch_index != 0)
+            wnd.load_file(entry.data, entry.filename, batch_index == 0)
             wnd.show()
         self.list_widget.open_entry.connect(open_tab_window_for_entry)
         self.list_widget.open_entry_with.connect(open_tab_window_for_entry)
