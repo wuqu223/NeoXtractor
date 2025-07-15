@@ -47,6 +47,8 @@ def _decode_correct_format(fmt, data, width, height, block_x = 4, block_y = 4):
             data = texture2ddecoder.decode_etc2a8(data, width, height)
         case "PVRTC":
             data = texture2ddecoder.decode_pvrtc(data, width, height, False)
+        case "RGBA8":
+            return Image.frombytes("RGBA", (width, height), data, 'raw', ("RGBA"))
     return Image.frombytes("RGBA", (width, height), data, 'raw', ("BGRA"))
 
 #this code was derived from TeaEffTeu's works and he slightly guided me, thank you very much for sharing!!
@@ -131,6 +133,8 @@ def ktx_convert(data: bytes):
 
     image_data = f.read(f"bytes{image_size}")
     match glInternalFormat:
+        case 0x8058:
+            return _decode_correct_format("RGBA8", image_data, width, height)
         case 0x8D64:
             return _decode_correct_format("ETC1", image_data, width, height)
         case 0x9274:
