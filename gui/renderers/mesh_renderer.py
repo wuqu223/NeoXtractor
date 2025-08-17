@@ -12,7 +12,7 @@ from core.mesh_loader import MeshData
 from core.utils import get_application_path
 from gui.renderers.point_renderer import PointRenderer
 from gui.utils.rendering import is_d3d, static_uniform_buffer_type
-from gui.widgets.mesh_viewer.camera import Camera
+from gui.widgets.viewers.mesh_viewer.camera import Camera
 
 MESH_COLOR = [0.8, 0.8, 0.8]
 

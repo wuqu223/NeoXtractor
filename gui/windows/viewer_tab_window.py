@@ -5,9 +5,10 @@ import os
 from typing import Type, TypeVar
 from PySide6 import QtWidgets, QtCore
 
-from gui.utils.viewer import get_viewer_display_name, set_data_for_viewer
+from core.file import IFile, SimpleFile
+from gui.widgets.viewer import ICustomTabWindow, Viewer
 
-T = TypeVar("T", bound=QtWidgets.QWidget)
+T = TypeVar("T", bound=Viewer)
 
 class ViewerTabWindow(QtWidgets.QMainWindow):
     """
@@ -22,7 +23,7 @@ class ViewerTabWindow(QtWidgets.QMainWindow):
         super().__init__(parent)
 
         self._viewer_factory = viewer
-        self._viewer_name = get_viewer_display_name(viewer)
+        self._viewer_name = viewer.name
 
         self.setWindowTitle(self._viewer_name)
         self.setMinimumSize(800, 600)
@@ -80,7 +81,8 @@ class ViewerTabWindow(QtWidgets.QMainWindow):
                         with open(file_path, "rb") as file:
                             data = file.read()
                             filename = os.path.basename(file_path)
-                            self.load_file(data, filename, i == 0)
+                            file = SimpleFile(filename, data)
+                            self.load_file(file, i == 0)
             open_file_action.triggered.connect(open_file_dialog)
 
             close_all_action = menu.addAction("Close All")
@@ -99,10 +101,10 @@ class ViewerTabWindow(QtWidgets.QMainWindow):
 
         self.menuBar().addMenu(file_menu())
 
-        if hasattr(self._viewer_factory, "setup_tab_window"):
-            getattr(self._viewer_factory, "setup_tab_window")(self)
+        if issubclass(self._viewer_factory, ICustomTabWindow):
+            self._viewer_factory.setup_tab_window(self)
 
-    def load_file(self, data: bytes, filename: str, take_focus = True):
+    def load_file(self, file: IFile, take_focus = True):
         """
         Load a file.
         
@@ -111,7 +113,7 @@ class ViewerTabWindow(QtWidgets.QMainWindow):
         """
         viewer = self._viewer_factory()
         try:
-            set_data_for_viewer(viewer, data, os.path.splitext(filename)[1][1:])
+            viewer.set_file(file)
         except ValueError as e:
             QtWidgets.QMessageBox.critical(
                 self,
@@ -119,7 +121,7 @@ class ViewerTabWindow(QtWidgets.QMainWindow):
                 str(e)
             )
             return
-        idx = self.tab_widget.addTab(viewer, filename)
+        idx = self.tab_widget.addTab(viewer, file.name)
         if take_focus:
             self.tab_widget.setCurrentIndex(idx)
         self.no_tab_label.setVisible(False)

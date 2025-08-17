@@ -5,7 +5,8 @@ from PySide6 import QtWidgets, QtCore
 
 from core.npk.class_types import NPKEntry, NPKEntryDataFlags
 from core.utils import format_bytes
-from gui.utils.viewer import ALL_VIEWERS, find_best_viewer, get_viewer_display_name, set_entry_for_viewer
+from gui.utils.viewer import ALL_VIEWERS, find_best_viewer
+from gui.widgets.viewer import Viewer
 
 SELECT_ENTRY_TEXT = "Select an entry to preview."
 
@@ -15,7 +16,7 @@ class PreviewWidget(QtWidgets.QWidget):
     """
 
     _current_entry: NPKEntry | None = None
-    _previewers: list[QtWidgets.QWidget] = []
+    _previewers: list[Viewer] = []
 
     def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
@@ -58,17 +59,17 @@ class PreviewWidget(QtWidgets.QWidget):
 
         self.set_control_bar_visible(False)
 
-    def _add_previewer(self, previewer: QtWidgets.QWidget):
+    def _add_previewer(self, previewer: Viewer):
         """
         Add a previewer to the preview widget.
         
         :param previewer: The previewer to add.
         :param name: The name of the previewer.
         """
-        self.previewer_selector.addItem(get_viewer_display_name(previewer), previewer)
+        self.previewer_selector.addItem(previewer.name, previewer)
         self._previewers.append(previewer)
 
-    def _set_data_for_previewer(self, previewer: QtWidgets.QWidget, data: NPKEntry | None):
+    def _set_data_for_previewer(self, previewer: Viewer, data: NPKEntry | None):
         """
         Set the data for the previewer. When errors occur, hide the previewer and show an error message.
         
@@ -76,7 +77,10 @@ class PreviewWidget(QtWidgets.QWidget):
         :param data: The NPK entry data to set.
         """
         try:
-            set_entry_for_viewer(previewer, data)
+            if data is None:
+                previewer.unload_file()
+            else:
+                previewer.set_file(data)
         except ValueError as e:
             previewer.setVisible(False)
             self.message_label.setText(cast(str, e.args[0]))
@@ -91,7 +95,7 @@ class PreviewWidget(QtWidgets.QWidget):
         self.status_label.setVisible(visible)
         self.previewer_selector.setVisible(visible)
 
-    def select_previewer(self, previewer: QtWidgets.QWidget):
+    def select_previewer(self, previewer: Viewer):
         """
         Select a previewer to display.
         

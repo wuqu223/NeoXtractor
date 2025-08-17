@@ -9,7 +9,7 @@ from core.npk.class_types import NPKEntry
 from gui.models.npk_file_model import NPKFileModel
 from gui.utils.config import save_config_manager_to_settings
 from gui.utils.npk import get_npk_file
-from gui.utils.viewer import ALL_VIEWERS, get_viewer_display_name
+from gui.utils.viewer import ALL_VIEWERS
 
 class NPKFileList(QtWidgets.QListView):
     """
@@ -154,7 +154,7 @@ class NPKFileList(QtWidgets.QListView):
 
         menu.addSeparator()
         for viewer in ALL_VIEWERS:
-            viewer_action = menu.addAction("Open in " + get_viewer_display_name(viewer))
+            viewer_action = menu.addAction("Open in " + viewer.name)
             viewer_action.triggered.connect(
                 lambda _checked, v=viewer: self.open_entries_with(indexes, v)
             )

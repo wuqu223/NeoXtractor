@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from enum import IntFlag, auto
 import os
+
+from core.file import IFile
 from .enums import CompressionType, DecryptionType, NPKEntryFileCategories
 
 class NPKEntryDataFlags(IntFlag):
@@ -49,13 +51,13 @@ class NPKIndex:
             f"encryption={DecryptionType.get_name(self.encrypt_flag)})"
         )
 
-class NPKEntry(NPKIndex):
+class NPKEntry(NPKIndex, IFile):
     """Represents a file entry in an NPK file, including the actual file data."""
 
     def __init__(self):
         super().__init__()
-        self.data: bytes = b""
-        self.extension: str = ""
+        self._data: bytes = b""
+        self._extension: str | None = None
         self.category: NPKEntryFileCategories = NPKEntryFileCategories.OTHER
 
     @property
@@ -67,10 +69,6 @@ class NPKEntry(NPKIndex):
     def is_encrypted(self) -> bool:
         """Check if the entry is encrypted."""
         return self.encrypt_flag != 0
-
-    def get_data(self) -> bytes:
-        """Get the file data."""
-        return self.data
 
     def save_to_file(self, path: str) -> None:
         """Save the file data to the specified path."""
@@ -85,3 +83,24 @@ class NPKEntry(NPKIndex):
             f"compression={CompressionType.get_name(self.zip_flag)}, "
             f"encryption={DecryptionType.get_name(self.encrypt_flag)})"
         )
+
+    # IFile implementations
+    @property
+    def name(self) -> str:
+        return self.filename
+
+    @property
+    def data(self) -> bytes:
+        return self._data
+
+    @data.setter
+    def data(self, value: bytes) -> None:
+        self._data = value
+
+    @property
+    def extension(self) -> str:
+        return self._extension if self._extension else super().extension
+
+    @extension.setter
+    def extension(self, value: str) -> None:
+        self._extension = value

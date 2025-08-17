@@ -10,9 +10,11 @@ from PySide6.QtCore import QRegularExpression, Qt, QRect, QSize, Signal
 from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont, QTextDocument, QPainter, QPaintEvent
 from PySide6.QtWidgets import QPlainTextEdit, QWidget, QHBoxLayout, QLabel, QComboBox, QFrame, QVBoxLayout
 
+from core.file import IFile
 from core.logger import get_logger
 from core.utils import get_application_path
 from gui.theme.theme_manager import ThemeManager
+from gui.widgets.viewer import Viewer
 
 class LineNumberArea(QWidget):
     """
@@ -472,7 +474,7 @@ class CodeViewer(QPlainTextEdit):
         cr = self.contentsRect()
         self.line_number_area.setGeometry(QRect(cr.left(), cr.top(), self.line_number_area_width(), cr.height()))
 
-class CodeEditor(QWidget):
+class CodeEditor(Viewer):
     """
     CodeEditor is a widget for displaying and editing code with syntax highlighting.
     This widget combines a CodeViewer for text editing with a status bar that shows
@@ -485,9 +487,8 @@ class CodeEditor(QWidget):
         main_layout (QVBoxLayout): The main layout of the widget.
     """
 
-    # Viewer name
     name = "Code Viewer"
-    accepted_extensions = ["txt", "h", "json", "py", "xml"]
+    accepted_extensions = {"txt", "h", "json", "py", "xml"}
     allow_unsupported_extensions = True
 
     _ext_lang_map: dict[str, str] = {}
@@ -495,8 +496,12 @@ class CodeEditor(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self._file: IFile | None = None
+
         self.viewer = CodeViewer(self)
         self.viewer.languageChanged.connect(self._on_language_changed)
+
+        self.set_language = self.viewer.set_language
 
         # Create bottom status bar
         self.status_bar = QFrame()
@@ -553,7 +558,7 @@ class CodeEditor(QWidget):
 
     def _on_language_selected(self, index: int):
         """Handle language selection changes."""
-        self.viewer.set_language(self.language_selector.itemData(index))
+        self.set_language(self.language_selector.itemData(index))
 
     def _on_language_changed(self, language):
         """Handle language changes in the viewer."""
@@ -566,10 +571,19 @@ class CodeEditor(QWidget):
         column = cursor.columnNumber() + 1
         self.cursor_position_label.setText(f"Line: {line}, Column: {column}")
 
-    def set_content(self, content: str, extension: str | None = None):
-        """Set the content of the code editor."""
-        if extension:
-            self.viewer.set_language(self._ext_lang_map.get(extension, "text"))
-        else:
-            self.viewer.set_language("text")
+    def set_content(self, content: str):
+        """Set content of editor."""
         self.viewer.setPlainText(content)
+
+    def get_file(self) -> IFile | None:
+        return self._file
+
+    def set_file(self, file: IFile) -> None:
+        """Set the content of the code editor."""
+        self._file = file
+        self.set_language(self._ext_lang_map.get(file.extension, "text"))
+        self.set_content(file.data.decode(errors='replace'))
+
+    def unload_file(self):
+        self._file = None
+        self.set_content("")

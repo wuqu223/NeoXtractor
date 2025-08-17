@@ -1,6 +1,8 @@
-from PySide6 import QtWidgets, QtCore, QtGui
+from PySide6 import QtWidgets, QtCore
 from bitstring import ConstBitStream
 
+from core.file import IFile
+from gui.widgets.viewer import Viewer
 
 class BNKExtractor():
     """A class to extract WEM files from a BNK file."""
@@ -13,20 +15,20 @@ class BNKExtractor():
             # BNKH
             f.pos = 32
             f.pos += int(f.read('uintle:32')) * 8 + 32
-            
+
             extract_list = []
-            
+
             #THIS ONE HAS WEM FILES
             if f.read('bytes:4') == b"DIDX":
                 didx_len = f.read('uintle32')
                 files = didx_len // 12
                 for x in range(files):
                     extract_list.append(f.readlist("3*uintle32"))
-                
+
                 #DATA
                 f.pos += 64
                 start_of_data = f.pos
-                
+
                 for id, offset, len in extract_list:
                     f.pos = start_of_data + (offset * 8)
                     self.files.append((str(id), f.read(f"bytes{len}")))
@@ -51,13 +53,16 @@ class BNKExtractor():
                 return content
         return None
 
-class BnkViewer(QtWidgets.QWidget):
+class BnkViewer(Viewer):
     """Widget that displays a BNK file and allows saving WEM files."""
+
     name = "BNK Viewer"
-    accepted_extensions = ["bnk"]
+    accepted_extensions = {"bnk"}
 
     def __init__(self):
         super().__init__()
+
+        self._file: IFile | None = None
 
         #self.setWindowTitle("BNK Viewer")
         #self.resize(400, 300)
@@ -95,11 +100,22 @@ class BnkViewer(QtWidgets.QWidget):
         else:
             self.msg_box.setText("No WEM files found in the BNK container.")
 
+    def set_file(self, file: IFile) -> None:
+        self._file = file
+        self.read_bnk(file.data, file.extension)
+
+    def get_file(self) -> IFile | None:
+        return self._file
+
+    def unload_file(self):
+        self._file = None
+        self.clear_all()
+
     def clear_all(self):
         """Clear the list widget and reset the container."""
         if hasattr(self, 'container') and self.container:
             self.container = None
-            
+
         self.list_widget.clear()
         self.msg_box.setText("No BNK file loaded.")
 

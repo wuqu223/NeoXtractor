@@ -15,7 +15,7 @@ from gui.models.npk_file_model import NPKFileModel
 from gui.npk_entry_filter import NPKEntryFilter
 from gui.settings_manager import SettingsManager
 from gui.utils.config import save_config_manager_to_settings
-from gui.utils.viewer import ALL_VIEWERS, find_best_viewer, get_viewer_display_name
+from gui.utils.viewer import ALL_VIEWERS, find_best_viewer
 from gui.widgets.npk_file_list import NPKFileList
 from gui.widgets.preview_widget import PreviewWidget
 from gui.windows.about_window import AboutWindow
@@ -78,7 +78,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if viewer is None:
                 viewer = find_best_viewer(entry.extension, bool(entry.data_flags & NPKEntryDataFlags.TEXT))
             wnd = self._get_tab_window_for_viewer(viewer)
-            wnd.load_file(entry.data, entry.filename, batch_index == 0)
+            wnd.load_file(entry, batch_index == 0)
             wnd.show()
         self.list_widget.open_entry.connect(open_tab_window_for_entry)
         self.list_widget.open_entry_with.connect(open_tab_window_for_entry)
@@ -281,7 +281,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             for viewer in ALL_VIEWERS:
                 menu.addAction(
-                    get_viewer_display_name(viewer),
+                    viewer.name,
                     lambda v=viewer: self._get_tab_window_for_viewer(v).show()
                 )
 
