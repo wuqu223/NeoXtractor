@@ -43,8 +43,7 @@
   "skeletonrig": "xml",
   "render": "xml",
   "blendspace": "xml",
-  "blendspace1d": "xml",
-  "animation": "xml",
+  "blendspace1d": "xml",  
   
   "json": "json",
   "nxmeta": "json",
@@ -53,6 +52,9 @@
   "haptic": "json",
   "pse": "json",
   "psemusic": "json",
+  "stb": "json",
+  "animation": "json",  
+  "skeleton": "json",  
   
   "h": "h",
   "hpp": "h",

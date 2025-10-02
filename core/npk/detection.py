@@ -34,7 +34,7 @@ def _get_binary_ext(data: bytes, flags: NPKEntryDataFlags):
         if b'WAVE' in data:
             return 'wem'
     if data[:8] == b'RAWANIMA':
-        return 'rawanimation'
+        return 'cpdanimation'
     if data[:8] == b'NEOXBIN1':
         return 'uiprefab'
     if data[:8] == b'SKELETON':
@@ -71,7 +71,7 @@ def _get_binary_ext(data: bytes, flags: NPKEntryDataFlags):
     if data[:4] == bytes([0xC1, 0x59, 0x41, 0x0D]):
         if b"Material" in data:
             return 'mtg'
-        if b"GisFiles" in data:
+        if b"SubMesh" in data:
             return 'gim'
         if b"Anim" in data:
             return 'ags'
@@ -139,6 +139,8 @@ def _get_text_ext(data: bytes, flags: NPKEntryDataFlags):
             return 'gim'
         if b'<FxGroup' in data:
             return 'sfx'
+        if b'"AssetType" : "Animation"' in data:
+            return 'animation'
         if b'<Track' in data:
             return 'trackgroup'
         if b'<Instances' in data:
@@ -232,6 +234,10 @@ def _get_text_ext(data: bytes, flags: NPKEntryDataFlags):
             return 'txg'
         if b'?xml' in data:
             return 'xml'
+        if b'"AssetType" : "Skeleton"' in data:
+            return "skeleton"
+        if b'"Type" : "NewSpringAnimData"' in data:
+            return "stb"
 
     return None
 
@@ -281,5 +287,8 @@ def get_file_category(extension):
 
     if extension in ["bnk"]:
         return NPKEntryFileCategories.BANK
+    
+    if extension in ["gim", "mtg", "ags", "unknown1"]:
+        return NPKEntryFileCategories.XML
 
     return NPKEntryFileCategories.OTHER

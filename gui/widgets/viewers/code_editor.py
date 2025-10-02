@@ -488,7 +488,7 @@ class CodeEditor(Viewer):
     """
 
     name = "Code Viewer"
-    accepted_extensions = {"txt", "h", "json", "py", "xml"}
+    accepted_extensions = {"txt", "h", "json", "py", "xml", "gim", "mtg", "ags", "unknown1"}
     allow_unsupported_extensions = True
 
     _ext_lang_map: dict[str, str] = {}
