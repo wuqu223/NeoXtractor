@@ -70,4 +70,5 @@ class NPKEntryFileCategories(StrEnum):
     CHARACTER = "Character"
     BANK = "Bank"
     SKIN = "Skin"
+    XML = "NeoX XML"
     OTHER = "Other"

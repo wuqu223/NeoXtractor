@@ -9,8 +9,9 @@ from arc4 import ARC4
 from core.binary_readers import read_uint32, read_uint16, read_uint64
 from core.npk.decompression import check_nxs3, decompress_entry, unpack_nxs3, check_rotor, unpack_rotor
 from core.npk.decryption import decrypt_entry
-from core.npk.enums import NPKFileType
+from core.npk.enums import NPKFileType, NPKEntryFileCategories
 from core.logger import get_logger
+from core.xml_converter import xml_handler, parse_handler
 
 from .detection import get_ext, get_file_category, is_binary
 from .keys import KeyGenerator
@@ -284,5 +285,14 @@ class NPKFile:
         entry.extension = get_ext(entry.data, entry.data_flags)
 
         entry.category = get_file_category(entry.extension)
+
+        """
+        The XML type I defined is reserved for 'C1 59 41 0D' signed files. Those files are NeoX XMLs that Breadth-First Search (BFS) sorted binary files corresponds to XML files.
+        """
+        if entry.category == NPKEntryFileCategories.XML:
+            try:
+                entry.data = bytes(xml_handler.ExportXML(*parse_handler.parseCustomBinFormat(entry.data)), encoding="utf-8")
+            except Exception:
+                pass
 
         get_logger().debug("Entry %s: %s", entry.filename, entry.category)
