@@ -119,6 +119,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.filter_text_filter.toggled.connect(filter_text_filter_changed)
         self.filter_checkbox_section.addWidget(self.filter_text_filter, 0, 1)
 
+        self.filter_slot_filter = QtWidgets.QCheckBox("Slot Files")
+        self.filter_slot_filter.setChecked(True)
+        def filter_slot_filter_changed(checked: bool):
+            self.filter.include_slot = checked
+            self.filter.apply_filter()
+        self.filter_slot_filter.toggled.connect(filter_slot_filter_changed)
+        self.filter_checkbox_section.addWidget(self.filter_slot_filter, 0, 2)
+
         self.filter_section.addLayout(self.filter_checkbox_section)
 
         self.entry_category_filter_combobox = QtWidgets.QComboBox()
