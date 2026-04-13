@@ -55,6 +55,85 @@ def decompress_entry(entry: NPKEntry):
     # No matched compression.
     return entry.data
 
+def strip_none_wrapper(data: bytes) -> bytes:
+    """Strip a simple NONE wrapper header if present."""
+    if data[:4] == b"NONE":
+        return data[4:]
+    return data
+
+
+def check_lz4_like(data: bytes) -> bool:
+    """Check for the custom LZ4-like stream seen in some payloads."""
+    return len(data) >= 4 and data[:4] == b"\x27\xE3\x00\x01"
+
+
+def unpack_lz4_like(data: bytes) -> bytes:
+    """Decode the custom LZ4-like stream used by some payloads."""
+    import struct
+
+    if not data:
+        return b""
+
+    in_ptr = 0
+    out_buf = bytearray()
+    data_len = len(data)
+
+    while in_ptr < data_len:
+        token = data[in_ptr]
+        in_ptr += 1
+
+        literal_len = token >> 4
+        match_len = token & 0x0F
+
+        if literal_len == 15:
+            while True:
+                if in_ptr >= data_len:
+                    break
+                byte_val = data[in_ptr]
+                in_ptr += 1
+                literal_len += byte_val
+                if byte_val != 0xFF:
+                    break
+
+        if in_ptr + literal_len > data_len:
+            break
+
+        out_buf.extend(data[in_ptr:in_ptr + literal_len])
+        in_ptr += literal_len
+
+        if in_ptr >= data_len:
+            break
+
+        if in_ptr + 2 > data_len:
+            break
+
+        offset = struct.unpack('<H', data[in_ptr:in_ptr + 2])[0]
+        in_ptr += 2
+
+        if match_len == 15:
+            while True:
+                if in_ptr >= data_len:
+                    break
+                byte_val = data[in_ptr]
+                in_ptr += 1
+                match_len += byte_val
+                if byte_val != 0xFF:
+                    break
+
+        match_len += 4
+
+        start_pos = len(out_buf) - offset
+        if start_pos < 0:
+            break
+
+        for i in range(match_len):
+            if start_pos + i >= len(out_buf):
+                break
+            out_buf.append(out_buf[start_pos + i])
+
+    return bytes(out_buf)
+
+
 def check_nxs3(entry: NPKEntry) -> bool:
     """Check if the data is wrapped in NXS3 format."""
     return entry.data[:8] == b"NXS3\x03\x00\x00\x01"

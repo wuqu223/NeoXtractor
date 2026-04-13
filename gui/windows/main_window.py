@@ -10,6 +10,7 @@ from core.config import Config
 from core.logger import get_logger
 from core.npk.enums import NPKEntryFileCategories
 from core.npk.npk_file import NPKFile
+from core.wpk.wpk_file import IDXWPKFile
 from core.npk.class_types import NPKEntry, NPKEntryDataFlags, NPKReadOptions
 from gui.config_manager import ConfigManager
 from gui.models.npk_file_model import NPKFileModel
@@ -209,7 +210,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 "Open File",
                 self
             )
-            open_file.setStatusTip("Open a NPK file.")
+            open_file.setStatusTip("Open a supported archive file.")
             open_file.setShortcut("Ctrl+O")
             menu.addAction(open_file)
 
@@ -223,9 +224,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     return
                 file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
                     self,
-                    "Open NPK File",
+                    "Open Archive File",
                     "",
-                    "NPK Files (*.npk);;All Files (*)"
+                    "Supported Files (*.npk *.expk *.idx *.wpk);;NPK Files (*.npk *.expk);;IDX Files (*.idx);;WPK Files (*.wpk);;All Files (*)"
                 )
                 if file_path:
                     self.load_npk(file_path)
@@ -420,21 +421,27 @@ class MainWindow(QtWidgets.QMainWindow):
             # No read options set, use default
             read_options = NPKReadOptions()
 
-        npk_file = NPKFile(path, read_options)
+        ext = os.path.splitext(path)[1].lower()
+        if ext in (".npk", ".expk"):
+            archive_file = NPKFile(path, read_options)
+        elif ext in (".idx", ".wpk"):
+            archive_file = IDXWPKFile(path, read_options)
+        else:
+            raise ValueError(f"Unsupported archive type: {path}")
 
-        self.app.setProperty("npk_file", npk_file)
+        self.app.setProperty("npk_file", archive_file)
 
         self.list_widget.refresh_npk_file()
 
         self.progress_bar.setFormat("Loading entries... (%v/%m)")
-        self.progress_bar.setRange(0, npk_file.file_count)
+        self.progress_bar.setRange(0, archive_file.file_count)
         self.progress_bar.setValue(0)
 
         def _load_entries():
-            for i in range(npk_file.file_count):
+            for i in range(archive_file.file_count):
                 if self._loading_cancelled:
                     break
-                npk_file.read_entry(i)
+                archive_file.read_entry(i)
                 self.update_model_signal.emit(i)
                 self.update_progress_signal.emit(i + 1)
             self.loading_complete_signal.emit()
