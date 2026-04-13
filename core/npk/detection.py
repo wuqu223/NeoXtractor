@@ -104,6 +104,8 @@ def _get_binary_ext(data: bytes, flags: NPKEntryDataFlags):
         return 'jpg'
     if data[:4] == b'BKHD':
         return 'bnk'
+    if data[:4] == b'8BPS':
+        return 'psd'
     if data[:4] == b'TZif':
         return 'tzif'
     if data[6:10] == b'JFIF':
@@ -278,7 +280,7 @@ def get_file_category(extension):
 
     # Textures
     if extension in ["bmp", "gif", "jpg", "jpeg", "png", "pbm", "pgm", "ppm", "xbm",
-                     "xpm", "tga", "ico", "tiff", "dds", "pvr", "astc", "ktx", "ktx_low", "cbk"]:
+                     "xpm", "tga", "ico", "tiff", "dds", "pvr", "astc", "ktx", "ktx_low", "cbk", "psd"]:
         return NPKEntryFileCategories.TEXTURE
 
     # 3D Models
