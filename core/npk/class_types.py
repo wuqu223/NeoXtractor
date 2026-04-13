@@ -59,6 +59,11 @@ class NPKEntry(NPKIndex, IFile):
         self._data: bytes = b""
         self._extension: str | None = None
         self.category: NPKEntryFileCategories = NPKEntryFileCategories.OTHER
+        self.source_data: bytes | None = None
+        self.source_extension: str = ""
+        self.processed_by: str | None = None
+        self.has_decoded_view: bool = False
+        self.format_metadata: dict = {}
 
     @property
     def is_compressed(self) -> bool:

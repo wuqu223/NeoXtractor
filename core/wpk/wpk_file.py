@@ -7,6 +7,7 @@ from typing import BinaryIO, Dict, List
 
 from core.logger import get_logger
 from core.npk.class_types import NPKEntryDataFlags, NPKEntry, NPKIndex, NPKReadOptions
+from core.formats import process_entry_with_processors
 from core.npk.detection import get_ext, get_file_category, is_binary
 from core.wpk.decryption import try_decode_payload_stage1
 
@@ -315,7 +316,12 @@ class IDXWPKFile:
             entry.data_flags |= NPKEntryDataFlags.TEXT
 
         entry.source_extension = get_ext(entry.data, entry.data_flags)
-        entry.extension = get_ext(entry.data, entry.data_flags)
+
+        processed = process_entry_with_processors(entry)
+        if processed and not is_binary(entry.data):
+            entry.data_flags |= NPKEntryDataFlags.TEXT
+
+        entry.extension = entry.extension or get_ext(entry.data, entry.data_flags)
         entry.category = get_file_category(entry.extension)
 
         get_logger().debug(
