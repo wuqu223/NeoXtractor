@@ -1,17 +1,18 @@
 """NPK File Reader"""
 
 import io
+import os
 
 from typing import List, Dict
 
 from arc4 import ARC4
 
 from core.binary_readers import read_uint32, read_uint16, read_uint64
-from core.npk.decompression import check_nxs3, decompress_entry, unpack_nxs3, check_rotor, unpack_rotor
+from core.npk.decompression import check_lz4_like, check_nxs3, decompress_entry, unpack_lz4_like, unpack_nxs3, check_rotor, unpack_rotor, strip_none_wrapper
 from core.npk.decryption import decrypt_entry
-from core.npk.enums import NPKFileType, NPKEntryFileCategories
+from core.npk.enums import NPKFileType
 from core.logger import get_logger
-from core.xml_converter import xml_handler, parse_handler
+from core.formats import process_entry_with_processors
 
 from .detection import get_ext, get_file_category, is_binary
 from .keys import KeyGenerator
@@ -20,7 +21,7 @@ from .class_types import NPKEntryDataFlags, NPKIndex, NPKEntry, CompressionType,
 class NPKFile:
     """Main class for handling NPK files."""
 
-    def __init__(self, file_path: str, options: NPKReadOptions = NPKReadOptions()):
+    def __init__(self, file_path: str, options: NPKReadOptions | None = None):
         """Initialize the NPK file handler.
 
         Args:
@@ -38,7 +39,7 @@ class NPKFile:
         self.info_size: int = 0
 
         # Options when reading the NPK file
-        self.options = options
+        self.options = options if options is not None else NPKReadOptions()
 
         # NXFN file information
         self.nxfn_files = None
@@ -170,13 +171,21 @@ class NPKFile:
                 index.encrypt_flag = DecryptionType(encrypt_flag)
 
                 # Store file structure name if available
-                index.file_structure = self.nxfn_files[i] if self.nxfn_files else None
+                if self.nxfn_files and i < len(self.nxfn_files):
+                    index.file_structure = self.nxfn_files[i]
+                else:
+                    index.file_structure = None
 
                 get_logger().debug("Index %d: %s", i, index)
 
                 # Generate a filename
-                index.filename = f"{index.file_structure.decode("utf-8")
-                                    if index.file_structure else hex(index.file_signature)}"
+                if index.file_structure:
+                    try:
+                        index.filename = index.file_structure.decode("utf-8")
+                    except UnicodeDecodeError:
+                        index.filename = hex(index.file_signature)
+                else:
+                    index.filename = hex(index.file_signature)
 
                 self.indices.append(index)
 
@@ -226,9 +235,11 @@ class NPKFile:
             # Load the actual data
             self._load_entry_data(entry, file)
 
-        # Update filename with extension (or omits it if its already defined by NXFN)
-        entry.filename = entry.filename if self.hash_mode == 2 or self.encrypt_mode == 256 else \
-            f"{entry.filename}.{entry.extension}"
+        # Update filename with extension.
+        # For NXFN-backed names, keep an existing extension, otherwise append the detected one.
+        _base_name, existing_ext = os.path.splitext(entry.filename)
+        if not existing_ext and entry.extension:
+            entry.filename = f"{entry.filename}.{entry.extension}"
 
         # Store in the cache
         self.entries[index] = entry
@@ -266,33 +277,59 @@ class NPKFile:
                     entry.data_flags |= NPKEntryDataFlags.ERROR
                 return
 
-        # Check for ROTOR encryptiom
-        if check_rotor(entry):
-            entry.data_flags |= NPKEntryDataFlags.ROTOR_PACKED
-            entry.data = unpack_rotor(entry.data)
+        # Continuously strip simple wrappers and unpack nested payloads.
+        entry.unwrap_layers = []
+        seen_signatures: set[tuple[int, bytes]] = set()
+        max_layers = 32
+        for _ in range(max_layers):
+            signature = (len(entry.data), entry.data[:16])
+            if signature in seen_signatures:
+                break
+            seen_signatures.add(signature)
 
-        # Check for NXS3 wrapping
-        if check_nxs3(entry):
-            entry.data_flags |= NPKEntryDataFlags.NXS3_PACKED
-            entry.data = unpack_nxs3(entry.data)
+            stripped = strip_none_wrapper(entry.data)
+            if stripped != entry.data:
+                entry.data = stripped
+                entry.unwrap_layers.append("NONE")
+                continue
+
+            if check_lz4_like(entry.data):
+                try:
+                    unpacked = unpack_lz4_like(entry.data)
+                except Exception:
+                    break
+                if unpacked and unpacked != entry.data:
+                    entry.data = unpacked
+                    entry.unwrap_layers.append("LZ4_LIKE")
+                    continue
+
+            if check_rotor(entry):
+                entry.data_flags |= NPKEntryDataFlags.ROTOR_PACKED
+                entry.data = unpack_rotor(entry.data)
+                entry.unwrap_layers.append("ROTOR")
+                continue
+
+            if check_nxs3(entry):
+                entry.data_flags |= NPKEntryDataFlags.NXS3_PACKED
+                entry.data = unpack_nxs3(entry.data)
+                entry.unwrap_layers.append("NXS3")
+                continue
+
+            break
 
         binary = is_binary(entry.data)
         # Mark the data as text data
         if not binary:
             entry.data_flags |= NPKEntryDataFlags.TEXT
 
-        # Detect file extension
-        entry.extension = get_ext(entry.data, entry.data_flags)
+        # Detect the extension before any optional post-processing so raw exports can preserve it.
+        entry.source_extension = get_ext(entry.data, entry.data_flags)
 
+        processed = process_entry_with_processors(entry)
+        if processed and not is_binary(entry.data):
+            entry.data_flags |= NPKEntryDataFlags.TEXT
+
+        entry.extension = entry.extension or get_ext(entry.data, entry.data_flags)
         entry.category = get_file_category(entry.extension)
-
-        """
-        The XML type I defined is reserved for 'C1 59 41 0D' signed files. Those files are NeoX XMLs that Breadth-First Search (BFS) sorted binary files corresponds to XML files.
-        """
-        if entry.category == NPKEntryFileCategories.XML:
-            try:
-                entry.data = bytes(xml_handler.ExportXML(*parse_handler.parseCustomBinFormat(entry.data)), encoding="utf-8")
-            except Exception:
-                pass
 
         get_logger().debug("Entry %s: %s", entry.filename, entry.category)

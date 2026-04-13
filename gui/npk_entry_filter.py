@@ -16,6 +16,7 @@ class NPKEntryFilter:
         self.filter_type: NPKEntryFileCategories | None = None
         self.include_text = True
         self.include_binary = True
+        self.include_slot = True
 
         self.mesh_biped_head = False
 
@@ -37,18 +38,24 @@ class NPKEntryFilter:
         for row in range(model.rowCount()):
             npk_entry = npk_file.read_entry(row)
             filename_lower = model.get_filename(model.index(row)).lower()
+            is_slot_file = getattr(npk_entry, "is_slot_file", False)
 
-            if self.include_text == self.include_binary == False:
-                # If both are unchecked, hide all
-                self._list_view.setRowHidden(row, True)
-                continue
-
-            if self.include_text != self.include_binary:
-                # If only one is checked, hide the other
-                if self.include_text and not npk_entry.data_flags & NPKEntryDataFlags.TEXT or \
-                     (self.include_binary and npk_entry.data_flags & NPKEntryDataFlags.TEXT):
+            if is_slot_file:
+                if not self.include_slot:
                     self._list_view.setRowHidden(row, True)
                     continue
+            else:
+                if self.include_text == self.include_binary == False:
+                    # If both are unchecked, hide all non-slot files
+                    self._list_view.setRowHidden(row, True)
+                    continue
+
+                if self.include_text != self.include_binary:
+                    # If only one is checked, hide the other
+                    is_text_file = bool(npk_entry.data_flags & NPKEntryDataFlags.TEXT)
+                    if (self.include_text and not is_text_file) or (self.include_binary and is_text_file):
+                        self._list_view.setRowHidden(row, True)
+                        continue
 
             # Text filter - quick reject
             if self.filter_string and self.filter_string not in filename_lower:

@@ -1,7 +1,7 @@
 """A custom model for displaying NPK files in a QListView."""
 
 from typing import Any, cast
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from core.config import Config
 from core.npk.class_types import NPKEntryDataFlags
@@ -62,6 +62,11 @@ class NPKFileModel(QtCore.QAbstractListModel):
                 return self._encrypted_icon
 
             return self._file_icon
+        if role == QtCore.Qt.ItemDataRole.ForegroundRole:
+            if self._npk_file.is_entry_loaded(index.row()):
+                entry = self._npk_file.read_entry(index.row())
+                if getattr(entry, "is_slot_file", False):
+                    return QtGui.QBrush(QtGui.QColor(0, 170, 0))
         if role == QtCore.Qt.ItemDataRole.UserRole:
             return self._npk_file.indices[index.row()]
         return None
