@@ -2,21 +2,38 @@
 
 import io
 import os
-
-from typing import List, Dict
+from typing import Dict, List
 
 from arc4 import ARC4
 
-from core.binary_readers import read_uint32, read_uint16, read_uint64
-from core.npk.decompression import check_lz4_like, check_nxs3, decompress_entry, unpack_lz4_like, unpack_nxs3, check_rotor, unpack_rotor, strip_none_wrapper
+from core.binary_readers import read_uint16, read_uint32, read_uint64
+from core.formats import process_entry_with_processors
+from core.logger import get_logger
+from core.npk.decompression import (
+    check_lz4_like,
+    check_nxs3,
+    check_rotor,
+    decompress_entry,
+    strip_none_wrapper,
+    unpack_lz4_like,
+    unpack_nxs3,
+    unpack_rotor,
+)
 from core.npk.decryption import decrypt_entry
 from core.npk.enums import NPKFileType
-from core.logger import get_logger
-from core.formats import process_entry_with_processors
 
+from .class_types import (
+    CompressionType,
+    DecryptionType,
+    NPKEntry,
+    NPKEntryDataFlags,
+    NPKIndex,
+    NPKReadOptions,
+)
+from .decryption import decrypt_eggparty_index
 from .detection import get_ext, get_file_category, is_binary
-from .keys import KeyGenerator
-from .class_types import NPKEntryDataFlags, NPKIndex, NPKEntry, CompressionType, DecryptionType, NPKReadOptions
+from .expkkeys import EXPKKeyGenerator
+
 
 class NPKFile:
     """Main class for handling NPK files."""
@@ -45,11 +62,11 @@ class NPKFile:
         self.nxfn_files = None
 
         # Key generator for advanced decryption
-        self.key_generator = KeyGenerator()
+        self.key_generator = None
 
         get_logger().info("Opening NPK file: %s", self.file_path)
 
-        with open(self.file_path, 'rb') as file:
+        with open(self.file_path, "rb") as file:
             # Read NPK header.
             self._read_header(file)
 
@@ -70,9 +87,9 @@ class NPKFile:
 
         # Read NPK header
         magic = file.read(4)
-        if magic == b'NXPK':
+        if magic == b"NXPK":
             self.file_type = NPKFileType.NXPK
-        elif magic == b'EXPK':
+        elif magic == b"EXPK":
             self.file_type = NPKFileType.EXPK
         else:
             file.close()
@@ -94,18 +111,22 @@ class NPKFile:
         get_logger().info("NPK index offset: 0x%X", self.index_offset)
 
         # Determine index entry size
-        self.info_size = self._determine_info_size(file) if self.options.info_size is None else self.options.info_size
+        self.info_size = (
+            self._determine_info_size(file)
+            if self.options.info_size is None
+            else self.options.info_size
+        )
 
         get_logger().debug("NPK index entry size: %d", self.info_size)
 
         if self.hash_mode == 2:
             file.seek(self.index_offset + (self.file_count * self.info_size))
-            self.nxfn_files = [x for x in (file.read()).split(b'\x00') if x != b'']
+            self.nxfn_files = [x for x in (file.read()).split(b"\x00") if x != b""]
         elif self.hash_mode == 3:
-            self.arc_key = ARC4(b'61ea476e-8201-11e5-864b-fcaa147137b7')
+            self.arc_key = ARC4(b"61ea476e-8201-11e5-864b-fcaa147137b7")
         elif self.encrypt_mode == 256:
             file.seek(self.index_offset + (self.file_count * self.info_size) + 16)
-            self.nxfn_files = [x for x in (file.read()).split(b'\x00') if x != b'']
+            self.nxfn_files = [x for x in (file.read()).split(b"\x00") if x != b""]
 
         return True
 
@@ -133,10 +154,12 @@ class NPKFile:
         index_data = file.read(self.file_count * self.info_size)
 
         if self.file_type == NPKFileType.EXPK:
+            self.key_generator = EXPKKeyGenerator()
             index_data = self.key_generator.decrypt(index_data)
         if self.hash_mode == 3:
             index_data = self.arc_key.decrypt(index_data)
-
+        if self.encrypt_mode == 3:
+            index_data = decrypt_eggparty_index(index_data)
 
         with io.BytesIO(index_data) as buf:
             for i in range(self.file_count):
@@ -231,7 +254,7 @@ class NPKFile:
         for attr in vars(idx):
             setattr(entry, attr, getattr(idx, attr))
 
-        with open(self.file_path, 'rb') as file:
+        with open(self.file_path, "rb") as file:
             # Load the actual data
             self._load_entry_data(entry, file)
 
@@ -254,7 +277,7 @@ class NPKFile:
         entry.data = file.read(entry.file_length)
 
         # Decrypt EXPK data if needed
-        if self.file_type == NPKFileType.EXPK:
+        if self.file_type == NPKFileType.EXPK and self.key_generator is not None:
             entry.data = self.key_generator.decrypt(entry.data)
 
         # Decrypt if needed
@@ -267,12 +290,14 @@ class NPKFile:
                 entry.data = decompress_entry(entry)
             except Exception:
                 if entry.encrypt_flag == DecryptionType.BASIC_XOR:
-                    get_logger().error("Error decompressing the file, did you choose the correct key for this NPK?")
+                    get_logger().error(
+                        "Error decompressing the file, did you choose the correct key for this NPK?"
+                    )
                     entry.data_flags |= NPKEntryDataFlags.ENCRYPTED
                 else:
                     get_logger().critical(
-                        "Error decompressing the file using %s compression, open a GitHub issue", 
-                        entry.zip_flag.get_name(entry.zip_flag)
+                        "Error decompressing the file using %s compression, open a GitHub issue",
+                        entry.zip_flag.get_name(entry.zip_flag),
                     )
                     entry.data_flags |= NPKEntryDataFlags.ERROR
                 return
