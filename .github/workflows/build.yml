@@ -4,11 +4,11 @@ on:
   workflow_call:
     inputs:
       asset_suffix:
-        description: 'Suffix to append to asset names'
+        description: "Suffix to append to asset names"
         required: false
-        default: ''
+        default: ""
         type: string
-    
+
 jobs:
   build:
     name: Build on ${{ matrix.os }} ${{ matrix.arch }}
@@ -32,26 +32,26 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version-file: '.python-version'
+          python-version-file: ".python-version"
           architecture: ${{ matrix.arch }}
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
         with:
-          version: '0.9.22'
+          version: "0.9.22"
 
       - name: Install dependencies (macOS)
         shell: bash
         if: ${{ startsWith(matrix.os, 'macos') }}
         run: |
           export MACOSX_DEPLOYMENT_TARGET=12.0
-          uv sync --python-platform ${{ matrix.arch == 'x64' && 'x86_64-apple-darwin' || 'aarch64-apple-darwin' }} --locked
+          uv sync --python-platform ${{ matrix.arch == 'x64' && 'x86_64-apple-darwin' || 'aarch64-apple-darwin' }}
           uv pip install pyinstaller
-      
+
       - name: Install dependencies (Linux/Windows)
         shell: bash
         if: ${{ !startsWith(matrix.os, 'macos') }}
@@ -62,20 +62,20 @@ jobs:
       - name: Build with PyInstaller
         run: |
           uv run pyinstaller main.spec
-        
+
       - name: Create archive with symlinks (Linux/macOS)
         if: matrix.os != 'windows-latest'
         run: |
           cd dist/main
           tar -czf ../${{ matrix.asset_name }}${{ inputs.asset_suffix }}.tar.gz .
-        
+
       - name: Upload artifact (Linux/macOS)
         if: matrix.os != 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}${{ inputs.asset_suffix }}
           path: dist/${{ matrix.asset_name }}${{ inputs.asset_suffix }}.tar.gz
-          
+
       - name: Upload artifact (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
