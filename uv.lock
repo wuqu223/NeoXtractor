@@ -293,7 +293,7 @@ requires-dist = [
     { name = "pillow", specifier = ">=12.2.0" },
     { name = "pycryptodome", specifier = ">=3.23.0" },
     { name = "pymeshio", specifier = ">=3.0.1" },
-    { name = "pyside6", specifier = ">=6.11.0" },
+    { name = "pyside6", specifier = ">=6.8.0" },
     { name = "texture2ddecoder", specifier = ">=1.0.6" },
     { name = "zstandard", specifier = ">=0.25.0" },
 ]
