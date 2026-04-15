@@ -284,18 +284,18 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "arc4", specifier = ">=0.4.0" },
-    { name = "bitstring", specifier = ">=4.3.1" },
-    { name = "cryptography", specifier = ">=45.0.4" },
-    { name = "lz4", specifier = ">=4.4.4" },
-    { name = "numpy", specifier = ">=2.2.5" },
+    { name = "arc4", specifier = ">=0.5.0" },
+    { name = "bitstring", specifier = ">=4.4.0" },
+    { name = "cryptography", specifier = ">=46.0.7" },
+    { name = "lz4", specifier = ">=4.4.5" },
+    { name = "numpy", specifier = ">=2.4.4" },
     { name = "p", specifier = ">=1.5.0" },
-    { name = "pillow", specifier = ">=11.2.1" },
-    { name = "pycryptodome", specifier = ">=3.22.0" },
+    { name = "pillow", specifier = ">=12.2.0" },
+    { name = "pycryptodome", specifier = ">=3.23.0" },
     { name = "pymeshio", specifier = ">=3.0.1" },
-    { name = "pyside6", specifier = ">=6.9.0" },
-    { name = "texture2ddecoder", specifier = ">=1.0.5" },
-    { name = "zstandard", specifier = ">=0.23.0" },
+    { name = "pyside6", specifier = ">=6.11.0" },
+    { name = "texture2ddecoder", specifier = ">=1.0.6" },
+    { name = "zstandard", specifier = ">=0.25.0" },
 ]
 
 [[package]]
