@@ -1,20 +1,24 @@
 """NPK entry type definitions for the NPK file format."""
 
+import os
 from dataclasses import dataclass
 from enum import IntFlag, auto
-import os
 
 from core.file import IFile
+
 from .enums import CompressionType, DecryptionType, NPKEntryFileCategories
+
 
 class NPKEntryDataFlags(IntFlag):
     """Flags for NPK entry data."""
+
     NONE = 0
     TEXT = auto()
     NXS3_PACKED = auto()
     ROTOR_PACKED = auto()
     ENCRYPTED = auto()
     ERROR = auto()
+
 
 @dataclass
 class NPKReadOptions:
@@ -23,6 +27,7 @@ class NPKReadOptions:
     decryption_key: int | None = None
     aes_key: bytes | None = None
     info_size: int | None = None
+
 
 @dataclass
 class NPKIndex:
@@ -35,7 +40,7 @@ class NPKIndex:
     file_length: int = 0
     file_original_length: int = 0
     zcrc: int = 0  # compressed CRC
-    crc: int = 0   # decompressed CRC
+    crc: int = 0  # decompressed CRC
     file_structure: bytes | None = None
     zip_flag: CompressionType = CompressionType.NONE
     encrypt_flag: DecryptionType = DecryptionType.NONE
@@ -51,6 +56,7 @@ class NPKIndex:
             f"encryption={DecryptionType.get_name(self.encrypt_flag)})"
         )
 
+
 class NPKEntry(NPKIndex, IFile):
     """Represents a file entry in an NPK file, including the actual file data."""
 
@@ -63,6 +69,7 @@ class NPKEntry(NPKIndex, IFile):
         self.source_extension: str = ""
         self.processed_by: str | None = None
         self.has_decoded_view: bool = False
+        self.unwrap_layers: list | None
         self.format_metadata: dict = {}
 
     @property
@@ -80,7 +87,7 @@ class NPKEntry(NPKIndex, IFile):
         dir_name = os.path.dirname(path)
         if dir_name:
             os.makedirs(dir_name, exist_ok=True)
-        with open(path, 'wb') as f:
+        with open(path, "wb") as f:
             f.write(self.get_export_data(decoded=decoded))
 
     def get_export_data(self, decoded: bool = True) -> bytes:
@@ -96,7 +103,11 @@ class NPKEntry(NPKIndex, IFile):
 
         if decoded:
             if self.has_decoded_view and self.extension:
-                return f"{base_name}.{self.extension}" if existing_ext else f"{filename}.{self.extension}"
+                return (
+                    f"{base_name}.{self.extension}"
+                    if existing_ext
+                    else f"{filename}.{self.extension}"
+                )
             return filename
 
         if not self.has_decoded_view:

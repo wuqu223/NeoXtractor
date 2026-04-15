@@ -12,7 +12,7 @@ from xml.dom import minidom
 
 from .base import FormatDecodeResult, FormatProcessor
 
-BXML_MAGIC = b"\xC1\x59\x41\x0D"
+BXML_MAGIC = b"\xc1\x59\x41\x0d"
 
 
 def _read_leb128(buf: BytesIO) -> int:
@@ -126,9 +126,13 @@ def parse_bxml_bytes(data: bytes) -> str:
             attr_idx = _read_leb128(buf)
             type_tag_raw = buf.read(1)
             if not type_tag_raw:
-                raise ValueError("Unexpected end of file while reading BXML attributes.")
+                raise ValueError(
+                    "Unexpected end of file while reading BXML attributes."
+                )
             type_tag = type_tag_raw[0]
-            key = attr_names[attr_idx] if 0 <= attr_idx < len(attr_names) else f"attr_{j}"
+            key = (
+                attr_names[attr_idx] if 0 <= attr_idx < len(attr_names) else f"attr_{j}"
+            )
             attrs[key] = _read_bxml_value(buf, type_tag)
         nodes_info[i]["attrs"] = attrs
 
@@ -171,7 +175,6 @@ def parse_bxml_bytes(data: bytes) -> str:
     return pretty_xml
 
 
-
 class NeoXBXMLProcessor(FormatProcessor):
     name = "BXML"
     priority = 10
@@ -183,7 +186,6 @@ class NeoXBXMLProcessor(FormatProcessor):
         xml_text = parse_bxml_bytes(data)
         return FormatDecodeResult(
             data=xml_text,
-            extension="xml",
             is_text=True,
             processor_name=self.name,
             metadata={"input_extension": getattr(entry, "extension", "")},

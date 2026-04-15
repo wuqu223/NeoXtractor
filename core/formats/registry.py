@@ -35,12 +35,13 @@ class FunctionFormatProcessor(FormatProcessor):
         if isinstance(result, dict):
             return FormatDecodeResult(
                 data=result.get("data", b""),
-                extension=result.get("extension"),
                 is_text=bool(result.get("is_text", False)),
                 processor_name=result.get("processor_name", self.name),
                 metadata=dict(result.get("metadata", {})),
             )
-        raise TypeError(f"Unsupported decode result type from plugin {self.name}: {type(result)!r}")
+        raise TypeError(
+            f"Unsupported decode result type from plugin {self.name}: {type(result)!r}"
+        )
 
 
 _BUILTIN_PROCESSORS: list[FormatProcessor] = [NeoXBXMLProcessor()]
@@ -81,7 +82,9 @@ def _load_module_from_path(path: Path) -> ModuleType | None:
     return module
 
 
-def _module_to_processor(module: ModuleType, default_name: str) -> FormatProcessor | None:
+def _module_to_processor(
+    module: ModuleType, default_name: str
+) -> FormatProcessor | None:
     if hasattr(module, "PROCESSOR"):
         processor = getattr(module, "PROCESSOR")
         if isinstance(processor, FormatProcessor):
@@ -118,18 +121,27 @@ def load_external_processors(force_reload: bool = False) -> list[FormatProcessor
                     continue
                 processor = _module_to_processor(module, default_name=path.stem)
                 if processor is None:
-                    get_logger().warning("Skipping plugin without valid processor API: %s", path)
+                    get_logger().warning(
+                        "Skipping plugin without valid processor API: %s", path
+                    )
                     continue
                 processors.append(processor)
-                get_logger().info("Loaded external format processor: %s (%s)", processor.name, path)
+                get_logger().info(
+                    "Loaded external format processor: %s (%s)", processor.name, path
+                )
             except Exception as exc:
-                get_logger().exception("Failed to load format processor plugin %s: %s", path, exc)
+                get_logger().exception(
+                    "Failed to load format processor plugin %s: %s", path, exc
+                )
     _EXTERNAL_PROCESSORS = sorted(processors, key=lambda p: getattr(p, "priority", 100))
     return _EXTERNAL_PROCESSORS
 
 
 def get_all_processors() -> list[FormatProcessor]:
-    return sorted([*_BUILTIN_PROCESSORS, *load_external_processors()], key=lambda p: getattr(p, "priority", 100))
+    return sorted(
+        [*_BUILTIN_PROCESSORS, *load_external_processors()],
+        key=lambda p: getattr(p, "priority", 100),
+    )
 
 
 def try_process_data(data: bytes, entry) -> FormatDecodeResult | None:
@@ -166,8 +178,6 @@ def process_entry_with_processors(entry) -> bool:
     entry.processed_by = result.processor_name
     entry.has_decoded_view = True
     entry.format_metadata = dict(result.metadata)
-    if result.extension:
-        entry.extension = result.extension
     if result.is_text:
         entry.data_flags |= NPKEntryDataFlags.TEXT
     return True

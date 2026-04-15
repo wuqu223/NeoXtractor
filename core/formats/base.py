@@ -11,7 +11,6 @@ class FormatDecodeResult:
     """Decoded result produced by a format processor."""
 
     data: bytes | str
-    extension: str | None = None
     is_text: bool = False
     processor_name: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)

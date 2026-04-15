@@ -347,14 +347,11 @@ class NPKFile:
         if not binary:
             entry.data_flags |= NPKEntryDataFlags.TEXT
 
-        # Detect the extension before any optional post-processing so raw exports can preserve it.
-        entry.source_extension = get_ext(entry.data, entry.data_flags)
-
         processed = process_entry_with_processors(entry)
         if processed and not is_binary(entry.data):
             entry.data_flags |= NPKEntryDataFlags.TEXT
 
-        entry.extension = entry.extension or get_ext(entry.data, entry.data_flags)
+        entry.extension = get_ext(entry.data, entry.data_flags)
         entry.category = get_file_category(entry.extension)
 
         get_logger().debug("Entry %s: %s", entry.filename, entry.category)
