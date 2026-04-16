@@ -119,7 +119,7 @@ class NPKFileList(QtWidgets.QListView):
         entry = npk_file.find_entry_by_id(row_index)
         entry.state = State.PRIMARY_LOAD
 
-        if not previous.row() == 0:
+        if not previous.row() == -1:
             npk_file.find_entry_by_id(previous.row()).state = State.CACHED
 
         self.preview_entry.emit(row_index, entry)
