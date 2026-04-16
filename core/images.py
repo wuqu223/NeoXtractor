@@ -5,9 +5,11 @@
 import io
 import math
 from typing import cast
+
 import texture2ddecoder
-from PIL import Image, ImageFile
 from bitstring import ConstBitStream
+from PIL import Image, ImageFile
+from PySide6.QtGui import QImage
 
 from core.binary_readers import read_uintle32, read_uintle64
 
@@ -37,7 +39,9 @@ def _dds_dxgi_fallback(data: bytes):
             raise ValueError(
                 f"DDS pixel data truncated for DXGI {dxgi_format}: expected {expected}, got {len(pixel_data)}"
             )
-        return Image.frombytes("RGBA", (width, height), pixel_data[:expected], "raw", "BGRA")
+        return Image.frombytes(
+            "RGBA", (width, height), pixel_data[:expected], "raw", "BGRA"
+        )
 
     if dxgi_format in (88, 93):  # B8G8R8X8_UNORM / _SRGB
         expected = width * height * 4
@@ -45,13 +49,15 @@ def _dds_dxgi_fallback(data: bytes):
             raise ValueError(
                 f"DDS pixel data truncated for DXGI {dxgi_format}: expected {expected}, got {len(pixel_data)}"
             )
-        image = Image.frombytes("RGBX", (width, height), pixel_data[:expected], "raw", "BGRX")
+        image = Image.frombytes(
+            "RGBX", (width, height), pixel_data[:expected], "raw", "BGRX"
+        )
         return image.convert("RGBA")
 
     raise NotImplementedError(f"Unsupported DDS DXGI fallback format {dxgi_format}")
 
 
-#tga, ico, tiff, dds, psd
+# tga, ico, tiff, dds, psd
 def _pillow_image_conversion(data, fmt):
     try:
         return Image.open(io.BytesIO(data), "r", (fmt.upper(), "PNG"))
@@ -60,20 +66,34 @@ def _pillow_image_conversion(data, fmt):
             return _dds_dxgi_fallback(data)
         raise
 
+
 def image_to_png_data(img: Image.Image | ImageFile.ImageFile) -> bytes:
     """Convert an image to PNG data."""
     buf = io.BytesIO()
     img.save(buf, "PNG")
     return buf.getvalue()
 
+
+def image_to_qimage(image: Image.Image) -> QImage:
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    qt_image = QImage.fromData(buffer.getvalue())
+    if qt_image.isNull():
+        raise ValueError("Failed to convert image into QImage")
+    return qt_image
+
+
 def _get_pitch(width):
-    return max(1, ((width+3)//4) ) * 16
+    return max(1, ((width + 3) // 4)) * 16
+
 
 def _get_astc_file_size(width, height, block_x, block_y):
     return math.ceil(width / block_x) * math.ceil(height / block_y) * 16
 
 
-def _validate_astc_payload(data: bytes, width: int, height: int, block_x: int, block_y: int):
+def _validate_astc_payload(
+    data: bytes, width: int, height: int, block_x: int, block_y: int
+):
     expected = _get_astc_file_size(width, height, block_x, block_y)
     if len(data) < expected:
         raise ValueError(
@@ -82,7 +102,9 @@ def _validate_astc_payload(data: bytes, width: int, height: int, block_x: int, b
     return data[:expected]
 
 
-def _decode_correct_format(fmt, data, width, height, block_x = 4, block_y = 4):
+def _decode_correct_format(
+    fmt, data, width, height, block_x=4, block_y=4
+) -> Image.Image:
     match fmt:
         case "ASTC":
             data = _validate_astc_payload(data, width, height, block_x, block_y)
@@ -104,11 +126,12 @@ def _decode_correct_format(fmt, data, width, height, block_x = 4, block_y = 4):
         case "PVRTC":
             data = texture2ddecoder.decode_pvrtc(data, width, height, False)
         case "RGBA8":
-            return Image.frombytes("RGBA", (width, height), data, 'raw', ("RGBA"))
-    return Image.frombytes("RGBA", (width, height), data, 'raw', ("BGRA"))
+            return Image.frombytes("RGBA", (width, height), data, "raw", ("RGBA"))
+    return Image.frombytes("RGBA", (width, height), data, "raw", ("BGRA"))
 
-#this code was derived from TeaEffTeu's works and he slightly guided me, thank you very much for sharing!!
-def compblks_convert(data):
+
+# this code was derived from TeaEffTeu's works and he slightly guided me, thank you very much for sharing!!
+def compblks_convert(data: bytes) -> Image.Image:
     """Convert CompBlks to Image."""
 
     fmt = data[8:10]
@@ -118,8 +141,13 @@ def compblks_convert(data):
     image_data = data[28:]
     if fmt == bytes([0xF3, 0x83]):
         return _decode_correct_format("BC3", image_data, width, height)
-    if fmt == bytes([0x78, 0x92]):
+    elif fmt == bytes([0x78, 0x92]):
         return _decode_correct_format("ETC2A8", image_data, width, height)
+    elif fmt == bytes([0x74, 0x92]):
+        return _decode_correct_format("ETC2", image_data, width, height)
+    else:
+        raise ValueError(f"Unsupported CBK payload format {fmt.hex()}")
+
 
 def pvr_convert(data: bytes):
     """Convert PVR to Image."""
@@ -173,8 +201,9 @@ def pvr_convert(data: bytes):
             return _decode_correct_format("ASTC", image_data, width, height, 12, 12)
     raise ValueError(f"Unsupported PVR pixel format: {pixel_format}")
 
-#https://registry.khronos.org/KTX/specs/1.0/ktxspec.v1.html
-#https://github.com/KhronosGroup/KTX-Software/blob/main/lib/gl_format.h
+
+# https://registry.khronos.org/KTX/specs/1.0/ktxspec.v1.html
+# https://github.com/KhronosGroup/KTX-Software/blob/main/lib/gl_format.h
 def ktx_convert(data: bytes):
     """Convert KTX to Image."""
     f = ConstBitStream(io.BytesIO(data))
@@ -183,8 +212,8 @@ def ktx_convert(data: bytes):
     f.read("pad32")
     width, height = f.readlist("2*uintle32")
     f.read("pad128")
-    bytesOfKeyValueData  = read_uintle32(f)
-    f.read(f"pad{bytesOfKeyValueData*8}")
+    bytesOfKeyValueData = read_uintle32(f)
+    f.read(f"pad{bytesOfKeyValueData * 8}")
     image_size = read_uintle32(f)
 
     image_data = f.read(f"bytes{image_size}")
@@ -229,12 +258,16 @@ def ktx_convert(data: bytes):
             return _decode_correct_format("ASTC", image_data, width, height, 12, 12)
     raise ValueError(f"Unknown KTX format: {glInternalFormat:#x}")
 
+
 def astc_convert(data: bytes):
     """Convert ASTC to Image."""
     f = ConstBitStream(io.BytesIO(data))
     block_x, block_y = cast(tuple[int, int], f.readlist("pad32, 2*uintle8 , pad8"))
     width, height = f.readlist("2*uintle24, pad24")
-    return _decode_correct_format("ASTC", f.read("bytes"), width, height, block_x, block_y)
+    return _decode_correct_format(
+        "ASTC", f.read("bytes"), width, height, block_x, block_y
+    )
+
 
 def convert_image(data, extension):
     """Identify and convert image data to Image."""

@@ -4,14 +4,14 @@ import os
 import sys
 from typing import Any, cast
 
-from PySide6 import QtCore, QtWidgets, QtGui
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from core.config import Config
 from core.logger import get_logger
+from core.npk.class_types import NPKEntry, NPKEntryDataFlags, NPKReadOptions
 from core.npk.enums import NPKEntryFileCategories
 from core.npk.npk_file import NPKFile
 from core.wpk.wpk_file import IDXWPKFile
-from core.npk.class_types import NPKEntry, NPKEntryDataFlags, NPKReadOptions
 from gui.config_manager import ConfigManager
 from gui.models.npk_file_model import NPKFileModel
 from gui.npk_entry_filter import NPKEntryFilter
@@ -24,6 +24,7 @@ from gui.windows.about_window import AboutWindow
 from gui.windows.config_manager import ConfigManagerWindow
 from gui.windows.settings_window import SettingsWindow
 from gui.windows.viewer_tab_window import ViewerTabWindow
+
 
 class MainWindow(QtWidgets.QMainWindow):
     """Main window class."""
@@ -75,13 +76,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.control_layout.addLayout(self.config_section)
 
         self.list_widget = NPKFileList(self)
-        self.list_widget.preview_entry.connect(lambda _row, entry: self.preview_widget.set_file(entry))
-        def open_tab_window_for_entry(_row: int, entry: NPKEntry, viewer: type | None = None, batch_index: int = 0):
+        self.list_widget.preview_entry.connect(
+            lambda _row, entry: self.preview_widget.set_file(entry)
+        )
+
+        def open_tab_window_for_entry(
+            _row: int, entry: NPKEntry, viewer: type | None = None, batch_index: int = 0
+        ):
             if viewer is None:
-                viewer = find_best_viewer(entry.extension, bool(entry.data_flags & NPKEntryDataFlags.TEXT))
+                viewer = find_best_viewer(
+                    entry.extension, bool(entry.data_flags & NPKEntryDataFlags.TEXT)
+                )
             wnd = self._get_tab_window_for_viewer(viewer)
             wnd.load_file(entry, batch_index == 0)
             wnd.show()
+
         self.list_widget.open_entry.connect(open_tab_window_for_entry)
         self.list_widget.open_entry_with.connect(open_tab_window_for_entry)
 
@@ -95,9 +104,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.name_filter_input = QtWidgets.QLineEdit()
         self.name_filter_input.setPlaceholderText("Search by filename...")
+
         def filter_text_changed():
             self.filter.filter_string = self.name_filter_input.text().lower()
             self.filter.apply_filter()
+
         self.name_filter_input.textChanged.connect(filter_text_changed)
         self.filter_section.addWidget(self.name_filter_input)
 
@@ -105,25 +116,31 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.filter_binary_filter = QtWidgets.QCheckBox("Binary Files")
         self.filter_binary_filter.setChecked(True)
+
         def filter_binary_filter_changed(checked: bool):
             self.filter.include_binary = checked
             self.filter.apply_filter()
+
         self.filter_binary_filter.toggled.connect(filter_binary_filter_changed)
         self.filter_checkbox_section.addWidget(self.filter_binary_filter, 0, 0)
 
         self.filter_text_filter = QtWidgets.QCheckBox("Text Files")
         self.filter_text_filter.setChecked(True)
+
         def filter_text_filter_changed(checked: bool):
             self.filter.include_text = checked
             self.filter.apply_filter()
+
         self.filter_text_filter.toggled.connect(filter_text_filter_changed)
         self.filter_checkbox_section.addWidget(self.filter_text_filter, 0, 1)
 
         self.filter_slot_filter = QtWidgets.QCheckBox("Slot Files")
         self.filter_slot_filter.setChecked(True)
+
         def filter_slot_filter_changed(checked: bool):
             self.filter.include_slot = checked
             self.filter.apply_filter()
+
         self.filter_slot_filter.toggled.connect(filter_slot_filter_changed)
         self.filter_checkbox_section.addWidget(self.filter_slot_filter, 0, 2)
 
@@ -134,19 +151,33 @@ class MainWindow(QtWidgets.QMainWindow):
         for i in NPKEntryFileCategories:
             self.entry_category_filter_combobox.addItem(i.value, i)
         self.entry_category_filter_combobox.setCurrentIndex(0)
+
         def filter_type_changed(index: int):
-            self.filter.filter_type = self.entry_category_filter_combobox.itemData(index)
-            self.mesh_biped_head_filter_checkbox.setVisible(self.filter.filter_type == NPKEntryFileCategories.MESH)
+            self.filter.filter_type = self.entry_category_filter_combobox.itemData(
+                index
+            )
+            self.mesh_biped_head_filter_checkbox.setVisible(
+                self.filter.filter_type == NPKEntryFileCategories.MESH
+            )
             self.filter.apply_filter()
-        self.entry_category_filter_combobox.currentIndexChanged.connect(filter_type_changed)
+
+        self.entry_category_filter_combobox.currentIndexChanged.connect(
+            filter_type_changed
+        )
         self.filter_section.addWidget(self.entry_category_filter_combobox)
 
-        self.mesh_biped_head_filter_checkbox = QtWidgets.QCheckBox("Only 'biped head' meshes")
+        self.mesh_biped_head_filter_checkbox = QtWidgets.QCheckBox(
+            "Only 'biped head' meshes"
+        )
         self.mesh_biped_head_filter_checkbox.setVisible(False)
+
         def filter_mesh_biped_head_changed(checked: bool):
             self.filter.mesh_biped_head = checked
             self.filter.apply_filter()
-        self.mesh_biped_head_filter_checkbox.toggled.connect(filter_mesh_biped_head_changed)
+
+        self.mesh_biped_head_filter_checkbox.toggled.connect(
+            filter_mesh_biped_head_changed
+        )
         self.filter_section.addWidget(self.mesh_biped_head_filter_checkbox)
 
         self.control_layout.addLayout(self.filter_section)
@@ -159,8 +190,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cancel_button = QtWidgets.QPushButton("Cancel")
         self.cancel_button.setStatusTip("Cancel loading the NPK file.")
         self.cancel_button.setVisible(False)
+
         def cancel_loading():
             self._loading_cancelled = True
+
         self.cancel_button.clicked.connect(cancel_loading)
         self.control_layout.addWidget(self.cancel_button)
 
@@ -169,7 +202,11 @@ class MainWindow(QtWidgets.QMainWindow):
             all_indexes = [model.index(i, 0) for i in range(model.rowCount())]
 
             if visible_only:
-                indexes = [idx for idx in all_indexes if not self.list_widget.isRowHidden(idx.row())]
+                indexes = [
+                    idx
+                    for idx in all_indexes
+                    if not self.list_widget.isRowHidden(idx.row())
+                ]
             else:
                 indexes = all_indexes
             self.list_widget.extract_entries(indexes)
@@ -214,9 +251,11 @@ class MainWindow(QtWidgets.QMainWindow):
             menu = QtWidgets.QMenu(title="File")
 
             open_file = QtGui.QAction(
-                self.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_DirOpenIcon),
+                self.style().standardIcon(
+                    QtWidgets.QStyle.StandardPixmap.SP_DirOpenIcon
+                ),
                 "Open File",
-                self
+                self,
             )
             open_file.setStatusTip("Open a supported archive file.")
             open_file.setShortcut("Ctrl+O")
@@ -227,14 +266,14 @@ class MainWindow(QtWidgets.QMainWindow):
                     QtWidgets.QMessageBox.warning(
                         self,
                         "No Config Selected",
-                        "Please select a config before opening a file."
+                        "Please select a config before opening a file.",
                     )
                     return
                 file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
                     self,
                     "Open Archive File",
                     "",
-                    "Supported Files (*.npk *.expk *.idx *.wpk);;NPK Files (*.npk *.expk);;IDX Files (*.idx);;WPK Files (*.wpk);;All Files (*)"
+                    "Supported Files (*.npk *.expk *.idx *.wpk);;NPK Files (*.npk *.expk);;IDX Files (*.idx);;WPK Files (*.wpk);;All Files (*)",
                 )
                 if file_path:
                     self.load_npk(file_path)
@@ -243,9 +282,11 @@ class MainWindow(QtWidgets.QMainWindow):
             self.open_file_action = open_file
 
             unload_npk = QtGui.QAction(
-                self.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_DialogCancelButton),
+                self.style().standardIcon(
+                    QtWidgets.QStyle.StandardPixmap.SP_DialogCancelButton
+                ),
                 "Unload NPK",
-                self
+                self,
             )
             unload_npk.setStatusTip("Unload the current NPK file.")
             unload_npk.setShortcut("Ctrl+W")
@@ -261,7 +302,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     QtWidgets.QStyle.StandardPixmap.SP_FileDialogContentsView
                 ),
                 "Config Manager",
-                self
+                self,
             )
             config_manager.setMenuRole(QtGui.QAction.MenuRole.NoRole)
             config_manager.setStatusTip("Open the Config Manager.")
@@ -270,7 +311,9 @@ class MainWindow(QtWidgets.QMainWindow):
             def open_config_manager():
                 dialog = ConfigManagerWindow(self.config_manager)
                 dialog.exec()
-                save_config_manager_to_settings(self.config_manager, self.app.property("settings_manager"))
+                save_config_manager_to_settings(
+                    self.config_manager, self.app.property("settings_manager")
+                )
                 self.refresh_config_list()
 
             config_manager.triggered.connect(open_config_manager)
@@ -298,15 +341,15 @@ class MainWindow(QtWidgets.QMainWindow):
             for viewer in ALL_VIEWERS:
                 menu.addAction(
                     viewer.name,
-                    lambda v=viewer: self._get_tab_window_for_viewer(v).show()
+                    lambda v=viewer: self._get_tab_window_for_viewer(v).show(),
                 )
 
             return menu
 
         self.menuBar().addMenu(tools_menu())
 
-        (app_menu or self.menuBar()).addAction("About",
-            lambda: AboutWindow(self).exec()
+        (app_menu or self.menuBar()).addAction(
+            "About", lambda: AboutWindow(self).exec()
         ).setMenuRole(QtGui.QAction.MenuRole.AboutRole)
 
         self.refresh_config_list()
@@ -327,14 +370,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 viewer_window.close()
                 continue
             if viewer_window.isVisible():
-                if QtWidgets.QMessageBox.warning(
-                    self,
-                    "Close Viewers",
-                    "There are still viewer windows open.\n" +
-                    "Are you sure you want to quit?",
-                    buttons=QtWidgets.QMessageBox.StandardButton.Ok | QtWidgets.QMessageBox.StandardButton.Cancel,
-                    defaultButton=QtWidgets.QMessageBox.StandardButton.Cancel,
-                ) == QtWidgets.QMessageBox.StandardButton.Ok:
+                if (
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Close Viewers",
+                        "There are still viewer windows open.\n"
+                        + "Are you sure you want to quit?",
+                        buttons=QtWidgets.QMessageBox.StandardButton.Ok
+                        | QtWidgets.QMessageBox.StandardButton.Cancel,
+                        defaultButton=QtWidgets.QMessageBox.StandardButton.Cancel,
+                    )
+                    == QtWidgets.QMessageBox.StandardButton.Ok
+                ):
                     force_close = True
                     viewer_window.close()
                 else:
@@ -386,25 +433,34 @@ class MainWindow(QtWidgets.QMainWindow):
             self.config = self.config_manager.configs[index]
 
         if previous_config != self.config:
-            if previous_config is not None and self.app.property("npk_file") is not None and \
-                QtWidgets.QMessageBox.warning(
+            if (
+                previous_config is not None
+                and self.app.property("npk_file") is not None
+                and QtWidgets.QMessageBox.warning(
                     self,
                     "NPK File loaded",
-                    "Changing the config will unload the NPK file.\n" +
-                    "Are you sure you want to continue?",
-                    buttons=QtWidgets.QMessageBox.StandardButton.Ok | QtWidgets.QMessageBox.StandardButton.Cancel,
+                    "Changing the config will unload the NPK file.\n"
+                    + "Are you sure you want to continue?",
+                    buttons=QtWidgets.QMessageBox.StandardButton.Ok
+                    | QtWidgets.QMessageBox.StandardButton.Cancel,
                     defaultButton=QtWidgets.QMessageBox.StandardButton.Cancel,
-            ) == QtWidgets.QMessageBox.StandardButton.Cancel:
+                )
+                == QtWidgets.QMessageBox.StandardButton.Cancel
+            ):
                 # Restore the previous config selection
                 self.config = previous_config
-                self.active_config.setCurrentIndex(self.active_config.findText(previous_config.name))
+                self.active_config.setCurrentIndex(
+                    self.active_config.findText(previous_config.name)
+                )
                 return
 
             self.unload_npk()
 
             self.app.setProperty("game_config", self.config)
 
-            get_logger().info("Config changed to: %s", self.config.name if self.config else "None")
+            get_logger().info(
+                "Config changed to: %s", self.config.name if self.config else "None"
+            )
 
     def load_npk(self, path: str):
         """Load an NPK file and populate the list widget."""
@@ -446,13 +502,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.progress_bar.setValue(0)
 
         def _load_entries():
-            for i in range(archive_file.file_count):
-                if self._loading_cancelled:
-                    break
-                archive_file.read_entry(i)
-                self.update_model_signal.emit(i)
-                self.update_progress_signal.emit(i + 1)
-            self.loading_complete_signal.emit()
+            with open(archive_file.file_path, "rb") as f:
+                for i in range(archive_file.file_count):
+                    if self._loading_cancelled:
+                        break
+                    if isinstance(archive_file, NPKFile):
+                        archive_file.load_entry(i, f)
+                    else:
+                        archive_file.load_entry(i)
+                    self.update_model_signal.emit(i)
+                    self.update_progress_signal.emit(i + 1)
+                self.loading_complete_signal.emit()
 
         QtCore.QThreadPool.globalInstance().start(_load_entries)
 

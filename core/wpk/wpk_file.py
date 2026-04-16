@@ -3,20 +3,37 @@
 from __future__ import annotations
 
 import os
+from io import BufferedReader
 from typing import BinaryIO, Dict, List
 
-from core.logger import get_logger
-from core.npk.class_types import NPKEntryDataFlags, NPKEntry, NPKIndex, NPKReadOptions
 from core.formats import process_entry_with_processors
+from core.logger import get_logger
+from core.npk.class_types import (
+    NPKEntry,
+    NPKEntryDataFlags,
+    NPKIndex,
+    NPKReadOptions,
+    State,
+)
 from core.npk.detection import get_ext, get_file_category, is_binary
 from core.wpk.decryption import try_decode_payload_stage1
 
-from .constants import EMBEDDED_MAGIC, IDX_HEAD_SIZE, IDX_REC_SIZE, MIN_EMBEDDED_HEADER_SIZE, WPK_MAGIC
+from .constants import (
+    EMBEDDED_MAGIC,
+    IDX_HEAD_SIZE,
+    IDX_REC_SIZE,
+    MIN_EMBEDDED_HEADER_SIZE,
+    WPK_MAGIC,
+)
 from .idx_reader import log_idx_split_summary, read_idx_header, read_idx_indices
 from .paths import WPKPathResolver
 from .payload import WPKPayloadProcessor
 from .slot_file import SlotFileResolver
-from .standalone import build_index_from_embedded_header, read_wpk_header, scan_wpk_indices
+from .standalone import (
+    build_index_from_embedded_header,
+    read_wpk_header,
+    scan_wpk_indices,
+)
 
 
 class IDXWPKFile:
@@ -135,7 +152,9 @@ class IDXWPKFile:
     def _maybe_unpack_dtsz(self, data: bytes, *, context: str) -> tuple[bytes, bool]:
         return self._payload_processor.maybe_unpack_dtsz(data, context=context)
 
-    def _maybe_strip_enon_header(self, data: bytes, *, context: str) -> tuple[bytes, bool]:
+    def _maybe_strip_enon_header(
+        self, data: bytes, *, context: str
+    ) -> tuple[bytes, bool]:
         return self._payload_processor.maybe_strip_enon_header(data, context=context)
 
     def _unwrap_nested_payloads(self, entry: NPKEntry, *, context: str) -> None:
@@ -156,8 +175,12 @@ class IDXWPKFile:
     def _score_slot_stage1_candidate(self, data: bytes) -> tuple[int, str]:
         return self._payload_processor.score_slot_stage1_candidate(data)
 
-    def _decode_slot_payload_auto(self, payload: bytes, *, context: str) -> tuple[bytes, bool, int | None, bool]:
-        return self._payload_processor.decode_slot_payload_auto(payload, context=context)
+    def _decode_slot_payload_auto(
+        self, payload: bytes, *, context: str
+    ) -> tuple[bytes, bool, int | None, bool]:
+        return self._payload_processor.decode_slot_payload_auto(
+            payload, context=context
+        )
 
     # ------------------------------------------------------------------
     # Delegated standalone WPK parsing
@@ -168,7 +191,9 @@ class IDXWPKFile:
     def _scan_wpk_indices(self, file) -> None:
         scan_wpk_indices(self, file)
 
-    def _build_index_from_embedded_header(self, data: bytes, off: int, next_off: int, ordinal: int) -> NPKIndex:
+    def _build_index_from_embedded_header(
+        self, data: bytes, off: int, next_off: int, ordinal: int
+    ) -> NPKIndex:
         return build_index_from_embedded_header(data, off, next_off, ordinal)
 
     # ------------------------------------------------------------------
@@ -177,24 +202,54 @@ class IDXWPKFile:
     def is_entry_loaded(self, index: int) -> bool:
         return index in self.entries
 
-    def read_entry(self, index: int) -> NPKEntry:
-        if index in self.entries:
+    def find_entry_by_name(self, path: str) -> NPKEntry | None:
+
+        return
+
+    def find_entry_by_id(self, index: int) -> NPKEntry:
+        """Get an entry by its index.
+
+        Assumes all the indexes have been read beforehand (by load_entry)
+
+        Args:
+            index: The index of the entry to load
+
+        Returns:
+            NPKEntry: The loaded entry
+        """
+        if 0 <= index < len(self.indices):
             return self.entries[index]
 
         entry = NPKEntry()
-        if not 0 <= index < len(self.indices):
-            get_logger().critical("Entry index out of range: %d", index)
-            entry.data_flags |= NPKEntryDataFlags.ERROR
-            return entry
+        get_logger().critical("Entry index out of range: %d", index)
+        entry.data_flags |= NPKEntryDataFlags.ERROR
+        return entry
 
+    def load_entry(self, index: int):
+        """Load an entry into the index through the BufferedReader
+
+        Called by main_window.py, optimized to avoid opening
+        and closing the data file thousands of times
+
+        Args:
+            index: The index of the entry to load
+        """
+        # Create a new entry based on the index
+        entry = NPKEntry()
         idx = self.indices[index]
-        for attr in vars(idx):
-            setattr(entry, attr, getattr(idx, attr))
 
         entry.is_slot_file = False
         entry.source_mode = self.mode
         entry.stage1_decoded = False
         entry.stage1_tag = None
+
+        # Copy index attributes to entry
+        for attr in vars(idx):
+            setattr(entry, attr, getattr(idx, attr))
+
+        # Load the actual data
+        self._load_entry_data(entry)
+
         try:
             self._load_entry_data(entry)
         except Exception as exc:
@@ -209,15 +264,15 @@ class IDXWPKFile:
         if "." not in entry.filename:
             entry.filename = f"{entry.filename}.{entry.extension}"
 
+        entry.state = State.CACHED
         self.entries[index] = entry
-        return entry
 
     def _load_entry_data(self, entry: NPKEntry):
         pkg_id = getattr(entry, "pkg_id", None)
         if pkg_id is None:
             raise ValueError("Entry missing pkg_id")
 
-        raw_data: bytes
+        raw_data: bytes | None
         payload: bytes
 
         if self.mode == "idx" and self._is_slot_file_pkg(pkg_id):
@@ -233,7 +288,11 @@ class IDXWPKFile:
             hdr_size = getattr(entry, "hdr_size", 0)
             payload_size = getattr(entry, "payload_size", 0)
             if raw_data[:4] == b"1DPW":
-                payload = raw_data[hdr_size:hdr_size + payload_size] if payload_size > 0 else raw_data[hdr_size:]
+                payload = (
+                    raw_data[hdr_size : hdr_size + payload_size]
+                    if payload_size > 0
+                    else raw_data[hdr_size:]
+                )
             else:
                 payload = raw_data
         else:
@@ -243,15 +302,23 @@ class IDXWPKFile:
 
             hdr_size = getattr(entry, "hdr_size", 0)
             payload_size = getattr(entry, "payload_size", 0)
-            total_size = entry.file_length if entry.file_length > 0 else hdr_size + payload_size
+            total_size = (
+                entry.file_length if entry.file_length > 0 else hdr_size + payload_size
+            )
 
             handle.seek(entry.file_offset)
             raw_data = handle.read(total_size)
             if len(raw_data) != total_size:
-                raise EOFError(f"Failed to read entry data: expected {total_size}, got {len(raw_data)}")
+                raise EOFError(
+                    f"Failed to read entry data: expected {total_size}, got {len(raw_data)}"
+                )
 
             if hdr_size > 0 and hdr_size <= len(raw_data):
-                payload = raw_data[hdr_size:hdr_size + payload_size] if payload_size > 0 else raw_data[hdr_size:]
+                payload = (
+                    raw_data[hdr_size : hdr_size + payload_size]
+                    if payload_size > 0
+                    else raw_data[hdr_size:]
+                )
             else:
                 payload = raw_data
 
@@ -261,9 +328,11 @@ class IDXWPKFile:
         stage1_context = f"{entry.filename} pkg={pkg_id} source={entry.source_mode}"
         used_skip_header_decode = False
         if entry.is_slot_file:
-            processed, decoded, tag, used_skip_header_decode = self._decode_slot_payload_auto(
-                payload,
-                context=stage1_context,
+            processed, decoded, tag, used_skip_header_decode = (
+                self._decode_slot_payload_auto(
+                    payload,
+                    context=stage1_context,
+                )
             )
         else:
             processed, decoded, tag = try_decode_payload_stage1(

@@ -48,6 +48,8 @@ def _get_binary_ext(data: bytes, flags: NPKEntryDataFlags):
             return "fev"
         if b"WAVE" in data:
             return "wem"
+    if data[0x34:0x3B] == b"2.1.0.0":
+        return "csb"
     if data[4:8] == b"ftyp":
         return "mp4"
     # if data[1:8] == bytes([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]):
@@ -87,7 +89,7 @@ def _get_binary_ext(data: bytes, flags: NPKEntryDataFlags):
     if data[:33] == b"NVidia(r) GameWorks Blast(tm) v.1":
         return "blast"
     if data[:12] == b"CocosStudio-UI":
-        return "csb"
+        return "coc"
     if data[:3] == b"hit":
         return "hit"
     if data[:3] == b"PKM":
@@ -136,6 +138,8 @@ def _get_text_ext(data: bytes, flags: NPKEntryDataFlags):
         # NeoXML file detection
         if b"<Material" in data:
             return "mtl"
+        if b'"ctype": "' in data:
+            return "cjson"
         if b"<MaterialGroup" in data:
             return "mtg"
         if b"<MetaInfo" in data:

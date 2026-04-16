@@ -29,6 +29,7 @@ from .class_types import (
     NPKEntryDataFlags,
     NPKIndex,
     NPKReadOptions,
+    State,
 )
 from .decryption import decrypt_eggparty_index
 from .detection import get_ext, get_file_category, is_binary
@@ -223,40 +224,51 @@ class NPKFile:
         """
         return index in self.entries
 
-    def read_entry(self, index: int) -> NPKEntry:
+    def find_entry_by_name(self, path: str) -> NPKEntry | None:
+        path = path.replace("/", "\\").split(".", 1)[0]
+        for ind in range(0, len(self.entries)):
+            if path in self.entries[ind].basename:
+                return self.entries[ind]
+        return None
+
+    def find_entry_by_id(self, index: int) -> NPKEntry:
         """Get an entry by its index.
 
-        If the entry has been loaded before, returns the cached entry.
-        Otherwise, loads the entry from the NPK file.
+        Assumes all the indexes have been read beforehand (by load_entry)
 
         Args:
             index: The index of the entry to load
 
         Returns:
             NPKEntry: The loaded entry
-            bool:
         """
-        if index in self.entries:
+        if 0 <= index < len(self.indices):
             return self.entries[index]
 
+        entry = NPKEntry()
+        get_logger().critical("Entry index out of range: %d", index)
+        entry.data_flags |= NPKEntryDataFlags.ERROR
+        return entry
+
+    def load_entry(self, index: int, f: io.BufferedReader):
+        """Load an entry into the index through the BufferedReader
+
+        Called by main_window.py, optimized to avoid opening
+        and closing the data file thousands of times
+
+        Args:
+            index: The index of the entry to load
+        """
         # Create a new entry based on the index
         entry = NPKEntry()
-
-        # Check if the index is valid
-        if not 0 <= index < len(self.indices):
-            get_logger().critical("Entry index out of range: %d", index)
-            entry.data_flags |= NPKEntryDataFlags.ERROR
-            return entry
-
         idx = self.indices[index]
 
         # Copy index attributes to entry
         for attr in vars(idx):
             setattr(entry, attr, getattr(idx, attr))
 
-        with open(self.file_path, "rb") as file:
-            # Load the actual data
-            self._load_entry_data(entry, file)
+        # Load the actual data
+        self._load_entry_data(entry, f)
 
         # Update filename with extension.
         # For NXFN-backed names, keep an existing extension, otherwise append the detected one.
@@ -265,8 +277,8 @@ class NPKFile:
             entry.filename = f"{entry.filename}.{entry.extension}"
 
         # Store in the cache
+        entry.state = State.CACHED
         self.entries[index] = entry
-        return entry
 
     def _load_entry_data(self, entry: NPKEntry, file: io.BufferedReader):
         """Load the data for an entry from the NPK file."""

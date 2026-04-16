@@ -224,6 +224,14 @@ wheels = [
 ]
 
 [[package]]
+name = "flatbuffers"
+version = "25.12.19"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e8/2d/d2a548598be01649e2d46231d151a6c56d10b964d94043a335ae56ea2d92/flatbuffers-25.12.19-py2.py3-none-any.whl", hash = "sha256:7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4", size = 26661, upload-time = "2025-12-19T23:16:13.622Z" },
+]
+
+[[package]]
 name = "lz4"
 version = "4.4.5"
 source = { registry = "https://pypi.org/simple" }
@@ -271,6 +279,7 @@ dependencies = [
     { name = "arc4" },
     { name = "bitstring" },
     { name = "cryptography" },
+    { name = "flatbuffers" },
     { name = "lz4" },
     { name = "numpy" },
     { name = "p" },
@@ -287,6 +296,7 @@ requires-dist = [
     { name = "arc4", specifier = ">=0.5.0" },
     { name = "bitstring", specifier = ">=4.4.0" },
     { name = "cryptography", specifier = ">=46.0.7" },
+    { name = "flatbuffers", specifier = ">=25.12.19" },
     { name = "lz4", specifier = ">=4.4.5" },
     { name = "numpy", specifier = ">=2.4.4" },
     { name = "p", specifier = ">=1.5.0" },

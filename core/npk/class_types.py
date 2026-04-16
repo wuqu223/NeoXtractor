@@ -9,6 +9,13 @@ from core.file import IFile
 from .enums import CompressionType, DecryptionType, NPKEntryFileCategories
 
 
+class State(IntFlag):
+    UNLOADED = 0
+    CACHED = auto()
+    PRIMARY_LOAD = auto()
+    SECONDARY_LOAD = auto()
+
+
 class NPKEntryDataFlags(IntFlag):
     """Flags for NPK entry data."""
 
@@ -71,6 +78,7 @@ class NPKEntry(NPKIndex, IFile):
         self.has_decoded_view: bool = False
         self.unwrap_layers: list | None
         self.format_metadata: dict = {}
+        self.state: State = State.UNLOADED
 
     @property
     def is_compressed(self) -> bool:

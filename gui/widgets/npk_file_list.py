@@ -1,15 +1,18 @@
 """Custom QListView to display NPK files."""
 
 import os
+from sys import prefix
 from typing import cast
+
 from PySide6 import QtCore, QtWidgets
 
 from core.config import Config
-from core.npk.class_types import NPKEntry
+from core.npk.class_types import NPKEntry, State
 from gui.models.npk_file_model import NPKFileModel
 from gui.utils.config import save_config_manager_to_settings
 from gui.utils.npk import get_npk_file
 from gui.utils.viewer import ALL_VIEWERS
+
 
 class NPKFileList(QtWidgets.QListView):
     """
@@ -26,7 +29,9 @@ class NPKFileList(QtWidgets.QListView):
         self._disabled = False
         self._select_after_enabled: QtCore.QModelIndex | None = None
 
-        self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
+        )
         self.setDragEnabled(False)
         self.setAcceptDrops(False)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
@@ -46,7 +51,9 @@ class NPKFileList(QtWidgets.QListView):
             self.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
             self.setProperty("disabled", True)
         else:
-            self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+            self.setSelectionMode(
+                QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
+            )
             self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
             self.setProperty("disabled", None)
         self.style().unpolish(self)
@@ -55,8 +62,10 @@ class NPKFileList(QtWidgets.QListView):
         self._disabled = disabled
 
         if self._select_after_enabled:
-            self.selectionModel().select(self._select_after_enabled,
-                                         QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect)
+            self.selectionModel().select(
+                self._select_after_enabled,
+                QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect,
+            )
             self.on_current_changed(self._select_after_enabled, QtCore.QModelIndex())
             self._select_after_enabled = None
 
@@ -87,10 +96,12 @@ class NPKFileList(QtWidgets.QListView):
             self.setModel(NPKFileModel(npk_file, self))
             self.selectionModel().currentChanged.connect(self.on_current_changed)
 
-    def on_current_changed(self, current: QtCore.QModelIndex, previous: QtCore.QModelIndex):
+    def on_current_changed(
+        self, current: QtCore.QModelIndex, previous: QtCore.QModelIndex
+    ):
         """
         Handle single-click on an item in the list.
-        
+
         :param index: The model index that was clicked.
         """
         if self._disabled:
@@ -105,14 +116,18 @@ class NPKFileList(QtWidgets.QListView):
         # Get the row index from the model index
         row_index = current.row()
 
-        entry = npk_file.read_entry(row_index)
+        entry = npk_file.find_entry_by_id(row_index)
+        entry.state = State.PRIMARY_LOAD
+
+        if not previous.row() == 0:
+            npk_file.find_entry_by_id(previous.row()).state = State.CACHED
 
         self.preview_entry.emit(row_index, entry)
 
     def on_item_double_clicked(self, index: QtCore.QModelIndex):
         """
         Handle double-click on an item in the list.
-        
+
         :param index: The model index that was double-clicked.
         """
         if self._disabled:
@@ -126,14 +141,14 @@ class NPKFileList(QtWidgets.QListView):
         # Get the row index from the model index
         row_index = index.row()
 
-        entry = npk_file.read_entry(row_index)
+        entry = npk_file.find_entry_by_id(row_index)
 
         self.open_entry.emit(row_index, entry)
 
     def show_context_menu(self, position):
         """
         Show a context menu for selected items.
-        
+
         :param position: Position where the context menu was requested.
         """
         npk_file = get_npk_file()
@@ -154,7 +169,9 @@ class NPKFileList(QtWidgets.QListView):
 
         if self._selection_has_decoded_entries(indexes):
             extract_raw = menu.addAction("Extract Raw")
-            extract_raw.triggered.connect(lambda: self.extract_entries(indexes, decoded=False))
+            extract_raw.triggered.connect(
+                lambda: self.extract_entries(indexes, decoded=False)
+            )
 
         menu.addSeparator()
         for viewer in ALL_VIEWERS:
@@ -174,7 +191,7 @@ class NPKFileList(QtWidgets.QListView):
     def open_entries_with(self, indexes: list[QtCore.QModelIndex], viewer: type):
         """
         Open the selected entry with the specified viewer.
-        
+
         :param indexes: List of model indexes for the selected entries.
         :param viewer: The viewer class to use.
         """
@@ -183,7 +200,7 @@ class NPKFileList(QtWidgets.QListView):
             return
         for i, index in enumerate(indexes):
             row = index.row()
-            entry = npk_file.read_entry(row)
+            entry = npk_file.find_entry_by_id(row)
             self.open_entry_with.emit(row, entry, viewer, i)
 
     def _selection_has_decoded_entries(self, indexes: list[QtCore.QModelIndex]) -> bool:
@@ -191,7 +208,7 @@ class NPKFileList(QtWidgets.QListView):
         if npk_file is None:
             return False
         for index in indexes:
-            entry = npk_file.read_entry(index.row())
+            entry = npk_file.find_entry_by_id(index.row())
             if getattr(entry, "has_decoded_view", False):
                 return True
         return False
@@ -199,7 +216,7 @@ class NPKFileList(QtWidgets.QListView):
     def extract_entries(self, indexes: list[QtCore.QModelIndex], decoded: bool = True):
         """
         Extract selected entries from the NPK file.
-        
+
         :param indexes: List of model indexes for the selected entries.
         """
         npk_file = get_npk_file()
@@ -212,31 +229,26 @@ class NPKFileList(QtWidgets.QListView):
             row_index = index.row()
 
             # Get the entry data first so the detected extension is reflected in the filename.
-            entry = npk_file.read_entry(row_index)
-            filename = os.path.basename(entry.get_export_filename(decoded=decoded)) or self.model().get_filename(index)
+            entry = npk_file.find_entry_by_id(row_index)
+            filename = os.path.basename(
+                entry.get_export_filename(decoded=decoded)
+            ) or self.model().get_filename(index)
 
             # Show save file dialog
             file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
-                self,
-                "Extract File",
-                filename,
-                "All Files (*.*)"
+                self, "Extract File", filename, "All Files (*.*)"
             )
 
             if file_path:
                 try:
-                    with open(file_path, 'wb') as f:
+                    with open(file_path, "wb") as f:
                         f.write(entry.get_export_data(decoded=decoded))
                     QtWidgets.QMessageBox.information(
-                        self,
-                        "Success", 
-                        f"File extracted to {file_path}"
+                        self, "Success", f"File extracted to {file_path}"
                     )
                 except Exception as e:
                     QtWidgets.QMessageBox.critical(
-                        self,
-                        "Error", 
-                        f"Failed to extract file: {str(e)}"
+                        self, "Error", f"Failed to extract file: {str(e)}"
                     )
         else:
             # For multiple files, show directory selection dialog
@@ -244,7 +256,7 @@ class NPKFileList(QtWidgets.QListView):
                 self,
                 "Select Directory to Extract Files",
                 "",
-                QtWidgets.QFileDialog.Option.ShowDirsOnly
+                QtWidgets.QFileDialog.Option.ShowDirsOnly,
             )
 
             if dir_path:
@@ -256,8 +268,10 @@ class NPKFileList(QtWidgets.QListView):
                         row_index = index.row()
 
                         # Get the entry data first so the detected extension is reflected in the filename.
-                        entry = npk_file.read_entry(row_index)
-                        filename = os.path.basename(entry.get_export_filename(decoded=decoded)) or self.model().get_filename(index)
+                        entry = npk_file.find_entry_by_id(row_index)
+                        filename = os.path.basename(
+                            entry.get_export_filename(decoded=decoded)
+                        ) or self.model().get_filename(index)
 
                         # Create safe filename
                         safe_filename = os.path.basename(filename)
@@ -267,7 +281,7 @@ class NPKFileList(QtWidgets.QListView):
                         file_path = os.path.join(dir_path, safe_filename)
 
                         try:
-                            with open(file_path, 'wb') as f:
+                            with open(file_path, "wb") as f:
                                 f.write(entry.get_export_data(decoded=decoded))
                             success_count += 1
                         except Exception:
@@ -277,18 +291,18 @@ class NPKFileList(QtWidgets.QListView):
                     if fail_count > 0:
                         message += f"\n{fail_count} files failed to extract"
 
-                    QtWidgets.QMessageBox.information(self, "Extraction Complete", message)
+                    QtWidgets.QMessageBox.information(
+                        self, "Extraction Complete", message
+                    )
                 except Exception as e:
                     QtWidgets.QMessageBox.critical(
-                        self,
-                        "Error",
-                        f"Failed to extract files: {str(e)}"
+                        self, "Error", f"Failed to extract files: {str(e)}"
                     )
 
     def show_rename_dialog(self, index: QtCore.QModelIndex):
         """
         Show a dialog to rename the selected file.
-        
+
         :param index: The model index of the item to rename.
         """
         npk_file = get_npk_file()
@@ -304,7 +318,7 @@ class NPKFileList(QtWidgets.QListView):
             "Rename File",
             f"Enter new name for {self.model().get_filename(index)}:",
             QtWidgets.QLineEdit.EchoMode.Normal,
-            ""
+            "",
         )
 
         if ok and new_name:

@@ -36,7 +36,7 @@ class NPKEntryFilter:
             return
 
         for row in range(model.rowCount()):
-            npk_entry = npk_file.read_entry(row)
+            npk_entry = npk_file.find_entry_by_id(row)
             filename_lower = model.get_filename(model.index(row)).lower()
             is_slot_file = getattr(npk_entry, "is_slot_file", False)
 
