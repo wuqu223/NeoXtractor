@@ -247,9 +247,6 @@ class IDXWPKFile:
         for attr in vars(idx):
             setattr(entry, attr, getattr(idx, attr))
 
-        # Load the actual data
-        self._load_entry_data(entry)
-
         try:
             self._load_entry_data(entry)
         except Exception as exc:
@@ -266,6 +263,7 @@ class IDXWPKFile:
 
         entry.state = State.CACHED
         self.entries[index] = entry
+        return entry
 
     def _load_entry_data(self, entry: NPKEntry):
         pkg_id = getattr(entry, "pkg_id", None)
