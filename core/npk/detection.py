@@ -327,5 +327,7 @@ def get_file_category(extension):
 
     if extension in ["gim", "mtg", "ags", "unknown1"]:
         return NPKEntryFileCategories.XML
+    if extension in ["csb"]:
+        return NPKEntryFileCategories.CSB
 
     return NPKEntryFileCategories.OTHER
