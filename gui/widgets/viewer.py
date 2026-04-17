@@ -1,56 +1,49 @@
-from abc import abstractmethod
-from typing import TYPE_CHECKING
+"""Base viewer classes for file preview."""
+
+from typing import Optional
 
 from PySide6 import QtWidgets
 
 from core.file import IFile
-if TYPE_CHECKING:
-    from gui.windows.viewer_tab_window import ViewerTabWindow
 
-class IViewer:
-    """
-    Base interface for all viewers.
-    """
 
-    name: str
-    """Name of the viewer."""
-
-    accepted_extensions: set[str]
-    """Accepted extensions of the viewer."""
-
+class Viewer(QtWidgets.QWidget):
+    """Base class for all file viewers."""
+    
+    name: str = "Base Viewer"
+    accepted_extensions: list[str] = []
     allow_unsupported_extensions: bool = False
-    """Indicates can the viewer accept unsupported extensions."""
-
-    @abstractmethod
-    def get_file(self) -> IFile | None:
-        """Get the viewer's current file."""
-
-    @abstractmethod
+    
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+        super().__init__(parent)
+    
     def set_file(self, file: IFile):
-        """Set the viewer's current file."""
-
-    @abstractmethod
+        """Load and display a file.
+        
+        Args:
+            file: The file to display
+            
+        Raises:
+            ValueError: If the file cannot be displayed
+        """
+        raise NotImplementedError("Subclasses must implement set_file()")
+    
     def unload_file(self):
-        """Unload the viewer's current file."""
-
-class Viewer(IViewer, QtWidgets.QWidget):
-    """A viewer."""
-
-    @abstractmethod
-    def get_file(self) -> IFile | None:
+        """Unload the current file and free resources."""
         pass
 
-    @abstractmethod
-    def set_file(self, file: IFile):
-        pass
-
-    @abstractmethod
-    def unload_file(self):
-        pass
 
 class ICustomTabWindow:
-    """Interface for viewers that customizes the tab window."""
-
+    """Interface for viewers that need custom tab window setup."""
+    
     @staticmethod
-    def setup_tab_window(tab_window: 'ViewerTabWindow') -> None:
-        """Customize the tab window."""
+    def setup_tab_window(window: QtWidgets.QMainWindow):
+        """Setup custom tab window features.
+        
+        Args:
+            window: The tab window to setup
+            
+        Raises:
+            NotImplementedError: If subclass doesn't implement this method
+        """
+        raise NotImplementedError("Subclasses must implement setup_tab_window()")

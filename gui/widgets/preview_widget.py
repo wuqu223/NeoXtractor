@@ -64,7 +64,6 @@ class PreviewWidget(QtWidgets.QWidget):
         Add a previewer to the preview widget.
         
         :param previewer: The previewer to add.
-        :param name: The name of the previewer.
         """
         self.previewer_selector.addItem(previewer.name, previewer)
         self._previewers.append(previewer)
@@ -138,6 +137,11 @@ class PreviewWidget(QtWidgets.QWidget):
         for previewer in self._previewers:
             if isinstance(previewer, best_previewer):
                 self.select_previewer(previewer)
+                return
+        
+        # If no previewer found, show message
+        self.message_label.setText(f"No previewer available for this file type")
+        self.message_label.setVisible(True)
 
     def clear(self):
         """
