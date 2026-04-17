@@ -135,19 +135,24 @@ def unpack_lz4_like(data: bytes) -> bytes:
 
 
 def check_nxs3(entry: NPKEntry) -> bool:
-    """Check if the data is wrapped in NXS3 format."""
-    return entry.data[:8] == b"NXS3\x03\x00\x00\x01"
+    """Check if the data is wrapped in any NXS format (old NXS3 or new NXS)."""
+    return entry.data[:8] == b"NXS3\x03\x00\x00\x01" or \
+           entry.data[:8] == b'\x4E\x58\x5A\x00\x47\x38\x36\x00'
+
 
 def check_rotor(entry: NPKEntry) -> bool:
     """Check if the data is ROTOR encrypted."""
     return (entry.data[:2] == bytes([0x1D, 0x04]) or entry.data[:2] == bytes([0x15, 0x23]))
 
+
 def check_stzb(entry: NPKEntry) -> bool:
     return entry.data[:4] == b'STZB'
+
 
 def unpack_rotor(data):
     """Unpacks the ROTOR decryption with the RSA public key and zlib decompression"""
     return _reverse_string(zlib.decompress(init_rotor().decrypt(data)))
+
 
 def unpack_stzb(data):
     """Unpacks STZB encrypted data - completely aligned with the second script"""
@@ -162,11 +167,13 @@ def unpack_stzb(data):
     xor_key = b'\x8E\x50\x9F\xE8\x59\x67\x91\xFB'
     decrypted_data = bytearray()
     
+    encrypted_data = data[16:16+encrypted_len]
     for i, byte in enumerate(encrypted_data):
         key_byte = xor_key[i % len(xor_key)]
         decrypted_data.append(byte ^ key_byte)
     
     return bytes(decrypted_data)
+
 
 def rsa_public_decrypt(signature: bytes, key: rsa.RSAPublicKey) -> bytes:
     """Converts a signature to an integer and decrypts it using the RSA public key."""
@@ -199,21 +206,11 @@ def rsa_public_decrypt(signature: bytes, key: rsa.RSAPublicKey) -> bytes:
 
     return decrypted[padding_end + 1:]
 
-def unpack_nxs3(data):
-    """
-    Decrypts and unpacks data encrypted with a custom algorithm using an RSA public key.
-    This function extracts an encrypted key from the input data, decrypts it using
-    an RSA public key, and uses the resulting ephemeral key to decrypt the remaining
-    data. The decryption process involves XOR operations and bitwise manipulations.
-    Args:
-        data (bytes): The input data to be decrypted. The data must contain an
-                      encrypted key starting at offset 20, followed by the encrypted payload.
-    Returns:
-        bytes: The decrypted data.
-    Raises:
-        ValueError: If the decryption of the encrypted key fails.
-    """
 
+def _unpack_nxs3_old(data: bytes) -> bytes:
+    """
+    Decrypts and unpacks data encrypted with original NXS3 format (1024-bit RSA + LZ4).
+    """
     # Parse the RSA public key
     pem_key = b"""-----BEGIN RSA PUBLIC KEY-----
 MIGJAoGBAOZAaZe2qB7dpT9Y8WfZIdDv+ooS1HsFEDW2hFnnvcuFJ4vIuPgKhISm
@@ -243,4 +240,66 @@ YWIEf8qgkylqsOQ3IIn76udV6m0AWC2jDlmLeRcR04w9NNw7+9t9AgMBAAE=
 
     decrypted = bytes(decrypted)
     return decrypted
-    
+
+
+def _unpack_nxs_new(data: bytes) -> bytes:
+    """
+   Add NXS decryption support for endless Lagrange
+    """
+    if data[:8] != b'\x4E\x58\x5A\x00\x47\x38\x36\x00':
+        return data
+
+    # 4096-bit RSA public key
+    pem_key = b"""-----BEGIN RSA PUBLIC KEY-----
+MIICCgKCAgEAu5/HBdUwY37hJbm3ri9h/fHJqsx6PeLTEqP2tIYoV3+qn0lI4Kht
+wi03S2wf6CrwWXuf8Dp4L/MRsFi/Cxqe53m6Dhx8Zy9nzStaBUzp0DeL/M+HWI+r
+fDUPybKfJx9qlTNxUyvIQZkSh83YdkhVC4pqiOt0nGCS44Xs88DEkYOjRydLa4uK
+JQIZAuUSsC5Cu9FjBzGHW3Pc9ene9HJai+8ipvi8bhLc1hnvlER7GtzQce/Ubjq2
+D79KXLCjZKYr0L+9h7hfOQk+R2VqVthRvuf2ql9H13Wbnukm6ijg8+mamB6esNTo
+OPdjQkuMj5wUEfPqRK3GZibW92QilOvFt9cx0JBjjs3k8ax7u9iOnsVEqUqgX9bE
+FoZiwUfV1wJAcfEzJqJ4/wMe8FIV35Pg9UE/tQ4M9YX+PDUTnaWXksK8kDqa96NG
+d9xqy+MntsUcKf7UsEExtkm6GDxtpIokUYplUAMPQDo/04eBOP6J5YdjOv2Dxjd5
+OM832KIu1uYdO81xRGmyiSsavtzkQJbePWVFq1iW/1+nmaodzgi/esbLFM5T6xan
+iOvQK1rRaJgE2NdU0EOAOhDAJu+1JfiB60nJw20gSM6Wl3s9N+UmXrR+xJxxcgnK
+P0VB60qOgnlYmNwld5muJazI9P7sbtFRuEVLoN5Y+P9PCIXQ/RrZVLMCAwEAAQ==
+-----END RSA PUBLIC KEY-----"""
+
+    rsa_key = cast(rsa.RSAPublicKey, serialization.load_pem_public_key(pem_key, backend=default_backend()))
+
+    # Decrypt the wrapped key (512 bytes for 4096-bit RSA)
+    wrapped_key = rsa_public_decrypt(data[20:20+512], rsa_key)[:4]
+
+    if wrapped_key is None or len(wrapped_key) != 4:
+        raise ValueError("Decryption of the encrypted key failed.")
+
+    # Convert to int (little endian)
+    ephemeral_key = int.from_bytes(wrapped_key, "little")
+
+    # Stream cipher decryption
+    decrypted = bytearray()
+    payload = data[20 + 512:]
+
+    for i, x in enumerate(payload):
+        val = x ^ ((ephemeral_key >> (i % 4 * 8)) & 0xFF)
+        decrypted.append(val)
+        if i % 4 == 3:
+            ror = (ephemeral_key >> 19) | ((ephemeral_key << 13) & 0xFFFFFFFF)
+            ephemeral_key = (ror + ((ror << 2) & 0xFFFFFFFF) + 0xE6546B64) & 0xFFFFFFFF
+
+    decrypted = bytes(decrypted)
+
+    # Check if Zstd compressed and decompress
+    if decrypted[:4] == b'\x28\xB5\x2F\xFD':
+        dctx = zstandard.ZstdDecompressor()
+        return dctx.decompress(decrypted)
+
+    return decrypted
+
+
+def unpack_nxs3(data: bytes) -> bytes:
+    """Unpack any NXS format (old NXS3 or new NXS)."""
+    if data[:8] == b"NXS3\x03\x00\x00\x01":
+        return _unpack_nxs3_old(data)
+    elif data[:8] == b'\x4E\x58\x5A\x00\x47\x38\x36\x00':
+        return _unpack_nxs_new(data)
+    return data
