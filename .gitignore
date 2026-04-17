@@ -13,3 +13,5 @@
 settings.json
 *.bnk
 *.npk
+*.idx
+*.wpk
