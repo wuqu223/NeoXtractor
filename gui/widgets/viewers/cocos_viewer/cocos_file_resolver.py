@@ -14,7 +14,7 @@ from .cocos_parser import CocosParser
 
 class ResourceResolver:
     def __init__(self):
-        self.file_cache: dict[str, int] = {}
+        self.file_cache: dict[str, int | None] = {}
         self.cache: dict[int, QtGui.QImage | None] = {}
         self.sprite_cache: dict[tuple[int, str], QtGui.QImage | None] = {}
         self.plist_cache: dict[int, dict[str, Any] | None] = {}
@@ -27,8 +27,7 @@ class ResourceResolver:
         if x is None:
             if relative_path is not None and npk_file is not None:
                 file, index = npk_file.find_entry_by_name(relative_path)
-                if index is not None:
-                    self.file_cache[relative_path] = index
+                self.file_cache[relative_path] = index
                 return file
             return None
 
