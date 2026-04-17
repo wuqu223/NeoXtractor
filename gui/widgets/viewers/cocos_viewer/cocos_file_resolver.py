@@ -4,9 +4,8 @@ from typing import Any
 
 from PySide6 import QtCore, QtGui
 
-from core.file import IFile
-from core.images import compblks_convert, image_to_qimage
-from core.npk.class_types import NPKEntry
+from core.images import bgra_to_rgba, compblks_convert, image_to_qimage
+from core.npk.class_types import NPKEntry, State
 from gui.utils.npk import get_npk_file
 
 from .cocos_parser import CocosParser
@@ -27,6 +26,8 @@ class ResourceResolver:
         if x is None:
             if relative_path is not None and npk_file is not None:
                 file, index = npk_file.find_entry_by_name(relative_path)
+                if file is not None:
+                    file.state = State.SECONDARY_LOAD
                 self.file_cache[relative_path] = index
                 return file
             return None
@@ -34,6 +35,14 @@ class ResourceResolver:
         if npk_file is not None:
             return npk_file.find_entry_by_id(x)
         return None
+
+    def unload_caches(self) -> None:
+        npk_file = get_npk_file()
+
+        if npk_file is not None:
+            for index in self.file_cache.values():
+                if index is not None:
+                    npk_file.find_entry_by_id(index).state = State.CACHED
 
     def load(self, relative_path: str) -> QtGui.QImage | None:
         resource_id = self.resolve(relative_path)
@@ -47,6 +56,8 @@ class ResourceResolver:
             image = image_to_qimage(compblks_convert(resource_id.data))
         elif resource_id.extension == "png":
             image = QtGui.QImage(resource_id.data)
+            if image.isNull:
+                image = bgra_to_rgba(resource_id.data)
         else:
             return None
 
@@ -178,6 +189,8 @@ class ResourceResolver:
         return values[0], values[1]
 
     def load_project(self, relative_path: str | None) -> dict[str, Any] | None:
+        if relative_path is None:
+            return None
         project_source = self.resolve(relative_path)
         if project_source is None:
             return None

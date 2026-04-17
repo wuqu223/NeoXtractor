@@ -1020,7 +1020,7 @@ class CocosViewer(Viewer):
         self.selected_node_path = document.get("root", {}).get("__editor_path")
         root = document.get("root", {})
         self._add_tree_item(None, root)
-        self.node_tree.expandToDepth(2)
+        self.node_tree.expandToDepth(3)
         root_item = self.path_lookup.get(self.selected_node_path or "")
         if root_item is not None:
             self.node_tree.setCurrentItem(root_item)
@@ -1041,6 +1041,8 @@ class CocosViewer(Viewer):
         """Clear the list widget and reset the container."""
         if hasattr(self, "container") and self.container:
             self.container = None
+        if self.current_resolver is not None:
+            self.current_resolver.unload_caches()
 
     def _setup_animation_controls(self, document: dict[str, Any]) -> None:
         self.playback_timer.stop()

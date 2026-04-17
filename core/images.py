@@ -75,12 +75,11 @@ def image_to_png_data(img: Image.Image | ImageFile.ImageFile) -> bytes:
 
 
 def image_to_qimage(image: Image.Image) -> QImage:
-    buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
-    qt_image = QImage.fromData(buffer.getvalue())
-    if qt_image.isNull():
-        raise ValueError("Failed to convert image into QImage")
-    return qt_image
+    return image.toqimage()
+
+
+def bgra_to_rgba(image: bytes) -> QImage:
+    return Image.open(io.BytesIO(image), "r", ("PNG", "DDS")).toqimage()
 
 
 def _get_pitch(width):
