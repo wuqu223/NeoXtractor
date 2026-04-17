@@ -14,20 +14,29 @@ from .cocos_parser import CocosParser
 
 class ResourceResolver:
     def __init__(self):
+        self.file_cache: dict[str, int] = {}
         self.cache: dict[int, QtGui.QImage | None] = {}
         self.sprite_cache: dict[tuple[int, str], QtGui.QImage | None] = {}
         self.plist_cache: dict[int, dict[str, Any] | None] = {}
         self.document_cache: dict[int, dict[str, Any] | None] = {}
 
-    def resolve(self, relative_path: str | None) -> NPKEntry | None:
+    def resolve(self, relative_path: str) -> NPKEntry | None:
         npk_file = get_npk_file()
 
-        if relative_path is not None and npk_file is not None:
-            return npk_file.find_entry_by_name(relative_path)
+        x = self.file_cache.get(relative_path)
+        if x is None:
+            if relative_path is not None and npk_file is not None:
+                file, index = npk_file.find_entry_by_name(relative_path)
+                if index is not None:
+                    self.file_cache[relative_path] = index
+                return file
+            return None
 
+        if npk_file is not None:
+            return npk_file.find_entry_by_id(x)
         return None
 
-    def load(self, relative_path: str | None) -> QtGui.QImage | None:
+    def load(self, relative_path: str) -> QtGui.QImage | None:
         resource_id = self.resolve(relative_path)
         if resource_id is None:
             return None
@@ -54,7 +63,7 @@ class ResourceResolver:
             if (
                 isinstance(sprite_name, str)
                 and isinstance(plist_path, str)
-                and sprite_name
+                and sprite_name.split(".")[1] == "plist"
             ):
                 sprite = self.load_sprite_frame(plist_path, sprite_name)
                 if sprite is not None:

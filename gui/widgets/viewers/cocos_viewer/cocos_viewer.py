@@ -960,6 +960,7 @@ class CocosViewer(Viewer):
         self.bottom_tabs = QtWidgets.QTabWidget()
         self.bottom_tabs.addTab(self.inspector, "Inspector")
         self.bottom_tabs.addTab(self.detail_text, "JSON")
+
         self.scene = PreviewScene()
         self.preview = QtWidgets.QGraphicsView(self.scene)
         self.preview.setRenderHints(
@@ -968,13 +969,16 @@ class CocosViewer(Viewer):
             | QtGui.QPainter.TextAntialiasing
         )
 
+        bottom_split = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        bottom_split.addWidget(self.node_tree)
+        bottom_split.addWidget(self.bottom_tabs)
+
         right_split = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         right_split.addWidget(self.preview)
-        right_split.addWidget(self.bottom_tabs)
+        right_split.addWidget(bottom_split)
         right_split.setSizes([700, 260])
 
         main_split = QtWidgets.QSplitter()
-        main_split.addWidget(self.node_tree)
         main_split.addWidget(right_split)
         main_split.setSizes([560, 1040])
 
