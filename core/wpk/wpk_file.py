@@ -202,9 +202,12 @@ class IDXWPKFile:
     def is_entry_loaded(self, index: int) -> bool:
         return index in self.entries
 
-    def find_entry_by_name(self, path: str) -> NPKEntry | None:
-
-        return
+    def find_entry_by_name(self, path: str) -> tuple[NPKEntry, int] | tuple[None, None]:
+        path = path.replace("/", "\\").split(".", 1)[0]
+        for ind in range(0, len(self.entries)):
+            if path in self.entries[ind].basename:
+                return (self.entries[ind], ind)
+        return (None, None)
 
     def find_entry_by_id(self, index: int) -> NPKEntry:
         """Get an entry by its index.

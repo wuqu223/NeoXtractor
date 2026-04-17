@@ -48,7 +48,9 @@ def _get_binary_ext(data: bytes, flags: NPKEntryDataFlags):
             return "fev"
         if b"WAVE" in data:
             return "wem"
-    if data[0x34:0x3B] == b"2.1.0.0":
+    if data[0x34:0x3B] == b"2.1.0.0" or data[:8] == bytes(
+        [0x38, 0x00, 0x00, 0x00, 0x34, 0x00, 0x64, 0x00]
+    ):
         return "csb"
     if data[4:8] == b"ftyp":
         return "mp4"
