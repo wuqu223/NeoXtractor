@@ -218,8 +218,9 @@ class PycViewer(Viewer):
     def set_file(self, file: IFile):
         # Initialize parser if it hasnt been done yet
 
-        if self._parser is None or not self._init_parser():
-            return
+        if self._parser is None:
+            if not self._init_parser() or self._parser is None:
+                return
 
         data = file.data
 
