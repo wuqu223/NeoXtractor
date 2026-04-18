@@ -1,0 +1,9 @@
+{
+  "name": "Infinite Lagrange",
+  "read_options": {
+    "decryption_key": null,
+    "aes_key": null,
+    "info_size": 28
+  },
+  "entry_signature_name_map": {}
+}
